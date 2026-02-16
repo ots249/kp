@@ -163,117 +163,34 @@ function updateAllProgress() {
     updateOverallProgress();
 }
 
-// Main function to load data
-async function loadSections() {
-    loadCompletedItems();
+// Get icon for content and detect types
+function getIconForContent(content, link, title) {
+    const titleLower = title.toLowerCase();
+    const linkLower = link.toLowerCase();
     
-    try {
-        const response = await fetch(API_URL);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        
-        document.getElementById('course-title').textContent = 
-            decodeUnicode(data.title) || '৩য় সেমিস্টার ফুল কোর্স';
-        
-        displaySections(data.sections || []);
-        
-    } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('sections-container').innerHTML = `
-            <div class="empty-message" style="padding: 4rem; text-align: center;">
-                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
-                <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
-                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease;">
-                    <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
-                    আবার চেষ্টা করুন
-                </button>
-            </div>
-        `;
-    }
-}
-
-// Display sections and contents
-function displaySections(sections) {
-    const container = document.getElementById('sections-container');
-    
-    if (!sections || sections.length === 0) {
-        container.innerHTML = '<div class="empty-message">কোনো সেকশন পাওয়া যায়নি।</div>';
-        return;
+    // Check for PDF
+    if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
+        return { iconClass: 'fas fa-file-pdf', isPDF: true, isYouTube: false };
     }
     
-    const sectionsHTML = sections.map((section, index) => {
-        const sectionTitle = decodeUnicode(section.title) || `অধ্যায় ${index + 1}`;
-        const contents = section.contents || [];
-        const contentCount = contents.length;
-        
-        const contentsHTML = contents.map((content, contentIndex) => {
-            const contentTitle = decodeUnicode(content.title) || 'লেকচার';
-            
-            let contentLink = '#';
-            if (content.resource && content.resource.resourceable) {
-                contentLink = content.resource.resourceable.link || '#';
-            } else if (content.link) {
-                contentLink = content.link;
-            }
-            
-            const itemId = `section_${index}_content_${contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
-            const iconClass = getIconForContent(content, contentLink, contentTitle);
-            const isPDF = iconClass.includes('fa-file-pdf') || content.type === 'pdf' || contentLink.toLowerCase().includes('.pdf');
-            
-            const clickHandler = isPDF 
-                ? `openPDFViewer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')` 
-                : `window.open('${contentLink.replace(/'/g, "\\'")}', '_blank')`;
-            
-            const isCompleted = completedItems[itemId] || false;
-            
-            return `
-                <div class="content-item ${isCompleted ? 'completed' : ''}" data-item-id="${itemId}">
-                    <input type="checkbox" class="complete-checkbox" 
-                        onchange="toggleComplete('${itemId}', this)" 
-                        ${isCompleted ? 'checked' : ''}
-                        onclick="event.stopPropagation()"
-                        title="সম্পন্ন হিসাবে চিহ্নিত করুন">
-                    <i class="${iconClass}"></i>
-                    <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
-                    <i class="fas fa-external-link-alt link-icon" onclick="${clickHandler}" title="খুলুন"></i>
-                </div>
-            `;
-        }).join('');
-        
-        return `
-            <div class="section-card">
-                <div class="section-header" onclick="toggleSection(this)">
-                    <div class="left-content">
-                        <i class="fas fa-chevron-right section-icon"></i>
-                        <h3>${sectionTitle}</h3>
-                    </div>
-                    <div class="right-content">
-                        <div class="section-progress-container">
-                            <div class="section-progress-bar" style="width: 0%"></div>
-                        </div>
-                        <span class="progress-text">0/${contentCount}</span>
-                        <span class="content-count">${contentCount}</span>
-                    </div>
-                </div>
-                <div class="contents-list ${index === 0 ? '' : 'hidden'}">
-                    ${contentsHTML || '<div class="empty-message">কোনো কন্টেন্ট নেই</div>'}
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    container.innerHTML = sectionsHTML;
-    
-    const firstSection = document.querySelector('.section-card .contents-list');
-    if (firstSection) {
-        firstSection.classList.remove('hidden');
-        const firstIcon = document.querySelector('.section-header .section-icon');
-        if (firstIcon) firstIcon.classList.add('rotated');
+    // Check for YouTube
+    if (content.type === 'video' || 
+        linkLower.includes('youtube.com') || 
+        linkLower.includes('youtu.be') || 
+        titleLower.includes('ভিডিও') || 
+        titleLower.includes('video') ||
+        titleLower.includes('ইউটিউব') ||
+        titleLower.includes('youtube')) {
+        return { iconClass: 'fab fa-youtube', isPDF: false, isYouTube: true };
     }
     
-    updateAllProgress();
+    // Check for WhatsApp
+    if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') || titleLower.includes('হোয়াটসঅ্যাপ')) {
+        return { iconClass: 'fab fa-whatsapp', isPDF: false, isYouTube: false };
+    }
+    
+    // Default
+    return { iconClass: 'fas fa-file-alt', isPDF: false, isYouTube: false };
 }
 
 // PDF Viewer
@@ -354,10 +271,6 @@ window.openPDFViewer = function(pdfUrl, title) {
                     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
                 }
                 
-                .btn-download:active {
-                    transform: translateY(0);
-                }
-                
                 .pdf-frame {
                     flex: 1;
                     width: 100%;
@@ -414,39 +327,6 @@ window.openPDFViewer = function(pdfUrl, title) {
                         top: 0.5rem;
                         right: 0.5rem;
                     }
-                    
-                    .close-btn i {
-                        font-size: 1rem;
-                    }
-                }
-                
-                @media (max-width: 480px) {
-                    .toolbar-left h3 {
-                        max-width: 150px;
-                    }
-                }
-                
-                /* Loading animation */
-                .pdf-frame {
-                    position: relative;
-                }
-                
-                .pdf-frame::before {
-                    content: '';
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 50px;
-                    height: 50px;
-                    border: 4px solid #e2e8f0;
-                    border-top-color: #2563eb;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                }
-                
-                @keyframes spin {
-                    to { transform: translate(-50%, -50%) rotate(360deg); }
                 }
             </style>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -492,12 +372,6 @@ window.openPDFViewer = function(pdfUrl, title) {
                         window.close();
                     }
                 });
-                
-                // Show loading state
-                const frame = document.querySelector('.pdf-frame');
-                frame.addEventListener('load', function() {
-                    this.style.opacity = '1';
-                });
             <\/script>
         </body>
         </html>
@@ -515,20 +389,327 @@ window.openPDFViewer = function(pdfUrl, title) {
     }
 };
 
-// Get icon for content
-function getIconForContent(content, link, title) {
-    const titleLower = title.toLowerCase();
-    const linkLower = link.toLowerCase();
+// YouTube Player
+window.openYouTubePlayer = function(videoUrl, title) {
+    // Extract YouTube video ID
+    let videoId = '';
     
-    if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
-        return 'fas fa-file-pdf';
-    } else if (content.type === 'video' || linkLower.includes('youtube') || linkLower.includes('youtu.be') || titleLower.includes('ভিডিও') || titleLower.includes('video')) {
-        return 'fab fa-youtube';
-    } else if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') || titleLower.includes('হোয়াটসঅ্যাপ')) {
-        return 'fab fa-whatsapp';
-    } else {
-        return 'fas fa-file-alt';
+    if (videoUrl.includes('youtu.be/')) {
+        videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+    } else if (videoUrl.includes('youtube.com/watch')) {
+        const urlParams = new URLSearchParams(new URL(videoUrl).search);
+        videoId = urlParams.get('v');
+    } else if (videoUrl.includes('youtube.com/embed/')) {
+        videoId = videoUrl.split('embed/')[1].split('?')[0];
+    } else if (videoUrl.includes('youtube.com/shorts/')) {
+        videoId = videoUrl.split('shorts/')[1].split('?')[0];
     }
+    
+    // If we found a video ID, open in custom player
+    if (videoId) {
+        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+        
+        const playerHTML = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${title} - ইউটিউব প্লেয়ার</title>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    * {
+                        margin: 0;
+                        padding: 0;
+                        box-sizing: border-box;
+                    }
+                    
+                    body {
+                        font-family: 'Inter', sans-serif;
+                        background: #0f0f0f;
+                        height: 100vh;
+                        overflow: hidden;
+                    }
+                    
+                    .player-container {
+                        display: flex;
+                        flex-direction: column;
+                        height: 100vh;
+                        background: #0f0f0f;
+                    }
+                    
+                    .toolbar {
+                        background: #1f1f1f;
+                        padding: 1rem 2rem;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                        border-bottom: 1px solid #333;
+                    }
+                    
+                    .toolbar-left {
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
+                    }
+                    
+                    .toolbar-left h3 {
+                        color: #fff;
+                        font-size: 1.2rem;
+                        font-weight: 500;
+                        max-width: 500px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                    
+                    .btn-watch {
+                        background: #ff0000;
+                        color: white;
+                        padding: 0.6rem 1.5rem;
+                        border-radius: 2rem;
+                        font-weight: 500;
+                        cursor: pointer;
+                        border: none;
+                        font-size: 0.95rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 0.5rem;
+                        transition: all 0.2s ease;
+                    }
+                    
+                    .btn-watch:hover {
+                        background: #cc0000;
+                        transform: translateY(-2px);
+                        box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+                    }
+                    
+                    .video-frame {
+                        flex: 1;
+                        width: 100%;
+                        border: none;
+                        background: #000;
+                    }
+                    
+                    .close-btn {
+                        position: fixed;
+                        top: 1rem;
+                        right: 1rem;
+                        background: #333;
+                        border: 1px solid #444;
+                        border-radius: 50%;
+                        width: 40px;
+                        height: 40px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        z-index: 1001;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                    }
+                    
+                    .close-btn:hover {
+                        background: #444;
+                        transform: rotate(90deg);
+                    }
+                    
+                    .close-btn i {
+                        font-size: 1.2rem;
+                        color: #fff;
+                    }
+                    
+                    @media (max-width: 768px) {
+                        .toolbar {
+                            padding: 0.75rem 1rem;
+                        }
+                        
+                        .toolbar-left h3 {
+                            font-size: 1rem;
+                            max-width: 200px;
+                        }
+                        
+                        .btn-watch {
+                            padding: 0.5rem 1rem;
+                            font-size: 0.85rem;
+                        }
+                        
+                        .close-btn {
+                            width: 35px;
+                            height: 35px;
+                            top: 0.5rem;
+                            right: 0.5rem;
+                        }
+                    }
+                </style>
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            </head>
+            <body>
+                <div class="player-container">
+                    <div class="toolbar">
+                        <div class="toolbar-left">
+                            <i class="fab fa-youtube" style="color: #ff0000; font-size: 1.5rem;"></i>
+                            <h3 title="${title}">${title}</h3>
+                        </div>
+                        <button class="btn-watch" onclick="window.open('${videoUrl}', '_blank')">
+                            <i class="fab fa-youtube"></i>
+                            ইউটিউবে দেখুন
+                        </button>
+                    </div>
+                    
+                    <iframe 
+                        class="video-frame" 
+                        src="${embedUrl}"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                        webkitallowfullscreen
+                        frameborder="0"
+                    ></iframe>
+                    
+                    <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+                
+                <script>
+                    document.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape') {
+                            window.close();
+                        }
+                    });
+                <\/script>
+            </body>
+            </html>
+        `;
+        
+        const videoWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+        if (videoWindow) {
+            videoWindow.document.write(playerHTML);
+            videoWindow.document.close();
+        } else {
+            window.open(videoUrl, '_blank');
+        }
+    } else {
+        window.open(videoUrl, '_blank');
+    }
+};
+
+// Main function to load data
+async function loadSections() {
+    loadCompletedItems();
+    
+    try {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        
+        document.getElementById('course-title').textContent = 
+            decodeUnicode(data.title) || '৩য় সেমিস্টার ফুল কোর্স';
+        
+        displaySections(data.sections || []);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('sections-container').innerHTML = `
+            <div class="empty-message" style="padding: 4rem; text-align: center;">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
+                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease;">
+                    <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
+                    আবার চেষ্টা করুন
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Display sections and contents
+function displaySections(sections) {
+    const container = document.getElementById('sections-container');
+    
+    if (!sections || sections.length === 0) {
+        container.innerHTML = '<div class="empty-message">কোনো সেকশন পাওয়া যায়নি।</div>';
+        return;
+    }
+    
+    const sectionsHTML = sections.map((section, index) => {
+        const sectionTitle = decodeUnicode(section.title) || `অধ্যায় ${index + 1}`;
+        const contents = section.contents || [];
+        const contentCount = contents.length;
+        
+        const contentsHTML = contents.map((content, contentIndex) => {
+            const contentTitle = decodeUnicode(content.title) || 'লেকচার';
+            
+            let contentLink = '#';
+            if (content.resource && content.resource.resourceable) {
+                contentLink = content.resource.resourceable.link || '#';
+            } else if (content.link) {
+                contentLink = content.link;
+            }
+            
+            const itemId = `section_${index}_content_${contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
+            const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
+            
+            // Determine click handler based on content type
+            let clickHandler = '';
+            if (isPDF) {
+                clickHandler = `openPDFViewer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')`;
+            } else if (isYouTube) {
+                clickHandler = `openYouTubePlayer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')`;
+            } else {
+                clickHandler = `window.open('${contentLink.replace(/'/g, "\\'")}', '_blank')`;
+            }
+            
+            const isCompleted = completedItems[itemId] || false;
+            
+            return `
+                <div class="content-item ${isCompleted ? 'completed' : ''}" data-item-id="${itemId}">
+                    <input type="checkbox" class="complete-checkbox" 
+                        onchange="toggleComplete('${itemId}', this)" 
+                        ${isCompleted ? 'checked' : ''}
+                        onclick="event.stopPropagation()"
+                        title="সম্পন্ন হিসাবে চিহ্নিত করুন">
+                    <i class="${iconClass}"></i>
+                    <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
+                    ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" onclick="' + clickHandler + '" title="খুলুন"></i>' : ''}
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="section-card">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <div class="left-content">
+                        <i class="fas fa-chevron-right section-icon"></i>
+                        <h3>${sectionTitle}</h3>
+                    </div>
+                    <div class="right-content">
+                        <div class="section-progress-container">
+                            <div class="section-progress-bar" style="width: 0%"></div>
+                        </div>
+                        <span class="progress-text">0/${contentCount}</span>
+                        <span class="content-count">${contentCount}</span>
+                    </div>
+                </div>
+                <div class="contents-list ${index === 0 ? '' : 'hidden'}">
+                    ${contentsHTML || '<div class="empty-message">কোনো কন্টেন্ট নেই</div>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = sectionsHTML;
+    
+    const firstSection = document.querySelector('.section-card .contents-list');
+    if (firstSection) {
+        firstSection.classList.remove('hidden');
+        const firstIcon = document.querySelector('.section-header .section-icon');
+        if (firstIcon) firstIcon.classList.add('rotated');
+    }
+    
+    updateAllProgress();
 }
 
 // Toggle section
