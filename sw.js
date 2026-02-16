@@ -1,7 +1,7 @@
 const CACHE_NAME = 'kp-3rd-civil-v1';
 const API_CACHE_NAME = 'kp-api-v1';
 
-// Assets to cache on install
+// Assets to cache on install (নতুন লোগো যোগ করা হয়েছে)
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -12,7 +12,8 @@ const STATIC_ASSETS = [
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/webfonts/fa-solid-900.woff2',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/webfonts/fa-brands-400.woff2',
     'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    'https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg'
+    'https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg',
+    'https://i.postimg.cc/6pw4D0fF/kp-logo.png'
 ];
 
 // Install event
@@ -152,12 +153,12 @@ self.addEventListener('sync', event => {
     }
 });
 
-// Push notifications
+// Push notifications (নতুন লোগো ব্যবহার করা হয়েছে)
 self.addEventListener('push', event => {
     const options = {
         body: event.data.text(),
-        icon: 'https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg',
-        badge: 'https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg',
+        icon: 'https://i.postimg.cc/6pw4D0fF/kp-logo.png',
+        badge: 'https://i.postimg.cc/6pw4D0fF/kp-logo.png',
         vibrate: [100, 50, 100],
         data: {
             dateOfArrival: Date.now(),
