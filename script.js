@@ -27,15 +27,17 @@ function saveCompletedItems() {
 }
 
 // Toggle complete status
-window.toggleComplete = function(itemId, checkbox, event) {
+window.toggleComplete = function(itemId, checkbox) {
     if (event) {
         event.stopPropagation();
     }
     
     if (checkbox.checked) {
         completedItems[itemId] = true;
+        showNotification('✓ সম্পন্ন হিসেবে চিহ্নিত করা হয়েছে', 'success');
     } else {
         delete completedItems[itemId];
+        showNotification('সম্পন্ন চিহ্নিত করা সরানো হয়েছে', 'info');
     }
     saveCompletedItems();
     
@@ -51,6 +53,69 @@ window.toggleComplete = function(itemId, checkbox, event) {
     updateSectionProgress(checkbox.closest('.section-card'));
     updateOverallProgress();
 }
+
+// Show notification
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'var(--success)' : 'var(--primary)'};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-lg);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        animation: slideInRight 0.3s ease;
+        font-weight: 500;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Add animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 
 // Update section progress bar
 function updateSectionProgress(sectionCard) {
@@ -72,13 +137,6 @@ function updateSectionProgress(sectionCard) {
     }
 }
 
-// Update all sections progress
-function updateAllProgress() {
-    document.querySelectorAll('.section-card').forEach(section => {
-        updateSectionProgress(section);
-    });
-}
-
 // Update overall progress
 function updateOverallProgress() {
     const allItems = document.querySelectorAll('.content-item');
@@ -87,15 +145,22 @@ function updateOverallProgress() {
         item.querySelector('.complete-checkbox:checked')
     ).length;
     
-    const percentage = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+    const progressFill = document.getElementById('global-progress-fill');
+    const progressText = document.getElementById('global-progress-text');
     
-    const progressFill = document.querySelector('.progress-summary-fill');
-    const progressPercent = document.querySelector('.progress-summary-percent');
-    
-    if (progressFill && progressPercent) {
+    if (progressFill && progressText) {
+        const percentage = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
         progressFill.style.width = `${percentage}%`;
-        progressPercent.textContent = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
     }
+}
+
+// Update all sections progress
+function updateAllProgress() {
+    document.querySelectorAll('.section-card').forEach(section => {
+        updateSectionProgress(section);
+    });
+    updateOverallProgress();
 }
 
 // Main function to load data
@@ -103,18 +168,10 @@ async function loadSections() {
     loadCompletedItems();
     
     try {
-        const response = await fetch(API_URL, {
-            method: 'GET',
-            mode: 'cors',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
+        const response = await fetch(API_URL);
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error('Network response was not ok');
         }
-        
         const data = await response.json();
         
         document.getElementById('course-title').textContent = 
@@ -125,11 +182,13 @@ async function loadSections() {
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('sections-container').innerHTML = `
-            <div class="empty-message" style="padding: 4rem;">
+            <div class="empty-message" style="padding: 4rem; text-align: center;">
                 <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
-                <p style="color: var(--gray-600);">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
-                <p style="color: var(--gray-500); font-size: 0.9rem; margin-top: 0.5rem;">${error.message}</p>
-                <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer;">আবার চেষ্টা করুন</button>
+                <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
+                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease;">
+                    <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
+                    আবার চেষ্টা করুন
+                </button>
             </div>
         `;
     }
@@ -160,7 +219,6 @@ function displaySections(sections) {
             }
             
             const itemId = `section_${index}_content_${contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
-            
             const iconClass = getIconForContent(content, contentLink, contentTitle);
             const isPDF = iconClass.includes('fa-file-pdf') || content.type === 'pdf' || contentLink.toLowerCase().includes('.pdf');
             
@@ -173,20 +231,20 @@ function displaySections(sections) {
             return `
                 <div class="content-item ${isCompleted ? 'completed' : ''}" data-item-id="${itemId}">
                     <input type="checkbox" class="complete-checkbox" 
-                        onchange="toggleComplete('${itemId}', this, event)" 
+                        onchange="toggleComplete('${itemId}', this)" 
                         ${isCompleted ? 'checked' : ''}
                         onclick="event.stopPropagation()"
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
                     <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
-                    <i class="fas fa-external-link-alt link-icon" onclick="${clickHandler}"></i>
+                    <i class="fas fa-external-link-alt link-icon" onclick="${clickHandler}" title="খুলুন"></i>
                 </div>
             `;
         }).join('');
         
         return `
             <div class="section-card">
-                <div class="section-header" onclick="toggleSection(this, event)">
+                <div class="section-header" onclick="toggleSection(this)">
                     <div class="left-content">
                         <i class="fas fa-chevron-right section-icon"></i>
                         <h3>${sectionTitle}</h3>
@@ -216,10 +274,6 @@ function displaySections(sections) {
     }
     
     updateAllProgress();
-    updateOverallProgress();
-    
-    // Add reset button
-    addResetButton();
 }
 
 // PDF Viewer
@@ -230,13 +284,29 @@ window.openPDFViewer = function(pdfUrl, title) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>${title} - PDF Viewer</title>
+            <title>${title} - PDF ভিউয়ার</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
-                .pdf-container { display: flex; flex-direction: column; height: 100vh; }
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Inter', sans-serif;
+                    background: #f1f5f9;
+                    height: 100vh;
+                    overflow: hidden;
+                }
+                
+                .pdf-container {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                }
+                
                 .toolbar {
                     background: white;
                     padding: 1rem 2rem;
@@ -246,11 +316,13 @@ window.openPDFViewer = function(pdfUrl, title) {
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     border-bottom: 1px solid #e2e8f0;
                 }
+                
                 .toolbar-left {
                     display: flex;
                     align-items: center;
                     gap: 1rem;
                 }
+                
                 .toolbar-left h3 {
                     color: #1e293b;
                     font-size: 1.2rem;
@@ -260,6 +332,7 @@ window.openPDFViewer = function(pdfUrl, title) {
                     text-overflow: ellipsis;
                     white-space: nowrap;
                 }
+                
                 .btn-download {
                     background: #2563eb;
                     color: white;
@@ -274,17 +347,24 @@ window.openPDFViewer = function(pdfUrl, title) {
                     gap: 0.5rem;
                     transition: all 0.2s ease;
                 }
+                
                 .btn-download:hover {
                     background: #1d4ed8;
                     transform: translateY(-2px);
                     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
                 }
+                
+                .btn-download:active {
+                    transform: translateY(0);
+                }
+                
                 .pdf-frame {
                     flex: 1;
                     width: 100%;
                     border: none;
                     background: #e2e8f0;
                 }
+                
                 .close-btn {
                     position: fixed;
                     top: 1rem;
@@ -292,23 +372,81 @@ window.openPDFViewer = function(pdfUrl, title) {
                     background: white;
                     border: 1px solid #e2e8f0;
                     border-radius: 50%;
-                    width: 36px;
-                    height: 36px;
+                    width: 40px;
+                    height: 40px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
                     transition: all 0.2s ease;
                     z-index: 1001;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                 }
+                
                 .close-btn:hover {
                     background: #f1f5f9;
                     transform: rotate(90deg);
                 }
+                
+                .close-btn i {
+                    font-size: 1.2rem;
+                    color: #64748b;
+                }
+                
                 @media (max-width: 768px) {
-                    .toolbar { padding: 0.75rem 1rem; }
-                    .toolbar-left h3 { font-size: 1rem; max-width: 200px; }
-                    .btn-download { padding: 0.5rem 1rem; font-size: 0.85rem; }
+                    .toolbar {
+                        padding: 0.75rem 1rem;
+                    }
+                    
+                    .toolbar-left h3 {
+                        font-size: 1rem;
+                        max-width: 200px;
+                    }
+                    
+                    .btn-download {
+                        padding: 0.5rem 1rem;
+                        font-size: 0.85rem;
+                    }
+                    
+                    .close-btn {
+                        width: 35px;
+                        height: 35px;
+                        top: 0.5rem;
+                        right: 0.5rem;
+                    }
+                    
+                    .close-btn i {
+                        font-size: 1rem;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .toolbar-left h3 {
+                        max-width: 150px;
+                    }
+                }
+                
+                /* Loading animation */
+                .pdf-frame {
+                    position: relative;
+                }
+                
+                .pdf-frame::before {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 50px;
+                    height: 50px;
+                    border: 4px solid #e2e8f0;
+                    border-top-color: #2563eb;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                }
+                
+                @keyframes spin {
+                    to { transform: translate(-50%, -50%) rotate(360deg); }
                 }
             </style>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -318,28 +456,47 @@ window.openPDFViewer = function(pdfUrl, title) {
                 <div class="toolbar">
                     <div class="toolbar-left">
                         <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.5rem;"></i>
-                        <h3>${title}</h3>
+                        <h3 title="${title}">${title}</h3>
                     </div>
                     <button class="btn-download" onclick="downloadPDF('${pdfUrl}')">
-                        <i class="fas fa-download"></i> ডাউনলোড
+                        <i class="fas fa-download"></i>
+                        ডাউনলোড
                     </button>
                 </div>
-                <iframe class="pdf-frame" src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true" allowfullscreen webkitallowfullscreen></iframe>
-                <div class="close-btn" onclick="window.close()" title="বন্ধ করুন">
+                
+                <iframe 
+                    class="pdf-frame" 
+                    src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"
+                    allowfullscreen
+                    webkitallowfullscreen
+                ></iframe>
+                
+                <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
                     <i class="fas fa-times"></i>
                 </div>
             </div>
+            
             <script>
                 function downloadPDF(url) {
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = url.split('/').pop() || 'document.pdf';
+                    a.style.display = 'none';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                 }
+                
                 document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape') window.close();
+                    if (e.key === 'Escape') {
+                        window.close();
+                    }
+                });
+                
+                // Show loading state
+                const frame = document.querySelector('.pdf-frame');
+                frame.addEventListener('load', function() {
+                    this.style.opacity = '1';
                 });
             <\/script>
         </body>
@@ -351,8 +508,10 @@ window.openPDFViewer = function(pdfUrl, title) {
         pdfWindow.document.write(popupHTML);
         pdfWindow.document.close();
     } else {
-        alert('পপ-আপ ব্লকার সক্রিয় থাকলে PDF ভিউয়ার খোলা যাবে না। অনুগ্রহ করে পপ-আপ ব্লকার নিষ্ক্রিয় করুন।');
-        window.open(pdfUrl, '_blank');
+        showNotification('পপ-আপ ব্লকার সক্রিয় থাকলে PDF ভিউয়ার খোলা যাবে না। সরাসরি খুলছি...', 'info');
+        setTimeout(() => {
+            window.open(pdfUrl, '_blank');
+        }, 1000);
     }
 };
 
@@ -365,7 +524,7 @@ function getIconForContent(content, link, title) {
         return 'fas fa-file-pdf';
     } else if (content.type === 'video' || linkLower.includes('youtube') || linkLower.includes('youtu.be') || titleLower.includes('ভিডিও') || titleLower.includes('video')) {
         return 'fab fa-youtube';
-    } else if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp')) {
+    } else if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') || titleLower.includes('হোয়াটসঅ্যাপ')) {
         return 'fab fa-whatsapp';
     } else {
         return 'fas fa-file-alt';
@@ -373,7 +532,7 @@ function getIconForContent(content, link, title) {
 }
 
 // Toggle section
-window.toggleSection = function(header, event) {
+window.toggleSection = function(header) {
     if (event) {
         event.stopPropagation();
     }
@@ -423,23 +582,66 @@ window.resetAllProgress = function() {
         });
         
         updateAllProgress();
-        updateOverallProgress();
+        showNotification('সব প্রোগ্রেস রিসেট করা হয়েছে', 'info');
     }
 }
 
-// Add reset button
-function addResetButton() {
-    const header = document.querySelector('.header-content');
-    if (header && !document.querySelector('.reset-btn')) {
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'reset-btn';
-        resetBtn.innerHTML = '<i class="fas fa-redo-alt"></i> রিসেট প্রোগ্রেস';
-        resetBtn.onclick = window.resetAllProgress;
-        header.appendChild(resetBtn);
-    }
-}
+// PWA Install Button
+let deferredPrompt;
 
-// Initialize
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installButton = document.getElementById('install-button');
+    if (installButton) {
+        installButton.style.display = 'inline-flex';
+        
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            deferredPrompt.prompt();
+            
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+        });
+    }
+});
+
+window.addEventListener('appinstalled', (evt) => {
+    console.log('App was installed.');
+    showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
+});
+
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadSections();
+    
+    // Reset button
+    const resetBtn = document.getElementById('reset-progress');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', window.resetAllProgress);
+    }
+    
+    // Check for reset parameter in URL
+    if (window.location.search.includes('reset=true')) {
+        setTimeout(() => {
+            window.resetAllProgress();
+        }, 1000);
+    }
+    
+    // Add offline detection
+    if (!navigator.onLine) {
+        showNotification('আপনি অফলাইনে আছেন। কিছু ফিচার কাজ নাও করতে পারে।', 'info');
+    }
+    
+    window.addEventListener('online', () => {
+        showNotification('আপনি অনলাইনে ফিরে এসেছেন!', 'success');
+    });
+    
+    window.addEventListener('offline', () => {
+        showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
+    });
 });
