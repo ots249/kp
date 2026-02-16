@@ -9,13 +9,43 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="KP 3rd Sem">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="apple-touch-icon" href="https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg">
+    <meta name="theme-color" content="#ffffff">
+    
+    <!-- Icons for iOS (নতুন লোগো) -->
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/6pw4D0fF/kp-logo.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://i.postimg.cc/6pw4D0fF/kp-logo.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://i.postimg.cc/6pw4D0fF/kp-logo.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="https://i.postimg.cc/6pw4D0fF/kp-logo.png">
+    
+    <!-- Startup Image for iOS -->
+    <link rel="apple-touch-startup-image" href="https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg">
+    
+    <!-- Additional Meta Tags -->
+    <meta name="format-detection" content="telephone=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
 </head>
 <body>
     <div class="app">
@@ -24,7 +54,7 @@
             <img src="https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg" alt="কোর্স ব্যানার" class="banner-image">
         </div>
 
-        <!-- Header -->
+        <!-- Header with subtle gradient -->
         <header class="header">
             <div class="header-content">
                 <h1 id="course-title">কারিগরি পাঠশালা কোর্স</h1>
@@ -32,17 +62,17 @@
             </div>
         </header>
 
+        <!-- Progress Summary -->
+        <div class="progress-summary" id="progress-summary">
+            <span class="progress-summary-text">সর্বমোট অগ্রগতি</span>
+            <div class="progress-summary-bar">
+                <div class="progress-summary-fill" id="global-progress-fill" style="width: 0%"></div>
+            </div>
+            <span class="progress-summary-percent" id="global-progress-text">0%</span>
+        </div>
+
         <!-- Main Content -->
         <main class="main">
-            <!-- Progress Summary -->
-            <div class="progress-summary" id="progress-summary">
-                <span class="progress-summary-text">সর্বমোট অগ্রগতি</span>
-                <div class="progress-summary-bar">
-                    <div class="progress-summary-fill" style="width: 0%"></div>
-                </div>
-                <span class="progress-summary-percent">0%</span>
-            </div>
-
             <!-- Sections Container -->
             <div class="sections-container" id="sections-container">
                 <div class="loading">
@@ -52,50 +82,20 @@
             </div>
         </main>
 
-        <!-- Footer -->
+        <!-- Footer with Install Button -->
         <footer class="footer">
+            <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                <button id="install-button" class="install-btn" style="display: none;">
+                    <i class="fas fa-download"></i> অ্যাপ ইন্সটল করুন
+                </button>
+                <button id="reset-progress" class="reset-btn">
+                    <i class="fas fa-redo-alt"></i> প্রোগ্রেস রিসেট
+                </button>
+            </div>
             <p>© ২০২৬ কারিগরি পাঠশালা • সর্বস্বত্ব সংরক্ষিত</p>
         </footer>
     </div>
 
-    <!-- Install App Button (for PWA) -->
-    <div id="install-container" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-        <button id="install-button" class="install-btn">
-            <i class="fas fa-download"></i> অ্যাপ ইন্সটল করুন
-        </button>
-    </div>
-
     <script src="script.js"></script>
-    <script>
-        // Service Worker Registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./kp/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registered: ', registration);
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed: ', error);
-                    });
-            });
-        }
-
-        // PWA Install Prompt
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            document.getElementById('install-container').style.display = 'block';
-        });
-
-        document.getElementById('install-button')?.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
-            deferredPrompt = null;
-            document.getElementById('install-container').style.display = 'none';
-        });
-    </script>
 </body>
-        </html>
+</html>
