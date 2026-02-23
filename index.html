@@ -49,9 +49,19 @@
 </head>
 <body>
     <div class="app">
-        <!-- Banner Section -->
-        <div class="banner-container">
-            <img src="https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg" alt="কোর্স ব্যানার" class="banner-image">
+        <!-- Banner/Live Video Section -->
+        <div class="banner-container" id="banner-container">
+            <img src="https://i.postimg.cc/TwWJj5W5/KP-3rd-Semester.jpg" alt="কোর্স ব্যানার" class="banner-image" id="banner-image">
+            <div class="live-video-container" id="live-video-container" style="display: none;">
+                <iframe 
+                    id="live-video-frame"
+                    class="live-video-frame"
+                    src=""
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen>
+                </iframe>
+            </div>
         </div>
 
         <!-- Header with subtle gradient -->
@@ -92,7 +102,7 @@
                     <i class="fas fa-redo-alt"></i> প্রোগ্রেস রিসেট
                 </button>
             </div>
-            <p>© ২০২৬ কারিগরি পাঠশালা • সর্বস্বত্ব সংরক্ষিত</p>
+            <p>&copy; ২০২৬ কারিগরি পাঠশালা • সর্বস্বত্ব সংরক্ষিত</p>
         </footer>
     </div>
 

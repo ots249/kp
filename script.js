@@ -1,8 +1,30 @@
 // API Endpoint
 const API_URL = 'https://api.karigoripathsala.com/api/courses/3rd-semester-full-course-chbite-likha-dipartment-gulor-jnz-1';
 
+// YouTube API Key
+const YOUTUBE_API_KEY = 'AIzaSyC4jVo_d7EEo1115oUexLMm-d2WzaK29UM';
+
 // Complete status tracking
 let completedItems = {};
+
+// Cache for video durations
+let videoDurationCache = {};
+
+// New items tracking (based on available_from + 24 hours)
+let newItems = {};
+
+// বাংলাদেশ সময় ইউটিলিটি ফাংশন - সঠিক ভার্সন
+function getBangladeshTime(date = new Date()) {
+    // লোকাল টাইমকে বাংলাদেশ টাইমে কনভার্ট করুন
+    return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
+}
+
+function getBangladeshNow() {
+    const now = new Date();
+    const bangladeshNow = getBangladeshTime(now);
+    console.log('🕐 বাংলাদেশ এখন:', bangladeshNow.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }));
+    return bangladeshNow;
+}
 
 // Load completed items from localStorage
 function loadCompletedItems() {
@@ -14,6 +36,273 @@ function loadCompletedItems() {
     } catch (error) {
         console.error('Error loading completed items:', error);
         completedItems = {};
+    }
+}
+
+// Load new items tracking
+function loadNewItems() {
+    try {
+        const saved = localStorage.getItem('newCourseItems');
+        if (saved) {
+            const data = JSON.parse(saved);
+            const bangladeshNow = getBangladeshNow().getTime();
+            
+            // Filter out expired items (older than available_from + 24 hours)
+            newItems = {};
+            Object.entries(data).forEach(([key, expiryTime]) => {
+                if (bangladeshNow < expiryTime) {
+                    newItems[key] = expiryTime;
+                }
+            });
+            
+            // Save cleaned up items
+            saveNewItems();
+        } else {
+            newItems = {};
+        }
+    } catch (error) {
+        console.error('Error loading new items:', error);
+        newItems = {};
+    }
+}
+
+// Save new items
+function saveNewItems() {
+    try {
+        localStorage.setItem('newCourseItems', JSON.stringify(newItems));
+    } catch (error) {
+        console.error('Error saving new items:', error);
+    }
+}
+
+// Check if item is new (within 24 hours of available_from in Bangladesh time)
+function isItemNew(itemKey, availableFrom) {
+    if (!availableFrom) return false;
+    
+    // First check if we have it in storage
+    if (newItems[itemKey]) {
+        const bangladeshNow = getBangladeshNow().getTime();
+        return bangladeshNow < newItems[itemKey];
+    }
+    
+    // available_from is in UTC, convert to Bangladesh time for comparison
+    const availableDate = new Date(availableFrom);
+    const availableTimeBD = getBangladeshTime(availableDate).getTime();
+    const expiryTimeBD = availableTimeBD + (24 * 60 * 60 * 1000); // Add 24 hours
+    const bangladeshNow = getBangladeshNow().getTime();
+    
+    if (bangladeshNow < expiryTimeBD) {
+        newItems[itemKey] = expiryTimeBD;
+        saveNewItems();
+        return true;
+    }
+    
+    return false;
+}
+
+// Check for live content and update banner (শুধু পৃষ্ঠা লোডের সময় চেক করবে)
+async function checkLiveContent(sections) {
+    const bangladeshNow = getBangladeshNow();
+    const bannerImage = document.getElementById('banner-image');
+    const liveContainer = document.getElementById('live-video-container');
+    const liveFrame = document.getElementById('live-video-frame');
+    
+    let liveContentFound = false;
+    let liveClassDetails = null;
+    
+    console.log('🕐 পৃষ্ঠা লোডের সময় লাইভ ক্লাস চেক করা হচ্ছে...');
+    console.log('📅 বর্তমান বাংলাদেশ সময়:', bangladeshNow.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }));
+    
+    // সব সেকশন চেক করুন
+    for (const section of sections) {
+        if (section.contents && section.contents.length > 0) {
+            for (const content of section.contents) {
+                // শুধু live টাইপের কন্টেন্ট চেক করুন
+                if (content.type !== 'live') continue;
+                
+                let startTime = null;
+                let endTime = null;
+                let liveLink = null;
+                let contentTitle = decodeUnicode(content.title);
+                
+                // resource.resourceable থেকে ডাটা নিন
+                if (content.resource && content.resource.resourceable) {
+                    if (content.resource.resourceable.start_time) {
+                        startTime = new Date(content.resource.resourceable.start_time);
+                    }
+                    if (content.resource.resourceable.end_time) {
+                        endTime = new Date(content.resource.resourceable.end_time);
+                    }
+                    liveLink = content.resource.resourceable.link || content.link;
+                }
+                
+                // যদি startTime পাওয়া যায়
+                if (startTime) {
+                    // API থেকে আসা সময় UTC। সরাসরি বাংলাদেশ সময়ে কনভার্ট করুন
+                    const startTimeBD = getBangladeshTime(startTime);
+                    
+                    // end_time নির্ধারণ
+                    let endTimeBD;
+                    
+                    if (endTime) {
+                        // end_time থাকলে সেটাকেও বাংলাদেশ সময়ে কনভার্ট করুন
+                        endTimeBD = getBangladeshTime(endTime);
+                        
+                        // যদি end_time start_time এর চেয়ে ছোট বা সমান হয়, তাহলে start_time + ২ ঘন্টা
+                        if (endTimeBD <= startTimeBD) {
+                            console.warn('⚠️ end_time start_time এর সমান বা ছোট, ডিফল্ট ২ ঘন্টা ধরা হচ্ছে');
+                            endTimeBD = new Date(startTimeBD.getTime() + (2 * 60 * 60 * 1000));
+                        }
+                    } else {
+                        // end_time না থাকলে, start_time + ২ ঘন্টা
+                        endTimeBD = new Date(startTimeBD.getTime() + (2 * 60 * 60 * 1000));
+                    }
+                    
+                    // ডিবাগ তথ্য
+                    console.log(`🔍 লাইভ ক্লাস চেক: ${decodeUnicode(section.title)} - ${contentTitle}`, {
+                        startUTC: startTime.toISOString(),
+                        endUTC: endTime ? endTime.toISOString() : 'N/A',
+                        startBD: startTimeBD.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }),
+                        endBD: endTimeBD.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }),
+                        nowBD: bangladeshNow.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }),
+                        timeUntilStart: Math.round((startTimeBD - bangladeshNow) / (60 * 1000)) + ' মিনিট',
+                        timeUntilEnd: Math.round((endTimeBD - bangladeshNow) / (60 * 1000)) + ' মিনিট',
+                        isLive: (bangladeshNow >= startTimeBD && bangladeshNow <= endTimeBD)
+                    });
+                    
+                    // চেক করুন ক্লাস এখন চলছে কিনা (start_time এবং end_time এর মধ্যে)
+                    if (bangladeshNow >= startTimeBD && bangladeshNow <= endTimeBD) {
+                        liveContentFound = true;
+                        liveClassDetails = {
+                            title: contentTitle,
+                            section: decodeUnicode(section.title),
+                            start: startTimeBD,
+                            end: endTimeBD,
+                            link: liveLink
+                        };
+                        
+                        // শুধু প্রথম লাইভ ক্লাসটাই নিন
+                        break;
+                    }
+                }
+            }
+            if (liveContentFound) break;
+        }
+    }
+    
+    // যদি লাইভ ক্লাস পাওয়া যায়
+    if (liveContentFound && liveClassDetails) {
+        console.log('✅ লাইভ ক্লাস চলছে:', liveClassDetails);
+        
+        // Get the live video link
+        let videoLink = liveClassDetails.link || '';
+        
+        // Convert to embed link if it's YouTube
+        if (videoLink.includes('youtube.com/watch') || videoLink.includes('youtu.be')) {
+            let videoId = '';
+            if (videoLink.includes('youtu.be/')) {
+                videoId = videoLink.split('youtu.be/')[1].split('?')[0];
+            } else if (videoLink.includes('youtube.com/watch')) {
+                try {
+                    const urlParams = new URLSearchParams(new URL(videoLink).search);
+                    videoId = urlParams.get('v');
+                } catch (e) {
+                    console.error('Invalid YouTube URL:', videoLink);
+                }
+            }
+            
+            if (videoId) {
+                videoLink = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&enablejsapi=1`;
+            }
+        }
+        
+        // Update banner to show live video
+        bannerImage.style.display = 'none';
+        liveContainer.style.display = 'block';
+        liveFrame.src = videoLink;
+        
+        // Add controls with end time info
+        let controls = document.querySelector('.live-video-controls');
+        if (!controls) {
+            controls = document.createElement('div');
+            controls.className = 'live-video-controls';
+            liveContainer.appendChild(controls);
+        }
+        
+        // Calculate remaining time
+        const remainingMs = liveClassDetails.end - bangladeshNow;
+        const remainingMinutes = Math.floor(remainingMs / (60 * 1000));
+        const remainingHours = Math.floor(remainingMinutes / 60);
+        const remainingMins = remainingMinutes % 60;
+        
+        let remainingText = '';
+        if (remainingHours > 0) {
+            remainingText = `${remainingHours} ঘন্টা ${remainingMins} মিনিট`;
+        } else {
+            remainingText = `${remainingMinutes} মিনিট`;
+        }
+        
+        controls.innerHTML = `
+            <i class="fas fa-circle"></i>
+            আজকের লাইভ ক্লাস: ${liveClassDetails.title}
+            `;
+        
+        // Show notification for live class
+        showNotification(`${liveClassDetails.section}) ${liveClassDetails.title} লাইভ চলছে`, 'info');
+        
+    } else {
+        // No live content found, show banner
+        bannerImage.style.display = 'block';
+        liveContainer.style.display = 'none';
+        liveFrame.src = '';
+        
+        // Remove controls if exists
+        const controls = document.querySelector('.live-video-controls');
+        if (controls) {
+            controls.remove();
+        }
+        
+        if (liveClassDetails) {
+            console.log('⏰ কোন লাইভ ক্লাস চলছে না। পরবর্তী ক্লাস:', liveClassDetails);
+        } else {
+            console.log('ℹ️ আজকের জন্য কোন লাইভ ক্লাস নেই');
+        }
+    }
+    
+    return liveContentFound;
+}
+
+// Video aspect ratio toggle
+window.toggleVideoAspect = function() {
+    const liveFrame = document.getElementById('live-video-frame');
+    if (liveFrame) {
+        if (liveFrame.style.aspectRatio === '16/9') {
+            liveFrame.style.aspectRatio = '4/3';
+        } else {
+            liveFrame.style.aspectRatio = '16/9';
+        }
+    }
+};
+
+// Load video duration cache from localStorage
+function loadVideoDurationCache() {
+    try {
+        const saved = localStorage.getItem('videoDurationCache');
+        if (saved) {
+            videoDurationCache = JSON.parse(saved);
+        }
+    } catch (error) {
+        console.error('Error loading video duration cache:', error);
+        videoDurationCache = {};
+    }
+}
+
+// Save video duration cache to localStorage
+function saveVideoDurationCache() {
+    try {
+        localStorage.setItem('videoDurationCache', JSON.stringify(videoDurationCache));
+    } catch (error) {
+        console.error('Error saving video duration cache:', error);
     }
 }
 
@@ -56,10 +345,14 @@ window.toggleComplete = function(itemId, checkbox) {
 
 // Show notification
 function showNotification(message, type = 'success') {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notif => notif.remove());
+    
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i>
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle'}"></i>
         <span>${message}</span>
     `;
     
@@ -67,17 +360,18 @@ function showNotification(message, type = 'success') {
         position: fixed;
         top: 20px;
         right: 20px;
-        background: ${type === 'success' ? 'var(--success)' : 'var(--primary)'};
+        background: ${type === 'success' ? '#10b981' : type === 'info' ? '#3b82f6' : '#ef4444'};
         color: white;
         padding: 1rem 1.5rem;
-        border-radius: var(--radius-sm);
-        box-shadow: var(--shadow-lg);
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
         z-index: 9999;
         display: flex;
         align-items: center;
         gap: 0.75rem;
         animation: slideInRight 0.3s ease;
         font-weight: 500;
+        max-width: 350px;
     `;
     
     document.body.appendChild(notification);
@@ -85,7 +379,9 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => {
-            document.body.removeChild(notification);
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
         }, 300);
     }, 3000);
 }
@@ -174,7 +470,7 @@ function getIconForContent(content, link, title) {
     }
     
     // Check for YouTube
-    if (content.type === 'video' || 
+    if (content.type === 'video' || content.type === 'live' ||
         linkLower.includes('youtube.com') || 
         linkLower.includes('youtu.be') || 
         titleLower.includes('ভিডিও') || 
@@ -191,6 +487,143 @@ function getIconForContent(content, link, title) {
     
     // Default
     return { iconClass: 'fas fa-file-alt', isPDF: false, isYouTube: false };
+}
+
+// Extract YouTube Video ID
+function extractYouTubeVideoId(url) {
+    let videoId = '';
+    
+    if (url.includes('youtu.be/')) {
+        videoId = url.split('youtu.be/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/watch')) {
+        try {
+            const urlParams = new URLSearchParams(new URL(url).search);
+            videoId = urlParams.get('v');
+        } catch (e) {
+            console.error('Invalid URL:', url);
+        }
+    } else if (url.includes('youtube.com/embed/')) {
+        videoId = url.split('embed/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/shorts/')) {
+        videoId = url.split('shorts/')[1].split('?')[0];
+    }
+    
+    return videoId;
+}
+
+// Format duration from ISO 8601 to MM:SS or HH:MM:SS
+function formatDuration(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    
+    const hours = (match[1] || '').replace('H', '');
+    const minutes = (match[2] || '').replace('M', '');
+    const seconds = (match[3] || '').replace('S', '');
+    
+    let result = '';
+    
+    if (hours) {
+        result += `${hours.padStart(2, '0')}:`;
+        result += `${(minutes || '0').padStart(2, '0')}:`;
+        result += `${(seconds || '0').padStart(2, '0')}`;
+    } else if (minutes) {
+        result += `${minutes.padStart(2, '0')}:`;
+        result += `${(seconds || '0').padStart(2, '0')}`;
+    } else {
+        result = `00:${(seconds || '0').padStart(2, '0')}`;
+    }
+    
+    return result;
+}
+
+// Get video duration from YouTube API
+async function getVideoDuration(videoId) {
+    // Check cache first
+    if (videoDurationCache[videoId]) {
+        return videoDurationCache[videoId];
+    }
+    
+    // If no API key, return placeholder
+    if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+        return '--:--';
+    }
+    
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`
+        );
+        
+        if (!response.ok) {
+            throw new Error('YouTube API request failed');
+        }
+        
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            const duration = data.items[0].contentDetails.duration;
+            const formattedDuration = formatDuration(duration);
+            
+            // Cache the result
+            videoDurationCache[videoId] = formattedDuration;
+            saveVideoDurationCache();
+            
+            return formattedDuration;
+        }
+        
+        return '--:--';
+    } catch (error) {
+        console.error('Error fetching video duration:', error);
+        return '--:--';
+    }
+}
+
+// Update all video durations after content is loaded
+async function updateAllVideoDurations() {
+    const videoItems = document.querySelectorAll('.content-item .fa-youtube');
+    
+    for (const videoIcon of videoItems) {
+        const contentItem = videoIcon.closest('.content-item');
+        const titleSpan = contentItem.querySelector('.content-title');
+        const linkIcon = contentItem.querySelector('.link-icon');
+        
+        // Try to get video link from onclick attribute
+        const onclickAttr = titleSpan.getAttribute('onclick');
+        let videoLink = '';
+        
+        if (onclickAttr) {
+            const match = onclickAttr.match(/'([^']+)'/g);
+            if (match && match[0]) {
+                videoLink = match[0].replace(/'/g, '');
+            }
+        }
+        
+        if (videoLink) {
+            const videoId = extractYouTubeVideoId(videoLink);
+            
+            if (videoId) {
+                // Create or update duration span
+                let durationSpan = contentItem.querySelector('.video-duration');
+                
+                if (!durationSpan) {
+                    durationSpan = document.createElement('span');
+                    durationSpan.className = 'video-duration';
+                    
+                    // Insert before link icon or at the end
+                    if (linkIcon) {
+                        contentItem.insertBefore(durationSpan, linkIcon);
+                    } else {
+                        contentItem.appendChild(durationSpan);
+                    }
+                }
+                
+                // Show loading
+                durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                // Get duration
+                const duration = await getVideoDuration(videoId);
+                durationSpan.textContent = duration;
+            }
+        }
+    }
 }
 
 // PDF Viewer
@@ -397,8 +830,12 @@ window.openYouTubePlayer = function(videoUrl, title) {
     if (videoUrl.includes('youtu.be/')) {
         videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
     } else if (videoUrl.includes('youtube.com/watch')) {
-        const urlParams = new URLSearchParams(new URL(videoUrl).search);
-        videoId = urlParams.get('v');
+        try {
+            const urlParams = new URLSearchParams(new URL(videoUrl).search);
+            videoId = urlParams.get('v');
+        } catch (e) {
+            console.error('Invalid URL:', videoUrl);
+        }
     } else if (videoUrl.includes('youtube.com/embed/')) {
         videoId = videoUrl.split('embed/')[1].split('?')[0];
     } else if (videoUrl.includes('youtube.com/shorts/')) {
@@ -407,7 +844,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
     
     // If we found a video ID, open in custom player
     if (videoId) {
-        const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1`;
         
         const playerHTML = `
             <!DOCTYPE html>
@@ -597,26 +1034,46 @@ window.openYouTubePlayer = function(videoUrl, title) {
 // Main function to load data
 async function loadSections() {
     loadCompletedItems();
+    loadVideoDurationCache();
+    loadNewItems();
     
     try {
+        console.log('📡 API কল করা হচ্ছে:', API_URL);
+        
         const response = await fetch(API_URL);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         const data = await response.json();
         
+        console.log('📦 API ডাটা:', data);
+        
         document.getElementById('course-title').textContent = 
             decodeUnicode(data.title) || '৩য় সেমিস্টার ফুল কোর্স';
         
+        // Display sections first
         displaySections(data.sections || []);
         
+        // শুধু পৃষ্ঠা লোডের সময় লাইভ ক্লাস চেক করুন
+        await checkLiveContent(data.sections || []);
+        
+        // Update video durations after sections are displayed
+        setTimeout(() => {
+            updateAllVideoDurations();
+        }, 1000);
+        
+        // শুধু নতুন আইটেমের এক্সপায়ারি চেক করার জন্য ইন্টারভাল (লাইভ ক্লাসের জন্য নয়)
+        setInterval(() => {
+            loadNewItems(); // রিফ্রেশ new items
+        }, 60000);
+        
     } catch (error) {
-        console.error('Error:', error);
+        console.error('❌ Error:', error);
         document.getElementById('sections-container').innerHTML = `
             <div class="empty-message" style="padding: 4rem; text-align: center;">
-                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: var(--danger); margin-bottom: 1rem;"></i>
-                <p style="color: var(--gray-600); font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
-                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: var(--primary); color: white; border: none; border-radius: var(--radius); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease;">
+                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
+                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: #2563eb; color: white; border: none; border-radius: 1rem; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s ease;">
                     <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
                     আবার চেষ্টা করুন
                 </button>
@@ -649,8 +1106,22 @@ function displaySections(sections) {
                 contentLink = content.link;
             }
             
-            const itemId = `section_${index}_content_${contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
+            // Create a unique ID for this content
+            const itemId = `section_${section.id || index}_content_${content.id || contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
+            
+            // Check if content is new based on available_from
+            let availableFrom = null;
+            
+            if (content.available_from) {
+                availableFrom = content.available_from;
+            } else if (content.resource?.resourceable?.start_time) {
+                availableFrom = content.resource.resourceable.start_time;
+            } else if (content.start_time) {
+                availableFrom = content.start_time;
+            }
+            
+            const isNew = isItemNew(itemId, availableFrom);
             
             // Determine click handler based on content type
             let clickHandler = '';
@@ -672,7 +1143,8 @@ function displaySections(sections) {
                         onclick="event.stopPropagation()"
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
-                    <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
+                    <span class="content-title" onclick="${clickHandler}">${contentTitle}${isNew ? '<span class="new-badge">নতুন</span>' : ''}</span>
+                    ${isYouTube ? '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>' : ''}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" onclick="' + clickHandler + '" title="খুলুন"></i>' : ''}
                 </div>
             `;
