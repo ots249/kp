@@ -626,7 +626,7 @@ async function updateAllVideoDurations() {
     }
 }
 
-// PDF Viewer
+// PDF Viewer - রেস্পন্সিভ ভার্সন (বাটন সঠিক অবস্থানে)
 window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
     
@@ -636,7 +636,7 @@ window.openPDFViewer = function(pdfUrl, title) {
         <head>
             <title>${title} - PDF ভিউয়ার</title>
             <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
             <style>
                 * {
                     margin: 0;
@@ -649,6 +649,8 @@ window.openPDFViewer = function(pdfUrl, title) {
                     background: #f1f5f9;
                     height: 100vh;
                     overflow: hidden;
+                    position: fixed;
+                    width: 100%;
                 }
                 
                 .pdf-container {
@@ -665,22 +667,38 @@ window.openPDFViewer = function(pdfUrl, title) {
                     align-items: center;
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     border-bottom: 1px solid #e2e8f0;
+                    position: relative;
                 }
                 
                 .toolbar-left {
                     display: flex;
                     align-items: center;
                     gap: 1rem;
+                    flex: 1;
+                    min-width: 0;
+                }
+                
+                .toolbar-left i {
+                    color: #ef4444;
+                    font-size: 1.5rem;
+                    flex-shrink: 0;
                 }
                 
                 .toolbar-left h3 {
                     color: #1e293b;
                     font-size: 1.2rem;
                     font-weight: 600;
-                    max-width: 500px;
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
+                    margin-right: 1rem;
+                }
+                
+                .toolbar-right {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex-shrink: 0;
                 }
                 
                 .btn-download {
@@ -696,6 +714,7 @@ window.openPDFViewer = function(pdfUrl, title) {
                     align-items: center;
                     gap: 0.5rem;
                     transition: all 0.2s ease;
+                    white-space: nowrap;
                 }
                 
                 .btn-download:hover {
@@ -704,17 +723,11 @@ window.openPDFViewer = function(pdfUrl, title) {
                     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
                 }
                 
-                .pdf-frame {
-                    flex: 1;
-                    width: 100%;
-                    border: none;
-                    background: #e2e8f0;
+                .btn-download i {
+                    font-size: 1rem;
                 }
                 
                 .close-btn {
-                    position: fixed;
-                    top: 1rem;
-                    right: 1rem;
                     background: white;
                     border: 1px solid #e2e8f0;
                     border-radius: 50%;
@@ -725,18 +738,23 @@ window.openPDFViewer = function(pdfUrl, title) {
                     justify-content: center;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                    z-index: 1001;
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    color: #64748b;
+                    font-size: 1.2rem;
+                    flex-shrink: 0;
                 }
                 
                 .close-btn:hover {
                     background: #f1f5f9;
                     transform: rotate(90deg);
+                    color: #ef4444;
                 }
                 
-                .close-btn i {
-                    font-size: 1.2rem;
-                    color: #64748b;
+                .pdf-frame {
+                    flex: 1;
+                    width: 100%;
+                    border: none;
+                    background: #e2e8f0;
                 }
                 
                 @media (max-width: 768px) {
@@ -744,9 +762,17 @@ window.openPDFViewer = function(pdfUrl, title) {
                         padding: 0.75rem 1rem;
                     }
                     
+                    .toolbar-left i {
+                        font-size: 1.3rem;
+                    }
+                    
                     .toolbar-left h3 {
                         font-size: 1rem;
                         max-width: 200px;
+                    }
+                    
+                    .toolbar-right {
+                        gap: 0.5rem;
                     }
                     
                     .btn-download {
@@ -754,11 +780,77 @@ window.openPDFViewer = function(pdfUrl, title) {
                         font-size: 0.85rem;
                     }
                     
+                    .btn-download i {
+                        font-size: 0.9rem;
+                    }
+                    
                     .close-btn {
-                        width: 35px;
-                        height: 35px;
-                        top: 0.5rem;
-                        right: 0.5rem;
+                        width: 36px;
+                        height: 36px;
+                        font-size: 1rem;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .toolbar-left h3 {
+                        max-width: 150px;
+                        font-size: 0.9rem;
+                    }
+                    
+                    .btn-download {
+                        padding: 0.4rem 0.8rem;
+                        font-size: 0.8rem;
+                    }
+                    
+                    .btn-download span {
+                        display: none;
+                    }
+                    
+                    .btn-download i {
+                        margin-right: 0;
+                    }
+                    
+                    .close-btn {
+                        width: 32px;
+                        height: 32px;
+                    }
+                }
+                
+                @media (max-width: 360px) {
+                    .toolbar-left h3 {
+                        max-width: 120px;
+                    }
+                    
+                    .btn-download {
+                        padding: 0.4rem;
+                        border-radius: 50%;
+                        width: 36px;
+                        height: 36px;
+                        justify-content: center;
+                    }
+                    
+                    .btn-download i {
+                        font-size: 1rem;
+                    }
+                }
+                
+                @media (orientation: landscape) and (max-height: 500px) {
+                    .toolbar {
+                        padding: 0.5rem 1rem;
+                    }
+                    
+                    .toolbar-left h3 {
+                        font-size: 0.9rem;
+                    }
+                    
+                    .btn-download {
+                        padding: 0.3rem 0.8rem;
+                        font-size: 0.8rem;
+                    }
+                    
+                    .close-btn {
+                        width: 30px;
+                        height: 30px;
                     }
                 }
             </style>
@@ -768,13 +860,18 @@ window.openPDFViewer = function(pdfUrl, title) {
             <div class="pdf-container">
                 <div class="toolbar">
                     <div class="toolbar-left">
-                        <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.5rem;"></i>
+                        <i class="fas fa-file-pdf"></i>
                         <h3 title="${title}">${title}</h3>
                     </div>
-                    <button class="btn-download" onclick="downloadPDF('${pdfUrl}')">
-                        <i class="fas fa-download"></i>
-                        ডাউনলোড
-                    </button>
+                    <div class="toolbar-right">
+                        <button class="btn-download" onclick="downloadPDF('${pdfUrl}')">
+                            <i class="fas fa-download"></i>
+                            <span>ডাউনলোড</span>
+                        </button>
+                        <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
                 </div>
                 
                 <iframe 
@@ -783,10 +880,6 @@ window.openPDFViewer = function(pdfUrl, title) {
                     allowfullscreen
                     webkitallowfullscreen
                 ></iframe>
-                
-                <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
-                    <i class="fas fa-times"></i>
-                </div>
             </div>
             
             <script>
@@ -798,6 +891,15 @@ window.openPDFViewer = function(pdfUrl, title) {
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
+                    
+                    const notification = document.createElement('div');
+                    notification.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: #10b981; color: white; padding: 10px 20px; border-radius: 5px; font-size: 14px; z-index: 9999; animation: slideIn 0.3s ease;';
+                    notification.innerHTML = '<i class="fas fa-check-circle"></i> ডাউনলোড শুরু হয়েছে';
+                    document.body.appendChild(notification);
+                    
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 3000);
                 }
                 
                 document.addEventListener('keydown', function(e) {
@@ -805,6 +907,21 @@ window.openPDFViewer = function(pdfUrl, title) {
                         window.close();
                     }
                 });
+                
+                const style = document.createElement('style');
+                style.textContent = \`
+                    @keyframes slideIn {
+                        from {
+                            transform: translateX(100%);
+                            opacity: 0;
+                        }
+                        to {
+                            transform: translateX(0);
+                            opacity: 1;
+                        }
+                    }
+                \`;
+                document.head.appendChild(style);
             <\/script>
         </body>
         </html>
@@ -822,7 +939,7 @@ window.openPDFViewer = function(pdfUrl, title) {
     }
 };
 
-// YouTube Player
+// YouTube Player - রেস্পন্সিভ ভার্সন (বাটন সঠিক অবস্থানে)
 window.openYouTubePlayer = function(videoUrl, title) {
     // Extract YouTube video ID
     let videoId = '';
@@ -844,7 +961,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
     
     // If we found a video ID, open in custom player
     if (videoId) {
-        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1`;
+        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1`;
         
         const playerHTML = `
             <!DOCTYPE html>
@@ -852,7 +969,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
             <head>
                 <title>${title} - ইউটিউব প্লেয়ার</title>
                 <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
                 <style>
                     * {
                         margin: 0;
@@ -865,6 +982,8 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         background: #0f0f0f;
                         height: 100vh;
                         overflow: hidden;
+                        position: fixed;
+                        width: 100%;
                     }
                     
                     .player-container {
@@ -882,22 +1001,31 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         align-items: center;
                         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
                         border-bottom: 1px solid #333;
+                        position: relative;
                     }
                     
                     .toolbar-left {
                         display: flex;
                         align-items: center;
                         gap: 1rem;
+                        flex: 1;
+                        min-width: 0; /* Enable text truncation */
                     }
                     
                     .toolbar-left h3 {
                         color: #fff;
                         font-size: 1.2rem;
                         font-weight: 500;
-                        max-width: 500px;
                         overflow: hidden;
                         text-overflow: ellipsis;
                         white-space: nowrap;
+                        margin-right: 1rem;
+                    }
+                    
+                    .toolbar-right {
+                        display: flex;
+                        align-items: center;
+                        gap: 1rem;
                     }
                     
                     .btn-watch {
@@ -913,6 +1041,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         align-items: center;
                         gap: 0.5rem;
                         transition: all 0.2s ease;
+                        white-space: nowrap;
                     }
                     
                     .btn-watch:hover {
@@ -921,18 +1050,8 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
                     }
                     
-                    .video-frame {
-                        flex: 1;
-                        width: 100%;
-                        border: none;
-                        background: #000;
-                    }
-                    
                     .close-btn {
-                        position: fixed;
-                        top: 1rem;
-                        right: 1rem;
-                        background: #333;
+                        background: rgba(51, 51, 51, 0.9);
                         border: 1px solid #444;
                         border-radius: 50%;
                         width: 40px;
@@ -942,8 +1061,10 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         justify-content: center;
                         cursor: pointer;
                         transition: all 0.2s ease;
-                        z-index: 1001;
                         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                        color: white;
+                        font-size: 1.2rem;
+                        flex-shrink: 0;
                     }
                     
                     .close-btn:hover {
@@ -951,11 +1072,71 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         transform: rotate(90deg);
                     }
                     
-                    .close-btn i {
-                        font-size: 1.2rem;
-                        color: #fff;
+                    .video-wrapper {
+                        flex: 1;
+                        position: relative;
+                        background: #000;
+                        overflow: hidden;
                     }
                     
+                    .video-frame {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        border: none;
+                        background: #000;
+                    }
+                    
+                    /* Fullscreen button */
+                    .fullscreen-btn {
+                        position: fixed;
+                        bottom: 2rem;
+                        right: 2rem;
+                        background: rgba(0, 0, 0, 0.7);
+                        color: white;
+                        width: 50px;
+                        height: 50px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        z-index: 1000;
+                        border: 2px solid rgba(255, 255, 255, 0.2);
+                        transition: all 0.3s ease;
+                        backdrop-filter: blur(5px);
+                    }
+                    
+                    .fullscreen-btn:hover {
+                        background: rgba(0, 0, 0, 0.9);
+                        transform: scale(1.1);
+                    }
+                    
+                    .fullscreen-btn i {
+                        font-size: 1.2rem;
+                    }
+                    
+                    /* Orientation hint for mobile */
+                    .orientation-hint {
+                        display: none;
+                        position: fixed;
+                        bottom: 1rem;
+                        left: 1rem;
+                        background: rgba(0, 0, 0, 0.7);
+                        color: #ffcc00;
+                        padding: 0.5rem 1rem;
+                        border-radius: 2rem;
+                        font-size: 0.8rem;
+                        z-index: 1000;
+                        backdrop-filter: blur(5px);
+                        border: 1px solid rgba(255, 204, 0, 0.3);
+                        align-items: center;
+                        gap: 0.5rem;
+                    }
+                    
+                    /* মোবাইল রেস্পন্সিভ */
                     @media (max-width: 768px) {
                         .toolbar {
                             padding: 0.75rem 1rem;
@@ -963,7 +1144,11 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         
                         .toolbar-left h3 {
                             font-size: 1rem;
-                            max-width: 200px;
+                            max-width: 150px;
+                        }
+                        
+                        .toolbar-right {
+                            gap: 0.5rem;
                         }
                         
                         .btn-watch {
@@ -971,11 +1156,88 @@ window.openYouTubePlayer = function(videoUrl, title) {
                             font-size: 0.85rem;
                         }
                         
+                        .btn-watch i {
+                            font-size: 0.9rem;
+                        }
+                        
                         .close-btn {
-                            width: 35px;
-                            height: 35px;
-                            top: 0.5rem;
-                            right: 0.5rem;
+                            width: 36px;
+                            height: 36px;
+                            font-size: 1rem;
+                        }
+                        
+                        .fullscreen-btn {
+                            width: 40px;
+                            height: 40px;
+                            bottom: 1rem;
+                            right: 1rem;
+                        }
+                        
+                        .fullscreen-btn i {
+                            font-size: 1rem;
+                        }
+                        
+                        @media (orientation: landscape) {
+                            .toolbar {
+                                padding: 0.5rem 1rem;
+                            }
+                            
+                            .toolbar-left h3 {
+                                font-size: 0.9rem;
+                                max-width: 200px;
+                            }
+                            
+                            .btn-watch {
+                                padding: 0.4rem 0.9rem;
+                                font-size: 0.8rem;
+                            }
+                        }
+                    }
+                    
+                    /* খুব ছোট স্ক্রিনের জন্য (480px এর নিচে) */
+                    @media (max-width: 480px) {
+                        .toolbar-left h3 {
+                            max-width: 120px;
+                            font-size: 0.9rem;
+                        }
+                        
+                        .btn-watch {
+                            padding: 0.4rem 0.8rem;
+                            font-size: 0.75rem;
+                        }
+                        
+                        .btn-watch i {
+                            margin-right: 0.2rem;
+                        }
+                        
+                        .close-btn {
+                            width: 32px;
+                            height: 32px;
+                        }
+                    }
+                    
+                    /* খুব ছোট স্ক্রিনে টেক্সট লুকানো */
+                    @media (max-width: 360px) {
+                        .btn-watch span {
+                            display: none;
+                        }
+                        
+                        .btn-watch i {
+                            margin-right: 0;
+                        }
+                        
+                        .btn-watch {
+                            padding: 0.4rem;
+                            border-radius: 50%;
+                            width: 36px;
+                            height: 36px;
+                            justify-content: center;
+                        }
+                    }
+                    
+                    @media (max-width: 768px) and (orientation: portrait) {
+                        .orientation-hint {
+                            display: flex;
                         }
                     }
                 </style>
@@ -988,30 +1250,72 @@ window.openYouTubePlayer = function(videoUrl, title) {
                             <i class="fab fa-youtube" style="color: #ff0000; font-size: 1.5rem;"></i>
                             <h3 title="${title}">${title}</h3>
                         </div>
-                        <button class="btn-watch" onclick="window.open('${videoUrl}', '_blank')">
-                            <i class="fab fa-youtube"></i>
-                            ইউটিউবে দেখুন
-                        </button>
+                        <div class="toolbar-right">
+                            <button class="btn-watch" onclick="window.open('${videoUrl}', '_blank')">
+                                <i class="fab fa-youtube"></i>
+                                <span>ইউটিউবে দেখুন</span>
+                            </button>
+                            <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        </div>
                     </div>
                     
-                    <iframe 
-                        class="video-frame" 
-                        src="${embedUrl}"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowfullscreen
-                        webkitallowfullscreen
-                        frameborder="0"
-                    ></iframe>
+                    <div class="video-wrapper">
+                        <iframe 
+                            class="video-frame" 
+                            src="${embedUrl}"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                            webkitallowfullscreen
+                            mozallowfullscreen
+                            frameborder="0"
+                        ></iframe>
+                    </div>
                     
-                    <div class="close-btn" onclick="window.close()" title="বন্ধ করুন (Esc)">
-                        <i class="fas fa-times"></i>
+                    <div class="fullscreen-btn" onclick="toggleFullScreen()" title="ফুলস্ক্রিন">
+                        <i class="fas fa-expand"></i>
+                    </div>
+                    
+                    <div class="orientation-hint">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>ভালো দেখতে ফোন ঘুরান ↻</span>
                     </div>
                 </div>
                 
                 <script>
+                    function toggleFullScreen() {
+                        const videoFrame = document.querySelector('.video-frame');
+                        if (videoFrame) {
+                            if (document.fullscreenElement) {
+                                document.exitFullscreen();
+                            } else {
+                                videoFrame.requestFullscreen();
+                            }
+                        }
+                    }
+                    
+                    window.addEventListener('orientationchange', function() {
+                        document.body.style.opacity = '0.99';
+                        setTimeout(() => {
+                            document.body.style.opacity = '1';
+                        }, 10);
+                    });
+                    
                     document.addEventListener('keydown', function(e) {
                         if (e.key === 'Escape') {
                             window.close();
+                        }
+                    });
+                    
+                    document.addEventListener('fullscreenchange', function() {
+                        const fullscreenBtn = document.querySelector('.fullscreen-btn i');
+                        if (fullscreenBtn) {
+                            if (document.fullscreenElement) {
+                                fullscreenBtn.className = 'fas fa-compress';
+                            } else {
+                                fullscreenBtn.className = 'fas fa-expand';
+                            }
                         }
                     });
                 <\/script>
@@ -1019,7 +1323,16 @@ window.openYouTubePlayer = function(videoUrl, title) {
             </html>
         `;
         
-        const videoWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+        // মোবাইল ডিভাইস ডিটেক্ট করুন
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        // মোবাইলে আলাদা সেটিংস
+        let windowFeatures = 'width=1200,height=800,scrollbars=yes,resizable=yes';
+        if (isMobile) {
+            windowFeatures = 'width=' + window.screen.availWidth + ',height=' + window.screen.availHeight + ',scrollbars=yes,resizable=yes';
+        }
+        
+        const videoWindow = window.open('', '_blank', windowFeatures);
         if (videoWindow) {
             videoWindow.document.write(playerHTML);
             videoWindow.document.close();
