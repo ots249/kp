@@ -1053,3 +1053,417 @@ html {
         border-color: #333;
     }
 }
+
+/* Floating Reload Button - WhatsApp style (Right side) */
+.floating-reload-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;  /* Left থেকে Right পরিবর্তন */
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: floatButton 2s ease-in-out infinite;
+}
+
+.floating-reload-btn i {
+    transition: transform 0.5s ease;
+}
+
+.floating-reload-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+}
+
+.floating-reload-btn:hover i {
+    transform: rotate(180deg);
+}
+
+.floating-reload-btn:active {
+    transform: scale(0.95);
+}
+
+/* Animation for floating effect */
+@keyframes floatButton {
+    0% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Tooltip text - ডান পাশের জন্য adjust */
+.floating-reload-btn::after {
+    content: "রিফ্রেশ করুন";
+    position: absolute;
+    right: 70px;  /* Left থেকে Right পরিবর্তন */
+    background: var(--dark);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    box-shadow: var(--shadow);
+}
+
+.floating-reload-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
+    right: 75px;  /* Left থেকে Right পরিবর্তন */
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .floating-reload-btn {
+        bottom: 15px;
+        right: 15px;  /* Left থেকে Right পরিবর্তন */
+        width: 55px;
+        height: 55px;
+        font-size: 22px;
+    }
+    
+    .floating-reload-btn::after {
+        font-size: 12px;
+        padding: 4px 8px;
+        right: 65px;  /* Left থেকে Right পরিবর্তন */
+    }
+    
+    .floating-reload-btn:hover::after {
+        right: 70px;  /* Left থেকে Right পরিবর্তন */
+    }
+}
+
+@media (max-width: 480px) {
+    .floating-reload-btn {
+        bottom: 10px;
+        right: 10px;  /* Left থেকে Right পরিবর্তন */
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .floating-reload-btn::after {
+        right: 60px;  /* Left থেকে Right পরিবর্তন */
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .floating-reload-btn:hover::after {
+        right: 65px;  /* Left থেকে Right পরিবর্তন */
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .floating-reload-btn {
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    }
+}
+
+/* For PWA standalone mode */
+@media (display-mode: standalone) {
+    .floating-reload-btn {
+        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        right: 20px;  /* Left থেকে Right পরিবর্তন */
+    }
+}
+
+/* Touch optimizations */
+@media (hover: none) {
+    .floating-reload-btn:hover {
+        transform: none;
+    }
+    
+    .floating-reload-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .floating-reload-btn:hover::after {
+        display: none;
+    }
+}
+
+/* RTL support if needed */
+[dir="rtl"] .floating-reload-btn::after {
+    right: auto;
+    left: 70px;
+}
+
+[dir="rtl"] .floating-reload-btn:hover::after {
+    right: auto;
+    left: 75px;
+}
+
+/* Day/Night Mode Toggle Button */
+.theme-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--light);
+    color: var(--dark);
+    border: 2px solid var(--gray-200);
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    z-index: 2000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1) rotate(15deg);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.theme-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.theme-toggle-btn i {
+    transition: all 0.5s ease;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background: #1a1a1a;
+    color: #e0e0e0;
+}
+
+body.dark-mode .app {
+    background: #1a1a1a;
+}
+
+body.dark-mode .header {
+    background: #2d2d2d;
+    border-color: #404040;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+body.dark-mode .header h1 {
+    background: linear-gradient(135deg, #60a5fa, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+body.dark-mode .subtitle {
+    color: #a0a0a0;
+}
+
+body.dark-mode .progress-summary {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+body.dark-mode .progress-summary-text {
+    color: #e0e0e0;
+}
+
+body.dark-mode .progress-summary-bar {
+    background: #404040;
+}
+
+body.dark-mode .section-card {
+    background: #2d2d2d;
+    border-color: #404040;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .section-header {
+    border-bottom-color: #404040;
+}
+
+body.dark-mode .section-header h3 {
+    color: #ffffff;
+}
+
+body.dark-mode .section-header:hover {
+    background: #363636;
+}
+
+body.dark-mode .section-header::before {
+    background: linear-gradient(90deg, transparent, #404040, transparent);
+}
+
+body.dark-mode .contents-list {
+    background: #222222;
+}
+
+body.dark-mode .content-item {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #e0e0e0;
+}
+
+body.dark-mode .content-item:hover {
+    background: #363636;
+    border-color: #60a5fa;
+}
+
+body.dark-mode .content-title {
+    color: #e0e0e0;
+}
+
+body.dark-mode .content-item.completed {
+    background: #1a3a2a;
+    border-color: #10b981;
+}
+
+body.dark-mode .content-item.completed .content-title {
+    color: #9ca3af;
+}
+
+body.dark-mode .video-duration {
+    background: #404040;
+    color: #e0e0e0;
+    border-color: #555555;
+}
+
+body.dark-mode .video-duration i {
+    color: #60a5fa;
+}
+
+body.dark-mode .content-count {
+    background: linear-gradient(135deg, #60a5fa, #c084fc);
+}
+
+body.dark-mode .progress-text {
+    color: #4ade80;
+}
+
+body.dark-mode .footer {
+    color: #a0a0a0;
+    border-top-color: #404040;
+}
+
+body.dark-mode .loading {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #404040;
+}
+
+body.dark-mode .loading-spinner {
+    border-color: #404040;
+    border-top-color: #60a5fa;
+}
+
+body.dark-mode .empty-message {
+    background: #2d2d2d;
+    color: #a0a0a0;
+    border-color: #404040;
+}
+
+body.dark-mode .banner-container {
+    border-color: #404040;
+}
+
+/* Dark mode scrollbar */
+body.dark-mode ::-webkit-scrollbar-track {
+    background: #2d2d2d;
+}
+
+body.dark-mode ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #60a5fa, #c084fc);
+    border-color: #1a1a1a;
+}
+
+/* Dark mode for links */
+body.dark-mode a {
+    color: #60a5fa;
+}
+
+body.dark-mode a:hover {
+    color: #93c5fd;
+}
+
+/* Dark mode for icons */
+body.dark-mode .fa-file-pdf { color: #f87171; }
+body.dark-mode .fa-youtube { color: #f87171; }
+body.dark-mode .fa-whatsapp { color: #25D366; }
+body.dark-mode .fa-file-alt { color: #60a5fa; }
+
+/* Dark mode for live badge */
+body.dark-mode .live-badge {
+    background: rgba(220, 38, 38, 0.95);
+}
+
+/* Dark mode for new badge */
+body.dark-mode .new-badge {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+}
+
+/* Dark mode for tooltips */
+body.dark-mode .floating-reload-btn::after {
+    background: #404040;
+    color: white;
+}
+
+/* Dark mode toggle button in dark mode */
+body.dark-mode .theme-toggle-btn {
+    background: #404040;
+    color: #fbbf24;
+    border-color: #60a5fa;
+}
+
+/* Animation for theme switch */
+.theme-transition {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.theme-transition * {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .theme-toggle-btn {
+        top: 15px;
+        right: 15px;
+        width: 45px;
+        height: 45px;
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 480px) {
+    .theme-toggle-btn {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+}
+
+/* PWA standalone mode */
+@media (display-mode: standalone) {
+    .theme-toggle-btn {
+        top: calc(20px + env(safe-area-inset-top, 0px));
+        right: 20px;
+    }
+}

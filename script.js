@@ -1611,3 +1611,107 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
     });
 });
+
+// Floating Reload Button functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const reloadBtn = document.getElementById('floating-reload-btn');
+    
+    if (reloadBtn) {
+        reloadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Add spinning animation on click
+            const icon = this.querySelector('i');
+            icon.style.animation = 'spin 0.5s ease-in-out';
+            
+            // Reload the page after a small delay for animation
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
+        });
+        
+        // Remove animation after it completes
+        reloadBtn.addEventListener('animationend', function(e) {
+            if (e.target.tagName === 'I') {
+                e.target.style.animation = '';
+            }
+        });
+    }
+});
+
+// Day/Night Mode Toggle
+document.addEventListener('DOMContentLoaded', function() {
+    const themeToggle = document.getElementById('theme-toggle');
+    const icon = themeToggle.querySelector('i');
+    
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        icon.classList.remove('fa-sun');
+        icon.classList.add('fa-moon');
+    }
+    
+    // Add transition class for smooth animation
+    document.body.classList.add('theme-transition');
+    
+    themeToggle.addEventListener('click', function() {
+        // Toggle dark mode class
+        document.body.classList.toggle('dark-mode');
+        
+        // Update icon
+        if (document.body.classList.contains('dark-mode')) {
+            icon.classList.remove('fa-sun');
+            icon.classList.add('fa-moon');
+            localStorage.setItem('theme', 'dark');
+            
+            // Optional: Show notification
+            showThemeNotification('নাইট মোড চালু হয়েছে');
+        } else {
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+            localStorage.setItem('theme', 'light');
+            
+            // Optional: Show notification
+            showThemeNotification('ডে মোড চালু হয়েছে');
+        }
+    });
+    
+    // Optional: Theme change notification
+    function showThemeNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'auto-save-status show';
+        notification.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            z-index: 2001;
+            animation: slideIn 0.3s ease;
+        `;
+        notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 2000);
+    }
+});
+
+// Optional: System theme preference detection
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    const savedTheme = localStorage.getItem('theme');
+    if (!savedTheme) { // Only if user hasn't manually set preference
+        if (e.matches) {
+            document.body.classList.add('dark-mode');
+            document.querySelector('#theme-toggle i').classList.replace('fa-sun', 'fa-moon');
+        } else {
+            document.body.classList.remove('dark-mode');
+            document.querySelector('#theme-toggle i').classList.replace('fa-moon', 'fa-sun');
+        }
+    }
+});
