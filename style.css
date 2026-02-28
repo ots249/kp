@@ -290,18 +290,6 @@ html {
     white-space: nowrap;
 }
 
-/* Content Count */
-.content-count {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    color: white;
-    padding: 0.25rem 0.9rem;
-    border-radius: 2rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    box-shadow: var(--shadow-sm);
-    white-space: nowrap;
-}
-
 /* Contents List */
 .contents-list {
     padding: 1.25rem;

@@ -1475,7 +1475,6 @@ function displaySections(sections) {
                             <div class="section-progress-bar" style="width: 0%"></div>
                         </div>
                         <span class="progress-text">0/${contentCount}</span>
-                        <span class="content-count">${contentCount}</span>
                     </div>
                 </div>
                 <div class="contents-list ${index === 0 ? '' : 'hidden'}">
