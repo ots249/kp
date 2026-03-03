@@ -1478,7 +1478,7 @@ function displaySections(sections) {
                     </div>
                 </div>
                 <div class="contents-list ${index === 0 ? '' : 'hidden'}">
-                    ${contentsHTML || '<div class="empty-message"><b>এই সাবজেক্টের এখনও কোনো লাইভ ক্লাস হয়নি।<b> রুটিন অনুযায়ী লাইভ ক্লাস দেখতে অপেক্ষা করুন অথবা গতবারের রেকর্ড ক্লাস দেখুন।</div>'}
+                    ${contentsHTML || '<div class="empty-message">এখনও ক্লাস হয়নি 😔</div>'}
                 </div>
             </div>
         `;
