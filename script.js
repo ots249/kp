@@ -481,7 +481,9 @@ function getIconForContent(content, link, title) {
     }
     
     // Check for WhatsApp
-    if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') || titleLower.includes('হোয়াটসঅ্যাপ')) {
+    if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') ||
+titleLower.includes('wa') ||
+titleLower.includes('হোয়াটসঅ্যাপ')) {
         return { iconClass: 'fab fa-whatsapp', isPDF: false, isYouTube: false };
     }
     
@@ -1277,10 +1279,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
                         <i class="fas fa-expand"></i>
                     </div>
                     
-                    <div class="orientation-hint">
-                        <i class="fas fa-mobile-alt"></i>
-                        <span>ভালো দেখতে ফোন ঘুরান ↻</span>
-                    </div>
+                    
                 </div>
                 
                 <script>
