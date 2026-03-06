@@ -244,7 +244,7 @@ async function checkLiveContent(sections) {
         
         controls.innerHTML = `
             <i class="fas fa-circle"></i>
-            আজকের লাইভ ক্লাস: ${liveClassDetails.title}
+            Now: ${liveClassDetails.title}
             `;
         
         // Show notification for live class
