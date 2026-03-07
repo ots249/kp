@@ -664,11 +664,6 @@ html {
         font-size: 0.85rem;
     }
     
-    .content-count {
-        padding: 0.2rem 0.8rem;
-        font-size: 0.8rem;
-    }
-    
     .contents-list {
         padding: 1rem;
     }
@@ -746,11 +741,6 @@ html {
     
     .progress-text {
         font-size: 0.8rem;
-    }
-    
-    .content-count {
-        padding: 0.15rem 0.7rem;
-        font-size: 0.75rem;
     }
     
     .content-item {
@@ -871,10 +861,9 @@ html {
     height: 100%;
     border: none;
     background: #000;
-    object-fit: contain; /* ভিডিও পুরো দেখাবে */
+    object-fit: contain;
 }
 
-/* Alternative: যদি ভিডিও পুরো কভার করতে চান */
 .live-video-frame.cover-mode {
     object-fit: cover;
 }
@@ -961,12 +950,12 @@ html {
     font-size: 0.9rem;
 }
 
-/* New Badge Styles - শুধু "নতুন" লেখা, হালকা সবুজ ব্যাকগ্রাউন্ড */
+/* New Badge Styles */
 .new-badge {
     display: inline-flex;
     align-items: center;
-    background: rgba(16, 185, 129, 0.15); /* হালকা সবুজ, 15% opacity */
-    color: #047857; /* গাঢ় সবুজ লেখা */
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
     font-size: 0.65rem;
     font-weight: 600;
     padding: 0.2rem 0.5rem;
@@ -1042,11 +1031,11 @@ html {
     }
 }
 
-/* Floating Reload Button - WhatsApp style (Right side) */
+/* Floating Reload Button */
 .floating-reload-btn {
     position: fixed;
     bottom: 20px;
-    right: 20px;  /* Left থেকে Right পরিবর্তন */
+    right: 20px;
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -1081,7 +1070,6 @@ html {
     transform: scale(0.95);
 }
 
-/* Animation for floating effect */
 @keyframes floatButton {
     0% {
         transform: translateY(0px);
@@ -1094,11 +1082,10 @@ html {
     }
 }
 
-/* Tooltip text - ডান পাশের জন্য adjust */
 .floating-reload-btn::after {
     content: "রিফ্রেশ করুন";
     position: absolute;
-    right: 70px;  /* Left থেকে Right পরিবর্তন */
+    right: 70px;
     background: var(--dark);
     color: white;
     padding: 5px 10px;
@@ -1115,14 +1102,14 @@ html {
 .floating-reload-btn:hover::after {
     opacity: 1;
     visibility: visible;
-    right: 75px;  /* Left থেকে Right পরিবর্তন */
+    right: 75px;
 }
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
     .floating-reload-btn {
         bottom: 15px;
-        right: 15px;  /* Left থেকে Right পরিবর্তন */
+        right: 15px;
         width: 55px;
         height: 55px;
         font-size: 22px;
@@ -1131,31 +1118,31 @@ html {
     .floating-reload-btn::after {
         font-size: 12px;
         padding: 4px 8px;
-        right: 65px;  /* Left থেকে Right পরিবর্তন */
+        right: 65px;
     }
     
     .floating-reload-btn:hover::after {
-        right: 70px;  /* Left থেকে Right পরিবর্তন */
+        right: 70px;
     }
 }
 
 @media (max-width: 480px) {
     .floating-reload-btn {
         bottom: 10px;
-        right: 10px;  /* Left থেকে Right পরিবর্তন */
+        right: 10px;
         width: 50px;
         height: 50px;
         font-size: 20px;
     }
     
     .floating-reload-btn::after {
-        right: 60px;  /* Left থেকে Right পরিবর্তন */
+        right: 60px;
         font-size: 11px;
         padding: 3px 6px;
     }
     
     .floating-reload-btn:hover::after {
-        right: 65px;  /* Left থেকে Right পরিবর্তন */
+        right: 65px;
     }
 }
 
@@ -1170,7 +1157,7 @@ html {
 @media (display-mode: standalone) {
     .floating-reload-btn {
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-        right: 20px;  /* Left থেকে Right পরিবর্তন */
+        right: 20px;
     }
 }
 
@@ -1233,6 +1220,332 @@ html {
 
 .theme-toggle-btn i {
     transition: all 0.5s ease;
+}
+
+/* ============== ইউটিউব প্লেয়ার মডাল স্টাইল - আপডেটেড ============== */
+.player-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    backdrop-filter: blur(10px);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.player-modal-content {
+    background: white;
+    border-radius: 1.5rem;
+    width: 100%;
+    max-width: 1200px;
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.player-modal-header {
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.player-modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-modal-title i {
+    font-size: 1.5rem;
+    color: #ff0000;
+    background: white;
+    padding: 0.3rem;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+}
+
+.player-modal-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-modal-controls {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.modal-btn {
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}
+
+.modal-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.modal-btn.complete-btn {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+.modal-btn.complete-btn:hover {
+    background: rgba(16, 185, 129, 0.5);
+}
+
+.modal-btn.complete-btn.completed {
+    background: var(--success);
+}
+
+.modal-btn.youtube-btn {
+    background: rgba(255, 0, 0, 0.3);
+}
+
+.modal-btn.youtube-btn:hover {
+    background: rgba(255, 0, 0, 0.5);
+}
+
+.modal-btn.close-btn {
+    padding: 0.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.modal-btn.close-btn:hover {
+    background: rgba(239, 68, 68, 0.8);
+    transform: rotate(90deg);
+}
+
+/* ===== ভিডিও প্লেয়ার কন্টেইনার - মোবাইল ফিক্স সহ ===== */
+.player-modal-body {
+    flex: 1;
+    background: #000;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+#youtube-player-container {
+    flex: 1;
+    width: 100%;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+
+#youtube-player {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #000;
+}
+
+#youtube-player iframe {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    background: #000 !important;
+    border: 0 !important;
+}
+
+.video-info-bar {
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    font-size: 0.9rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+#video-time-info {
+    font-family: monospace;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#video-time-info i {
+    color: var(--primary);
+}
+
+.auto-complete-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.2);
+    padding: 0.3rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+}
+
+.auto-complete-info i {
+    font-size: 1rem;
+}
+
+/* ===== মোবাইল রেস্পন্সিভ স্টাইল ===== */
+@media (max-width: 768px) {
+    .player-modal-content {
+        height: 100vh;
+        border-radius: 0;
+        max-width: 100%;
+    }
+    
+    .player-modal-header {
+        padding: 0.75rem 1rem;
+    }
+    
+    .player-modal-title {
+        font-size: 0.95rem;
+        max-width: 200px;
+    }
+    
+    .player-modal-title i {
+        font-size: 1.2rem;
+    }
+    
+    .modal-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .modal-btn.close-btn {
+        width: 2.2rem;
+        height: 2.2rem;
+    }
+    
+    .video-info-bar {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    #video-time-info {
+        font-size: 0.9rem;
+    }
+    
+    #youtube-player-container {
+        min-height: 0;
+        flex: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .player-modal {
+        padding: 0;
+    }
+    
+    .player-modal-title span {
+        max-width: 150px;
+    }
+    
+    .modal-btn span {
+        display: none;
+    }
+    
+    .modal-btn i {
+        margin: 0;
+        font-size: 1.2rem;
+    }
+    
+    .modal-btn {
+        padding: 0.5rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        justify-content: center;
+    }
+    
+    .modal-btn.complete-btn, 
+    .modal-btn.youtube-btn {
+        width: 2.5rem;
+    }
+    
+    .auto-complete-info span {
+        display: none;
+    }
+    
+    .auto-complete-info i {
+        font-size: 1.2rem;
+    }
+    
+    .auto-complete-info {
+        padding: 0.3rem 0.8rem;
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    .player-modal-content {
+        height: 100vh;
+    }
+    
+    .video-info-bar {
+        padding: 0.25rem 1rem;
+        font-size: 0.75rem;
+    }
+    
+    #youtube-player-container {
+        min-height: 180px;
+    }
 }
 
 /* Dark Mode Styles */
@@ -1335,10 +1648,6 @@ body.dark-mode .video-duration i {
     color: #60a5fa;
 }
 
-body.dark-mode .content-count {
-    background: linear-gradient(135deg, #60a5fa, #c084fc);
-}
-
 body.dark-mode .progress-text {
     color: #4ade80;
 }
@@ -1367,6 +1676,19 @@ body.dark-mode .empty-message {
 
 body.dark-mode .banner-container {
     border-color: #404040;
+}
+
+body.dark-mode .player-modal-content {
+    background: #1e1e1e;
+}
+
+body.dark-mode .video-info-bar {
+    background: rgba(0, 0, 0, 0.9);
+    border-top-color: #333;
+}
+
+body.dark-mode .auto-complete-info {
+    background: rgba(16, 185, 129, 0.15);
 }
 
 /* Dark mode scrollbar */
@@ -1427,31 +1749,34 @@ body.dark-mode .theme-toggle-btn {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-    .theme-toggle-btn {
-        top: 15px;
-        right: 15px;
-        width: 45px;
-        height: 45px;
-        font-size: 22px;
-    }
+/* Live badge small for content items */
+.live-badge-small {
+    display: inline-flex;
+    align-items: center;
+    background: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    margin-left: 0.5rem;
+    animation: livePulseSmall 1.5s infinite;
+    white-space: nowrap;
 }
 
-@media (max-width: 480px) {
-    .theme-toggle-btn {
-        top: 10px;
-        right: 10px;
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
-    }
+.live-badge-small i {
+    font-size: 0.5rem;
+    margin-right: 0.2rem;
+    animation: liveBlinkSmall 1s infinite;
 }
 
-/* PWA standalone mode */
-@media (display-mode: standalone) {
-    .theme-toggle-btn {
-        top: calc(20px + env(safe-area-inset-top, 0px));
-        right: 20px;
-    }
+@keyframes livePulseSmall {
+    0% { opacity: 0.9; }
+    50% { opacity: 1; background: #dc2626; }
+    100% { opacity: 0.9; }
+}
+
+@keyframes liveBlinkSmall {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.5; }
 }

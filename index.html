@@ -113,6 +113,40 @@
 	<button id="floating-reload-btn" class="floating-reload-btn" aria-label="রিফ্রেশ করুন">
 	<i class="fas fa-sync-alt"></i>
 	</button>
+	<!-- YouTube Player Modal -->
+	<div id="youtube-player-modal" class="player-modal" style="display: none;">
+	<div class="player-modal-content">
+	<div class="player-modal-header">
+	<div class="player-modal-title">
+	<i class="fab fa-youtube"></i>
+	<span id="player-modal-title">ইউটিউব প্লেয়ার</span>
+	</div>
+	<div class="player-modal-controls">
+	<button id="mark-completed-btn" class="modal-btn complete-btn" title="সম্পন্ন হিসেবে চিহ্নিত করুন">
+	<i class="fas fa-check-circle"></i>
+	<span>সম্পন্ন</span>
+	</button>
+	<button id="watch-on-youtube-btn" class="modal-btn youtube-btn" title="ইউটিউবে দেখুন">
+	<i class="fab fa-youtube"></i>
+	<span>ইউটিউব</span>
+	</button>
+	<button id="close-player-btn" class="modal-btn close-btn" title="বন্ধ করুন (Esc)">
+	<i class="fas fa-times"></i>
+	</button>
+	</div>
+	</div>
+	<div class="player-modal-body">
+	<div id="youtube-player-container"></div>
+	<div class="video-info-bar" id="video-info-bar" style="display: none;">
+	<span id="video-time-info"></span>
+	<span id="video-auto-complete-info" class="auto-complete-info">
+	<i class="fas fa-info-circle"></i>
+	ভিডিও শেষ হলে অটো-সম্পন্ন হবে
+	</span>
+	</div>
+	</div>
+	</div>
+	</div>
     <script src="script.js"></script>
 </body>
 </html>
