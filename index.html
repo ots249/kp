@@ -46,6 +46,16 @@
             });
         }
     </script>
+
+	<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function(OneSignal) {
+    await OneSignal.init({
+      appId: "04c59c3c-5e61-4233-91d0-f1d088b95c5c",
+    });
+  });
+</script>
 </head>
 <body>
 	<!-- Day/Night Mode Toggle Button -->
