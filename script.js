@@ -681,7 +681,7 @@ async function loadSections() {
         
         // কোর্স টাইটেল সেট
         document.getElementById('course-title').textContent = 
-            'কারিগরি পাঠশালা কোর্স';
+            'Civil 4th Semester';
         
         // classes থেকে sections তৈরি
         const sections = transformClassesToSections(data.classes);
