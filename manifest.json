@@ -1,7 +1,7 @@
 {
-  "name": "কারিগরি পাঠশালা - সিভিল ৩য় সেমিস্টার",
-  "short_name": "KP 3rd Civil",
-  "description": "ডিপ্লোমা ইন ইঞ্জিনিয়ারিং ৩য় সেমিস্টারের সম্পূর্ণ কোর্স। সিভিল, ইলেকট্রিক্যাল, মেকানিক্যাল সহ সকল বিভাগের জন্য।",
+  "name": "Civil 4th Semester",
+  "short_name": "Civil 4th",
+  "description": "",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
