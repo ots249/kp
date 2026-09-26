@@ -10,21 +10,6 @@ let completedItems = {};
 // Cache for video durations
 let videoDurationCache = {};
 
-// New items tracking (based on available_from + 24 hours)
-let newItems = {};
-
-// বাংলাদেশ সময় ইউটিলিটি ফাংশন - সঠিক ভার্সন
-function getBangladeshTime(date = new Date()) {
-    return new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' }));
-}
-
-function getBangladeshNow() {
-    const now = new Date();
-    const bangladeshNow = getBangladeshTime(now);
-    console.log('🕐 বাংলাদেশ এখন:', bangladeshNow.toLocaleString('bn-BD', { timeZone: 'Asia/Dhaka' }));
-    return bangladeshNow;
-}
-
 // Load completed items from localStorage
 function loadCompletedItems() {
     try {
@@ -70,29 +55,6 @@ function saveNewItems() {
     } catch (error) {
         console.error('Error saving new items:', error);
     }
-}
-
-// Check if item is new (within 24 hours of available_from in Bangladesh time)
-function isItemNew(itemKey, availableFrom) {
-    if (!availableFrom) return false;
-    
-    if (newItems[itemKey]) {
-        const bangladeshNow = getBangladeshNow().getTime();
-        return bangladeshNow < newItems[itemKey];
-    }
-    
-    const availableDate = new Date(availableFrom);
-    const availableTimeBD = getBangladeshTime(availableDate).getTime();
-    const expiryTimeBD = availableTimeBD + (24 * 60 * 60 * 1000);
-    const bangladeshNow = getBangladeshNow().getTime();
-    
-    if (bangladeshNow < expiryTimeBD) {
-        newItems[itemKey] = expiryTimeBD;
-        saveNewItems();
-        return true;
-    }
-    
-    return false;
 }
 
 // ============================================================
@@ -376,29 +338,6 @@ function extractYouTubeVideoId(url) {
     return videoId;
 }
 
-// Format duration from ISO 8601 to MM:SS or HH:MM:SS
-function formatDuration(duration) {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
-    
-    const hours = (match[1] || '').replace('H', '');
-    const minutes = (match[2] || '').replace('M', '');
-    const seconds = (match[3] || '').replace('S', '');
-    
-    let result = '';
-    
-    if (hours) {
-        result += `${hours.padStart(2, '0')}:`;
-        result += `${(minutes || '0').padStart(2, '0')}:`;
-        result += `${(seconds || '0').padStart(2, '0')}`;
-    } else if (minutes) {
-        result += `${minutes.padStart(2, '0')}:`;
-        result += `${(seconds || '0').padStart(2, '0')}`;
-    } else {
-        result = `00:${(seconds || '0').padStart(2, '0')}`;
-    }
-    
-    return result;
-}
 
 // Get video duration from YouTube API
 async function getVideoDuration(videoId) {
@@ -689,9 +628,7 @@ async function loadSections() {
         // Display sections
         displaySections(sections);
         
-        // লাইভ ক্লাস চেক (নতুন API-তে live নেই, তাই কিছুই পাবে না)
-        await checkLiveContent(sections);
-        
+       
         // Video durations আপডেট
         setTimeout(() => {
             updateAllVideoDurations();
