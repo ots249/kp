@@ -1,4 +1,4 @@
-// API Endpoint (নতুন Google Apps Script URL)
+// API Endpoint
 const API_URL = 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec';
 
 // YouTube API Key
@@ -10,71 +10,59 @@ let completedItems = {};
 // Cache for video durations
 let videoDurationCache = {};
 
-// Load completed items from localStorage
+// ============================================================
+// 💾 localStorage লোড/সেভ
+// ============================================================
 function loadCompletedItems() {
     try {
         const saved = localStorage.getItem('completedCourseItems');
-        if (saved) {
-            completedItems = JSON.parse(saved);
-        }
+        if (saved) completedItems = JSON.parse(saved);
     } catch (error) {
         console.error('Error loading completed items:', error);
         completedItems = {};
     }
 }
 
-// Load new items tracking
-function loadNewItems() {
+function saveCompletedItems() {
     try {
-        const saved = localStorage.getItem('newCourseItems');
-        if (saved) {
-            const data = JSON.parse(saved);
-            const bangladeshNow = getBangladeshNow().getTime();
-            
-            newItems = {};
-            Object.entries(data).forEach(([key, expiryTime]) => {
-                if (bangladeshNow < expiryTime) {
-                    newItems[key] = expiryTime;
-                }
-            });
-            
-            saveNewItems();
-        } else {
-            newItems = {};
-        }
+        localStorage.setItem('completedCourseItems', JSON.stringify(completedItems));
     } catch (error) {
-        console.error('Error loading new items:', error);
-        newItems = {};
+        console.error('Error saving completed items:', error);
     }
 }
 
-// Save new items
-function saveNewItems() {
+function loadVideoDurationCache() {
     try {
-        localStorage.setItem('newCourseItems', JSON.stringify(newItems));
+        const saved = localStorage.getItem('videoDurationCache');
+        if (saved) videoDurationCache = JSON.parse(saved);
     } catch (error) {
-        console.error('Error saving new items:', error);
+        console.error('Error loading video duration cache:', error);
+        videoDurationCache = {};
+    }
+}
+
+function saveVideoDurationCache() {
+    try {
+        localStorage.setItem('videoDurationCache', JSON.stringify(videoDurationCache));
+    } catch (error) {
+        console.error('Error saving video duration cache:', error);
     }
 }
 
 // ============================================================
-// 🔄 নতুন API স্ট্রাকচার (classes) থেকে sections তৈরি করার হেল্পার
+// 🔄 API classes → sections রূপান্তর
 // ============================================================
 function transformClassesToSections(classes) {
     if (!Array.isArray(classes)) return [];
     
-    // subject অনুযায়ী গ্রুপ করুন
     const grouped = {};
     
     classes.forEach((item, index) => {
         const subject = item.subject || `Subject ${index + 1}`;
-        if (!grouped[subject]) {
-            grouped[subject] = [];
-        }
+        if (!grouped[subject]) grouped[subject] = [];
         grouped[subject].push(item);
     });
     
-    // প্রতিটি subject-কে একটি section-এ রূপান্তর করুন
     let sectionId = 1;
     const sections = [];
     
@@ -83,13 +71,12 @@ function transformClassesToSections(classes) {
             const chapter = item.chapter || '';
             const lecture = item.lecture || (idx + 1);
             
-            // টাইটেল তৈরি করুন (subject name ছাড়া)
-let title = '';
-if (chapter) title += `Chapter ${chapter}`;
-if (chapter && lecture) title += ` - `;
-title += `Lecture ${lecture}`;
+            // ✅ টাইটেল: শুধু Chapter + Lecture
+            let title = '';
+            if (chapter) title += `Chapter ${chapter}`;
+            if (chapter && lecture) title += ` - `;
+            title += `Lecture ${lecture}`;
             
-            // ইউনিক ID তৈরি করুন
             const contentId = `${subject}_${chapter}_${lecture}`.replace(/\s+/g, '_');
             
             return {
@@ -115,210 +102,13 @@ title += `Lecture ${lecture}`;
     return sections;
 }
 
-// Video aspect ratio toggle
-window.toggleVideoAspect = function() {
-    const liveFrame = document.getElementById('live-video-frame');
-    if (liveFrame) {
-        if (liveFrame.style.aspectRatio === '16/9') {
-            liveFrame.style.aspectRatio = '4/3';
-        } else {
-            liveFrame.style.aspectRatio = '16/9';
-        }
-    }
-};
-
-// Load video duration cache from localStorage
-function loadVideoDurationCache() {
-    try {
-        const saved = localStorage.getItem('videoDurationCache');
-        if (saved) {
-            videoDurationCache = JSON.parse(saved);
-        }
-    } catch (error) {
-        console.error('Error loading video duration cache:', error);
-        videoDurationCache = {};
-    }
-}
-
-// Save video duration cache to localStorage
-function saveVideoDurationCache() {
-    try {
-        localStorage.setItem('videoDurationCache', JSON.stringify(videoDurationCache));
-    } catch (error) {
-        console.error('Error saving video duration cache:', error);
-    }
-}
-
-// Save completed items to localStorage
-function saveCompletedItems() {
-    try {
-        localStorage.setItem('completedCourseItems', JSON.stringify(completedItems));
-    } catch (error) {
-        console.error('Error saving completed items:', error);
-    }
-}
-
-// Toggle complete status
-window.toggleComplete = function(itemId, checkbox) {
-    if (event) {
-        event.stopPropagation();
-    }
-    
-    if (checkbox.checked) {
-        completedItems[itemId] = true;
-        showNotification('✓ সম্পন্ন হিসেবে চিহ্নিত করা হয়েছে', 'success');
-    } else {
-        delete completedItems[itemId];
-        showNotification('সম্পন্ন চিহ্নিত করা সরানো হয়েছে', 'info');
-    }
-    saveCompletedItems();
-    
-    const contentItem = checkbox.closest('.content-item');
-    if (contentItem) {
-        if (checkbox.checked) {
-            contentItem.classList.add('completed');
-        } else {
-            contentItem.classList.remove('completed');
-        }
-    }
-    
-    updateSectionProgress(checkbox.closest('.section-card'));
-    updateOverallProgress();
-}
-
-// Show notification
-function showNotification(message, type = 'success') {
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notif => notif.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle'}"></i>
-        <span>${message}</span>
-    `;
-    
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? '#10b981' : type === 'info' ? '#3b82f6' : '#ef4444'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        animation: slideInRight 0.3s ease;
-        font-weight: 500;
-        max-width: 350px;
-    `;
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
-
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
-
-// Update section progress bar
-function updateSectionProgress(sectionCard) {
-    if (!sectionCard) return;
-    
-    const contentItems = sectionCard.querySelectorAll('.content-item');
-    const totalItems = contentItems.length;
-    const completedCount = Array.from(contentItems).filter(item => 
-        item.querySelector('.complete-checkbox:checked')
-    ).length;
-    
-    const progressBar = sectionCard.querySelector('.section-progress-bar');
-    const progressText = sectionCard.querySelector('.progress-text');
-    
-    if (progressBar && progressText) {
-        const percentage = totalItems > 0 ? (completedCount / totalItems) * 100 : 0;
-        progressBar.style.width = `${percentage}%`;
-        progressText.textContent = `${completedCount}/${totalItems}`;
-    }
-}
-
-// Update overall progress
-function updateOverallProgress() {
-    const allItems = document.querySelectorAll('.content-item');
-    const totalItems = allItems.length;
-    const completedCount = Array.from(allItems).filter(item => 
-        item.querySelector('.complete-checkbox:checked')
-    ).length;
-    
-    const progressFill = document.getElementById('global-progress-fill');
-    const progressText = document.getElementById('global-progress-text');
-    
-    if (progressFill && progressText) {
-        const percentage = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
-        progressFill.style.width = `${percentage}%`;
-        progressText.textContent = `${percentage}%`;
-    }
-}
-
-// Update all sections progress
-function updateAllProgress() {
-    document.querySelectorAll('.section-card').forEach(section => {
-        updateSectionProgress(section);
-    });
-    updateOverallProgress();
-}
-
-// Get icon for content and detect types
-function getIconForContent(content, link, title) {
-    const titleLower = title.toLowerCase();
-    const linkLower = link.toLowerCase();
-    
-    if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
-        return { iconClass: 'fas fa-file-pdf', isPDF: true, isYouTube: false };
-    }
-    
-    if (content.type === 'video' || content.type === 'live' ||
-        linkLower.includes('youtube.com') || 
-        linkLower.includes('youtu.be') || 
-        titleLower.includes('ভিডিও') || 
-        titleLower.includes('video') ||
-        titleLower.includes('ইউটিউব') ||
-        titleLower.includes('youtube')) {
-        return { iconClass: 'fab fa-youtube', isPDF: false, isYouTube: true };
-    }
-    
-    if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') ||
-        titleLower.includes('wa') ||
-        titleLower.includes('হোয়াটসঅ্যাপ')) {
-        return { iconClass: 'fab fa-whatsapp', isPDF: false, isYouTube: false };
-    }
-    
-    return { iconClass: 'fas fa-file-alt', isPDF: false, isYouTube: false };
-}
-
-// Extract YouTube Video ID
+// ============================================================
+// 🎬 YouTube Video ID বের করা
+// ============================================================
 function extractYouTubeVideoId(url) {
     let videoId = '';
+    
+    if (!url) return '';
     
     if (url.includes('youtu.be/')) {
         videoId = url.split('youtu.be/')[1].split('?')[0];
@@ -338,31 +128,68 @@ function extractYouTubeVideoId(url) {
     return videoId;
 }
 
+// ============================================================
+// ⏱️ Duration ফরম্যাট (ISO 8601 → MM:SS / HH:MM:SS)
+// ============================================================
+function formatDuration(duration) {
+    if (!duration) return '--:--';
+    
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+    if (!match) return '--:--';
+    
+    const hours = (match[1] || '').replace('H', '');
+    const minutes = (match[2] || '').replace('M', '');
+    const seconds = (match[3] || '').replace('S', '');
+    
+    let result = '';
+    
+    if (hours) {
+        result += `${hours.padStart(2, '0')}:`;
+        result += `${(minutes || '0').padStart(2, '0')}:`;
+        result += `${(seconds || '0').padStart(2, '0')}`;
+    } else if (minutes) {
+        result += `${minutes.padStart(2, '0')}:`;
+        result += `${(seconds || '0').padStart(2, '0')}`;
+    } else {
+        result = `00:${(seconds || '0').padStart(2, '0')}`;
+    }
+    
+    return result;
+}
 
-// Get video duration from YouTube API
+// ============================================================
+// 📡 YouTube API থেকে ডিউরেশন আনা
+// ============================================================
 async function getVideoDuration(videoId) {
     if (videoDurationCache[videoId]) {
         return videoDurationCache[videoId];
     }
     
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+        console.warn('⚠️ YouTube API Key সেট করা নেই');
         return '--:--';
     }
     
     try {
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`
-        );
+        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+        console.log('📡 YouTube API কল:', videoId);
         
-        if (!response.ok) {
-            throw new Error('YouTube API request failed');
-        }
-        
+        const response = await fetch(apiUrl);
         const data = await response.json();
+        
+        if (!response.ok || data.error) {
+            console.error('❌ YouTube API Error:', {
+                status: response.status,
+                error: data.error
+            });
+            return '--:--';
+        }
         
         if (data.items && data.items.length > 0) {
             const duration = data.items[0].contentDetails.duration;
             const formattedDuration = formatDuration(duration);
+            
+            console.log(`✅ ${videoId} → ${formattedDuration}`);
             
             videoDurationCache[videoId] = formattedDuration;
             saveVideoDurationCache();
@@ -372,12 +199,14 @@ async function getVideoDuration(videoId) {
         
         return '--:--';
     } catch (error) {
-        console.error('Error fetching video duration:', error);
+        console.error('❌ Error fetching video duration:', error);
         return '--:--';
     }
 }
 
-// Update all video durations after content is loaded
+// ============================================================
+// 🔄 সব ভিডিওর ডিউরেশন আপডেট
+// ============================================================
 async function updateAllVideoDurations() {
     const videoItems = document.querySelectorAll('.content-item .fa-youtube');
     
@@ -422,7 +251,165 @@ async function updateAllVideoDurations() {
     }
 }
 
-// PDF Viewer
+// ============================================================
+// 📢 Notification
+// ============================================================
+function showNotification(message, type = 'success') {
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notif => notif.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#10b981' : type === 'info' ? '#3b82f6' : '#ef4444'};
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        animation: slideInRight 0.3s ease;
+        font-weight: 500;
+        max-width: 350px;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Add animation styles
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+
+// ============================================================
+// ✅ Complete toggle
+// ============================================================
+window.toggleComplete = function(itemId, checkbox) {
+    if (event) event.stopPropagation();
+    
+    if (checkbox.checked) {
+        completedItems[itemId] = true;
+        showNotification('✓ সম্পন্ন হিসেবে চিহ্নিত করা হয়েছে', 'success');
+    } else {
+        delete completedItems[itemId];
+        showNotification('সম্পন্ন চিহ্নিত করা সরানো হয়েছে', 'info');
+    }
+    saveCompletedItems();
+    
+    const contentItem = checkbox.closest('.content-item');
+    if (contentItem) {
+        if (checkbox.checked) contentItem.classList.add('completed');
+        else contentItem.classList.remove('completed');
+    }
+    
+    updateSectionProgress(checkbox.closest('.section-card'));
+    updateOverallProgress();
+}
+
+// ============================================================
+// 📊 Progress আপডেট
+// ============================================================
+function updateSectionProgress(sectionCard) {
+    if (!sectionCard) return;
+    
+    const contentItems = sectionCard.querySelectorAll('.content-item');
+    const totalItems = contentItems.length;
+    const completedCount = Array.from(contentItems).filter(item => 
+        item.querySelector('.complete-checkbox:checked')
+    ).length;
+    
+    const progressBar = sectionCard.querySelector('.section-progress-bar');
+    const progressText = sectionCard.querySelector('.progress-text');
+    
+    if (progressBar && progressText) {
+        const percentage = totalItems > 0 ? (completedCount / totalItems) * 100 : 0;
+        progressBar.style.width = `${percentage}%`;
+        progressText.textContent = `${completedCount}/${totalItems}`;
+    }
+}
+
+function updateOverallProgress() {
+    const allItems = document.querySelectorAll('.content-item');
+    const totalItems = allItems.length;
+    const completedCount = Array.from(allItems).filter(item => 
+        item.querySelector('.complete-checkbox:checked')
+    ).length;
+    
+    const progressFill = document.getElementById('global-progress-fill');
+    const progressText = document.getElementById('global-progress-text');
+    
+    if (progressFill && progressText) {
+        const percentage = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+        progressFill.style.width = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
+    }
+}
+
+function updateAllProgress() {
+    document.querySelectorAll('.section-card').forEach(section => {
+        updateSectionProgress(section);
+    });
+    updateOverallProgress();
+}
+
+// ============================================================
+// 🎨 Icon detection
+// ============================================================
+function getIconForContent(content, link, title) {
+    const titleLower = title.toLowerCase();
+    const linkLower = link.toLowerCase();
+    
+    if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
+        return { iconClass: 'fas fa-file-pdf', isPDF: true, isYouTube: false };
+    }
+    
+    if (content.type === 'video' ||
+        linkLower.includes('youtube.com') || 
+        linkLower.includes('youtu.be') || 
+        titleLower.includes('ভিডিও') || 
+        titleLower.includes('video') ||
+        titleLower.includes('ইউটিউব') ||
+        titleLower.includes('youtube')) {
+        return { iconClass: 'fab fa-youtube', isPDF: false, isYouTube: true };
+    }
+    
+    if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') ||
+        titleLower.includes('wa') || titleLower.includes('হোয়াটসঅ্যাপ')) {
+        return { iconClass: 'fab fa-whatsapp', isPDF: false, isYouTube: false };
+    }
+    
+    return { iconClass: 'fas fa-file-alt', isPDF: false, isYouTube: false };
+}
+
+// ============================================================
+// 📄 PDF Viewer
+// ============================================================
 window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
     
@@ -497,7 +484,9 @@ window.openPDFViewer = function(pdfUrl, title) {
     }
 };
 
-// YouTube Player
+// ============================================================
+// ▶️ YouTube Player
+// ============================================================
 window.openYouTubePlayer = function(videoUrl, title) {
     let videoId = extractYouTubeVideoId(videoUrl);
     
@@ -595,49 +584,33 @@ window.openYouTubePlayer = function(videoUrl, title) {
 };
 
 // ============================================================
-// Main function to load data
+// 🚀 Main load function
 // ============================================================
 async function loadSections() {
     loadCompletedItems();
     loadVideoDurationCache();
-    loadNewItems();
     
     try {
         console.log('📡 API কল করা হচ্ছে:', API_URL);
         
         const response = await fetch(API_URL);
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
+        if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
         console.log('📦 API ডাটা:', data);
         
-        // নতুন API স্ট্রাকচার চেক
         if (!data.success || !data.classes) {
             throw new Error('API রেসপন্স সঠিক ফরম্যাটে নেই');
         }
         
-        // কোর্স টাইটেল সেট
-        document.getElementById('course-title').textContent = 
-            'Civil 4th Semester';
+        document.getElementById('course-title').textContent = 'Civil 4th Semester';
         
-        // classes থেকে sections তৈরি
         const sections = transformClassesToSections(data.classes);
-        
-        // Display sections
         displaySections(sections);
         
-       
-        // Video durations আপডেট
         setTimeout(() => {
             updateAllVideoDurations();
         }, 1000);
-        
-        // New items expiry চেক
-        setInterval(() => {
-            loadNewItems();
-        }, 60000);
         
     } catch (error) {
         console.error('❌ Error:', error);
@@ -654,7 +627,9 @@ async function loadSections() {
     }
 }
 
-// Display sections and contents
+// ============================================================
+// 🖼️ Display sections
+// ============================================================
 function displaySections(sections) {
     const container = document.getElementById('sections-container');
     
@@ -681,9 +656,6 @@ function displaySections(sections) {
             const itemId = `section_${section.id || index}_content_${content.id || contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             
-            // নতুন API-তে available_from নেই
-            const isNew = false;
-            
             let clickHandler = '';
             if (isPDF) {
                 clickHandler = `openPDFViewer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')`;
@@ -703,7 +675,7 @@ function displaySections(sections) {
                         onclick="event.stopPropagation()"
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
-                    <span class="content-title" onclick="${clickHandler}">${contentTitle}${isNew ? '<span class="new-badge">নতুন</span>' : ''}</span>
+                    <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
                     ${isYouTube ? '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>' : ''}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" onclick="' + clickHandler + '" title="খুলুন"></i>' : ''}
                 </div>
@@ -743,20 +715,17 @@ function displaySections(sections) {
     updateAllProgress();
 }
 
-// Toggle section
+// ============================================================
+// 🔽 Toggle Section
+// ============================================================
 window.toggleSection = function(header) {
-    if (event) {
-        event.stopPropagation();
-    }
+    if (event) event.stopPropagation();
     
     const contentsList = header.nextElementSibling;
     const icon = header.querySelector('.section-icon');
     
     contentsList.classList.toggle('hidden');
-    
-    if (icon) {
-        icon.classList.toggle('rotated');
-    }
+    if (icon) icon.classList.toggle('rotated');
     
     const allSections = document.querySelectorAll('.section-card');
     allSections.forEach(section => {
@@ -769,7 +738,9 @@ window.toggleSection = function(header) {
     });
 }
 
-// Decode Unicode
+// ============================================================
+// 🔤 Unicode Decode
+// ============================================================
 function decodeUnicode(str) {
     if (!str) return '';
     try {
@@ -779,7 +750,9 @@ function decodeUnicode(str) {
     }
 }
 
-// Reset all progress
+// ============================================================
+// 🔄 Reset All Progress
+// ============================================================
 window.resetAllProgress = function() {
     if (confirm('সব সম্পন্ন চিহ্নিত করা মুছে ফেলতে চান?')) {
         completedItems = {};
@@ -788,9 +761,7 @@ window.resetAllProgress = function() {
         document.querySelectorAll('.complete-checkbox').forEach(checkbox => {
             checkbox.checked = false;
             const contentItem = checkbox.closest('.content-item');
-            if (contentItem) {
-                contentItem.classList.remove('completed');
-            }
+            if (contentItem) contentItem.classList.remove('completed');
         });
         
         updateAllProgress();
@@ -798,7 +769,9 @@ window.resetAllProgress = function() {
     }
 }
 
-// PWA Install Button
+// ============================================================
+// 📱 PWA Install Button
+// ============================================================
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -810,12 +783,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
         
         installButton.addEventListener('click', async () => {
             if (!deferredPrompt) return;
-            
             deferredPrompt.prompt();
-            
             const { outcome } = await deferredPrompt.userChoice;
             console.log(`User response to the install prompt: ${outcome}`);
-            
             deferredPrompt = null;
             installButton.style.display = 'none';
         });
@@ -827,19 +797,17 @@ window.addEventListener('appinstalled', (evt) => {
     showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
 });
 
-// Initialize on page load
+// ============================================================
+// 🚀 Initialize
+// ============================================================
 document.addEventListener('DOMContentLoaded', () => {
     loadSections();
     
     const resetBtn = document.getElementById('reset-progress');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', window.resetAllProgress);
-    }
+    if (resetBtn) resetBtn.addEventListener('click', window.resetAllProgress);
     
     if (window.location.search.includes('reset=true')) {
-        setTimeout(() => {
-            window.resetAllProgress();
-        }, 1000);
+        setTimeout(() => window.resetAllProgress(), 1000);
     }
     
     if (!navigator.onLine) {
@@ -855,25 +823,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Floating Reload Button functionality
+// ============================================================
+// 🔄 Floating Reload Button
+// ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     const reloadBtn = document.getElementById('floating-reload-btn');
     
     if (reloadBtn) {
         reloadBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            
             const icon = this.querySelector('i');
             icon.style.animation = 'spin 0.5s ease-in-out';
-            
-            setTimeout(() => {
-                window.location.reload();
-            }, 300);
+            setTimeout(() => window.location.reload(), 300);
         });
     }
 });
 
-// Day/Night Mode Toggle
+// ============================================================
+// 🌗 Day/Night Mode Toggle
+// ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     const themeToggle = document.getElementById('theme-toggle');
     const icon = themeToggle.querySelector('i');
@@ -920,9 +888,7 @@ document.addEventListener('DOMContentLoaded', function() {
         notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
         document.body.appendChild(notification);
         
-        setTimeout(() => {
-            notification.remove();
-        }, 2000);
+        setTimeout(() => notification.remove(), 2000);
     }
 });
 
