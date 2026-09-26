@@ -121,10 +121,11 @@ function transformClassesToSections(classes) {
             const chapter = item.chapter || '';
             const lecture = item.lecture || (idx + 1);
             
-            // টাইটেল তৈরি করুন
-            let title = `${subject}`;
-            if (chapter) title += ` - Chapter ${chapter}`;
-            title += ` - Lecture ${lecture}`;
+            // টাইটেল তৈরি করুন (subject name ছাড়া)
+let title = '';
+if (chapter) title += `Chapter ${chapter}`;
+if (chapter && lecture) title += ` - `;
+title += `Lecture ${lecture}`;
             
             // ইউনিক ID তৈরি করুন
             const contentId = `${subject}_${chapter}_${lecture}`.replace(/\s+/g, '_');
