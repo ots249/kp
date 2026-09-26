@@ -1,5 +1,5 @@
 // API Endpoint
-const API_URL = 'https://api.karigoripathsala.com/api/courses/3rd-semester-full-course-chbite-likha-dipartment-gulor-jnz-1';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec';
 
 // YouTube API Key
 const YOUTUBE_API_KEY = 'AIzaSyC4jVo_d7EEo1115oUexLMm-d2WzaK29UM';
