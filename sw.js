@@ -157,8 +157,8 @@ self.addEventListener('sync', event => {
 self.addEventListener('push', event => {
     const options = {
         body: event.data.text(),
-        icon: 'https://i.postimg.cc/6pw4D0fF/kp-logo.png',
-        badge: 'https://i.postimg.cc/6pw4D0fF/kp-logo.png',
+        icon: 'https://i.postimg.cc/7YKJhGyY/logo.png',
+        badge: 'https://i.postimg.cc/7YKJhGyY/logo.png',
         vibrate: [100, 50, 100],
         data: {
             dateOfArrival: Date.now(),
@@ -177,7 +177,7 @@ self.addEventListener('push', event => {
     };
     
     event.waitUntil(
-        self.registration.showNotification('কারিগরি পাঠশালা', options)
+        self.registration.showNotification('Civil 4th, options)
     );
 });
 
