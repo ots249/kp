@@ -4,16 +4,21 @@
 const API_ENDPOINTS = [
     {
         name: 'API 1 (Primary)',
-        url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor',
+        url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj',
         timeout: 8000
     },
     {
         name: 'API 2 (Fallback)',
-        url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
+        url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor',
         timeout: 10000
     },
     {
         name: 'API 3 (Fallback)',
+        url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
+        timeout: 10000
+    },
+    {
+        name: 'API 4 (Fallback)',
         url: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
         timeout: 10000
     }
