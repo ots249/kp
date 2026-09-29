@@ -1,5 +1,5 @@
 // API Endpoint
-const API_URL = 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor';
+const API_URL = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
 
 // YouTube API Key
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
