@@ -1,5 +1,23 @@
-// API Endpoint
-const API_URL = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+// ============================================================
+// 🌐 API Endpoints (with fallback)
+// ============================================================
+const API_ENDPOINTS = [
+    {
+        name: 'API 1 (Primary)',
+        url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor',
+        timeout: 8000
+    },
+    {
+        name: 'API 2 (Fallback)',
+        url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
+        timeout: 10000
+    },
+    {
+        name: 'API 3 (Fallback)',
+        url: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
+        timeout: 10000
+    }
+];
 
 // YouTube API Key
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
@@ -50,6 +68,112 @@ function saveVideoDurationCache() {
 }
 
 // ============================================================
+// 🌐 Fetch with timeout
+// ============================================================
+function fetchWithTimeout(url, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    
+    return fetch(url, { signal: controller.signal })
+        .finally(() => clearTimeout(timer));
+}
+
+// ============================================================
+// 🔍 Normalize different API response formats
+// ============================================================
+function normalizeApiResponse(data, apiName) {
+    if (!data) return null;
+    
+    // Format 1: { success: true, classes: [...] }
+    if (data.success && Array.isArray(data.classes)) {
+        return data.classes;
+    }
+    
+    // Format 2: { classes: [...] }
+    if (Array.isArray(data.classes)) {
+        return data.classes;
+    }
+    
+    // Format 3: directly an array
+    if (Array.isArray(data)) {
+        return data;
+    }
+    
+    // Format 4: { data: [...] }
+    if (Array.isArray(data.data)) {
+        return data.data;
+    }
+    
+    // Format 5: any array found in top-level keys
+    if (typeof data === 'object') {
+        for (const key of Object.keys(data)) {
+            if (Array.isArray(data[key])) {
+                console.log(`ℹ️ ${apiName}: found array at key "${key}"`);
+                return data[key];
+            }
+        }
+    }
+    
+    console.warn(`⚠️ ${apiName}: unknown response format`, data);
+    return null;
+}
+
+// ============================================================
+// 🚀 Try each API in order until one works
+// ============================================================
+async function fetchClassesWithFallback() {
+    let lastError = null;
+    
+    for (let i = 0; i < API_ENDPOINTS.length; i++) {
+        const api = API_ENDPOINTS[i];
+        const startTime = Date.now();
+        
+        try {
+            console.log(`📡 [${i + 1}/${API_ENDPOINTS.length}] ${api.name} কল করা হচ্ছে...`);
+            
+            const response = await fetchWithTimeout(api.url, api.timeout);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            const classes = normalizeApiResponse(data, api.name);
+            
+            if (!classes || classes.length === 0) {
+                throw new Error('কোনো ক্লাস ডাটা পাওয়া যায়নি');
+            }
+            
+            const elapsed = Date.now() - startTime;
+            console.log(`✅ ${api.name} সফল (${elapsed}ms), ${classes.length}টি ক্লাস`);
+            
+            if (i > 0) {
+                showNotification(`⚠️ Primary API কাজ করেনি, ${api.name} ব্যবহার করা হয়েছে`, 'info');
+            }
+            
+            return classes;
+            
+        } catch (error) {
+            const elapsed = Date.now() - startTime;
+            
+            if (error.name === 'AbortError') {
+                console.warn(`⏱️ ${api.name} টাইমআউট (${elapsed}ms)`);
+                lastError = new Error(`${api.name} সময়সীমা ছাড়িয়ে গেছে`);
+            } else {
+                console.warn(`❌ ${api.name} ব্যর্থ (${elapsed}ms):`, error.message);
+                lastError = error;
+            }
+            
+            if (i < API_ENDPOINTS.length - 1) {
+                console.log(`➡️ পরবর্তী API চেষ্টা করা হচ্ছে...`);
+            }
+        }
+    }
+    
+    throw lastError || new Error('সব API ব্যর্থ হয়েছে');
+}
+
+// ============================================================
 // 🔄 API classes → sections রূপান্তর
 // ============================================================
 function transformClassesToSections(classes) {
@@ -71,7 +195,6 @@ function transformClassesToSections(classes) {
             const chapter = item.chapter || '';
             const lecture = item.lecture || (idx + 1);
             
-            // ✅ টাইটেল: শুধু Chapter + Lecture
             let title = '';
             if (chapter) title += `Chapter ${chapter}`;
             if (chapter && lecture) title += ` - `;
@@ -311,7 +434,7 @@ document.head.appendChild(style);
 // ✅ Complete toggle
 // ============================================================
 window.toggleComplete = function(itemId, checkbox) {
-    if (event) event.stopPropagation();
+    if (window.event) window.event.stopPropagation();
     
     if (checkbox.checked) {
         completedItems[itemId] = true;
@@ -584,28 +707,18 @@ window.openYouTubePlayer = function(videoUrl, title) {
 };
 
 // ============================================================
-// 🚀 Main load function
+// 🚀 Main load function (with API fallback)
 // ============================================================
 async function loadSections() {
     loadCompletedItems();
     loadVideoDurationCache();
     
     try {
-        console.log('📡 API কল করা হচ্ছে:', API_URL);
-        
-        const response = await fetch(API_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-        
-        console.log('📦 API ডাটা:', data);
-        
-        if (!data.success || !data.classes) {
-            throw new Error('API রেসপন্স সঠিক ফরম্যাটে নেই');
-        }
+        const classes = await fetchClassesWithFallback();
         
         document.getElementById('course-title').textContent = 'Civil 4th Semester';
         
-        const sections = transformClassesToSections(data.classes);
+        const sections = transformClassesToSections(classes);
         displaySections(sections);
         
         setTimeout(() => {
@@ -613,11 +726,16 @@ async function loadSections() {
         }, 1000);
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ সব API ব্যর্থ:', error);
         document.getElementById('sections-container').innerHTML = `
             <div class="empty-message" style="padding: 4rem; text-align: center;">
                 <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
-                <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 1.5rem;">ডেটা লোড করতে সমস্যা হচ্ছে।</p>
+                <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                    সব API থেকে ডেটা লোড করা যায়নি।
+                </p>
+                <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem;">
+                    ইন্টারনেট সংযোগ পরীক্ষা করুন।
+                </p>
                 <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: #2563eb; color: white; border: none; border-radius: 1rem; cursor: pointer; font-size: 1rem; font-weight: 500;">
                     <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
                     আবার চেষ্টা করুন
@@ -719,7 +837,7 @@ function displaySections(sections) {
 // 🔽 Toggle Section
 // ============================================================
 window.toggleSection = function(header) {
-    if (event) event.stopPropagation();
+    if (window.event) window.event.stopPropagation();
     
     const contentsList = header.nextElementSibling;
     const icon = header.querySelector('.section-icon');
@@ -798,18 +916,22 @@ window.addEventListener('appinstalled', (evt) => {
 });
 
 // ============================================================
-// 🚀 Initialize
+// 🚀 Initialize (single consolidated DOMContentLoaded)
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Load sections
     loadSections();
     
+    // Reset button
     const resetBtn = document.getElementById('reset-progress');
     if (resetBtn) resetBtn.addEventListener('click', window.resetAllProgress);
     
+    // URL-based reset
     if (window.location.search.includes('reset=true')) {
         setTimeout(() => window.resetAllProgress(), 1000);
     }
     
+    // Online/offline detection
     if (!navigator.onLine) {
         showNotification('আপনি অফলাইনে আছেন। কিছু ফিচার কাজ নাও করতে পারে।', 'info');
     }
@@ -821,74 +943,71 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', () => {
         showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
     });
-});
-
-// ============================================================
-// 🔄 Floating Reload Button
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    const reloadBtn = document.getElementById('floating-reload-btn');
     
+    // ============================================================
+    // 🔄 Floating Reload Button
+    // ============================================================
+    const reloadBtn = document.getElementById('floating-reload-btn');
     if (reloadBtn) {
         reloadBtn.addEventListener('click', function(e) {
             e.preventDefault();
             const icon = this.querySelector('i');
-            icon.style.animation = 'spin 0.5s ease-in-out';
+            if (icon) icon.style.animation = 'spin 0.5s ease-in-out';
             setTimeout(() => window.location.reload(), 300);
         });
     }
-});
-
-// ============================================================
-// 🌗 Day/Night Mode Toggle
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
+    
+    // ============================================================
+    // 🌗 Day/Night Mode Toggle
+    // ============================================================
     const themeToggle = document.getElementById('theme-toggle');
-    const icon = themeToggle.querySelector('i');
-    
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        icon.classList.remove('fa-sun');
-        icon.classList.add('fa-moon');
-    }
-    
-    document.body.classList.add('theme-transition');
-    
-    themeToggle.addEventListener('click', function() {
-        document.body.classList.toggle('dark-mode');
+    if (themeToggle) {
+        const icon = themeToggle.querySelector('i');
         
-        if (document.body.classList.contains('dark-mode')) {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
             icon.classList.remove('fa-sun');
             icon.classList.add('fa-moon');
-            localStorage.setItem('theme', 'dark');
-            showThemeNotification('নাইট মোড চালু হয়েছে');
-        } else {
-            icon.classList.remove('fa-moon');
-            icon.classList.add('fa-sun');
-            localStorage.setItem('theme', 'light');
-            showThemeNotification('ডে মোড চালু হয়েছে');
         }
-    });
-    
-    function showThemeNotification(message) {
-        const notification = document.createElement('div');
-        notification.className = 'auto-save-status show';
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: var(--primary);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 50px;
-            font-size: 14px;
-            z-index: 2001;
-        `;
-        notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-        document.body.appendChild(notification);
         
-        setTimeout(() => notification.remove(), 2000);
+        document.body.classList.add('theme-transition');
+        
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                localStorage.setItem('theme', 'dark');
+                showThemeNotification('নাইট মোড চালু হয়েছে');
+            } else {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                localStorage.setItem('theme', 'light');
+                showThemeNotification('ডে মোড চালু হয়েছে');
+            }
+        });
+        
+        function showThemeNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'auto-save-status show';
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: var(--primary);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 50px;
+                font-size: 14px;
+                z-index: 2001;
+            `;
+            notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 2000);
+        }
     }
 });
 
@@ -896,12 +1015,13 @@ document.addEventListener('DOMContentLoaded', function() {
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     const savedTheme = localStorage.getItem('theme');
     if (!savedTheme) {
+        const icon = document.querySelector('#theme-toggle i');
         if (e.matches) {
             document.body.classList.add('dark-mode');
-            document.querySelector('#theme-toggle i').classList.replace('fa-sun', 'fa-moon');
+            if (icon) icon.classList.replace('fa-sun', 'fa-moon');
         } else {
             document.body.classList.remove('dark-mode');
-            document.querySelector('#theme-toggle i').classList.replace('fa-moon', 'fa-sun');
+            if (icon) icon.classList.replace('fa-moon', 'fa-sun');
         }
     }
 });
