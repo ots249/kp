@@ -4,273 +4,499 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#3b7ddd" />
-<title>Civil 4th Diploma Tutor — Manage Resources</title>
+<title>Civil 4th Diploma Tutor</title>
 <style>
   :root {
-    --bg: #f4f6f8;
-    --card: #fff;
+    --bg: #f5f7fa;
+    --bg-2: #eef2f7;
+    --card: #ffffff;
     --border: #d3dae3;
-    --border-soft: #eef2f7;
-    --text: #1a2b45;
+    --border-soft: #edf1f6;
+    --text: #0f1d33;
+    --text-2: #34455c;
     --muted: #6b7a90;
+
     --primary: #3b7ddd;
     --primary-dark: #2f66b8;
-    --danger: #b42318;
-    --ok-bg: #e6f7ed;
-    --ok-fg: #1b7a43;
-    --err-bg: #fdecec;
+    --primary-tint: #eaf1fd;
+
+    --danger: #d92d20;
+    --danger-dark: #b42318;
+    --danger-tint: #fdecec;
+
+    --ok: #12805c;
+    --ok-tint: #e6f7ed;
+
+    --pdf: #1c5fb8;
+    --pdf-bg: #eaf2fe;
+    --pdf-bd: #c7dbfa;
+    --pdf-row: #f7fbff;
+
+    --video: #c62828;
+    --video-bg: #fdecea;
+    --video-bd: #f8cfcb;
+    --video-row: #fff8f8;
+
     --radius: 12px;
-    --shadow: 0 4px 20px rgba(0,0,0,.08);
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(15,29,51,.05);
+    --shadow: 0 4px 18px rgba(15,29,51,.07);
+    --shadow-lg: 0 12px 32px rgba(15,29,51,.14);
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
+
   body {
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #e6eefc 0%, transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
     color: var(--text);
-    line-height: 1.4;
-    padding: 16px;
-    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+    line-height: 1.45;
+    padding: 20px 16px;
+    padding-bottom: calc(36px + env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
   .card {
     background: var(--card);
-    border-radius: var(--radius);
+    border: 1px solid rgba(15,29,51,.04);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
-    padding: 20px;
+    padding: 24px;
     width: 100%;
-    max-width: 720px;
+    max-width: 760px;
   }
 
-  h1 { font-size: 1.25rem; margin: 0 0 4px; color: var(--text); }
-  h2 { font-size: 1.05rem; margin: 0 0 12px; color: var(--text); }
-  p.sub { color: var(--muted); margin: 0 0 16px; font-size: .875rem; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; letter-spacing: -0.01em; font-weight: 800; }
+  h2 {
+    font-size: 1.05rem; margin: 0; letter-spacing: -0.005em; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  p.sub { color: var(--muted); margin: 0 0 20px; font-size: .875rem; }
 
-  /* ----- Form ----- */
+  /* ---------- Form ---------- */
   label {
-    display: block;
-    font-size: .75rem;
-    font-weight: 700;
-    color: #34455c;
-    margin: 14px 0 6px;
-    text-transform: uppercase;
-    letter-spacing: .04em;
+    display: block; font-size: .72rem; font-weight: 700; color: var(--text-2);
+    margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em;
   }
-
   input, select {
-    width: 100%;
-    /* 16px prevents iOS auto-zoom on focus */
-    font-size: 16px;
-    font-family: inherit;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: #fff;
-    color: var(--text);
-    transition: border-color .15s, box-shadow .15s;
-    appearance: none;
-    -webkit-appearance: none;
+    width: 100%; font-size: 16px; font-family: inherit;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: #fff; color: var(--text);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+    appearance: none; -webkit-appearance: none;
   }
   select {
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7a90' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
+    background-repeat: no-repeat; background-position: right 14px center;
     padding-right: 40px;
   }
+  input:hover, select:hover { border-color: #c2ccd9; }
   input:focus, select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59,125,221,.15);
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59,125,221,.14);
+  }
+  input:disabled, select:disabled {
+    background: #f7f9fc; color: var(--muted); cursor: not-allowed;
   }
 
-  /* ----- Buttons ----- */
-  button {
-    font-family: inherit;
-    cursor: pointer;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    transition: background .15s, transform .05s;
+  /* ---------- Two-column row (Chapter + Lecture) ---------- */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    align-items: start;
   }
-  button:active:not(:disabled) { transform: scale(.985); }
+  .form-row .field { min-width: 0; }
+  /* First label in the row: keep the same top margin rhythm */
+  .form-row .field > label { margin-top: 16px; }
+
+  /* ---------- Buttons ---------- */
+  button {
+    font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
+    font-weight: 600; letter-spacing: .01em;
+    transition: background .15s, transform .1s, box-shadow .15s, opacity .15s, border-color .15s;
+  }
+  button:active:not(:disabled) { transform: scale(.975); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(59,125,221,.28); }
 
   .submit-btn {
-    margin-top: 20px;
-    width: 100%;
-    /* 48px+ touch target */
-    padding: 14px;
-    font-size: 1rem;
-    background: var(--primary);
-    color: #fff;
-    min-height: 48px;
+    position: relative; margin-top: 22px; width: 100%;
+    padding: 14px; font-size: 1rem;
+    background: linear-gradient(180deg, #4a89e6 0%, var(--primary) 100%);
+    color: #fff; min-height: 50px;
+    box-shadow: 0 4px 14px rgba(59,125,221,.35), inset 0 1px 0 rgba(255,255,255,.2);
   }
-  .submit-btn:hover:not(:disabled) { background: var(--primary-dark); }
-  .submit-btn:disabled { background: #9db6d6; cursor: not-allowed; }
-
-  /* ----- Messages ----- */
-  .msg {
-    margin-top: 14px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    font-size: .875rem;
-    display: none;
-    word-break: break-word;
+  .submit-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #3f7cd9 0%, var(--primary-dark) 100%);
+    box-shadow: 0 6px 18px rgba(59,125,221,.42), inset 0 1px 0 rgba(255,255,255,.2);
   }
-  .msg.ok  { background: var(--ok-bg); color: var(--ok-fg); display: block; }
-  .msg.err { background: var(--err-bg); color: var(--danger); display: block; }
+  .submit-btn:disabled { background: #9db6d6; box-shadow: none; cursor: not-allowed; }
+  .submit-btn .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .6s linear infinite;
+    vertical-align: -3px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ----- Edit banner ----- */
+  /* ---------- Editing banner ---------- */
   .editing {
-    background: #fff8e6;
-    border: 1px solid #f0d999;
-    color: #7a5a00;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-bottom: 12px;
-    font-size: .875rem;
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    flex-wrap: wrap;
+    background: linear-gradient(180deg, #fffbf0 0%, #fff8e6 100%);
+    border: 1px solid #f0d999; color: #7a5a00;
+    padding: 10px 14px; border-radius: 10px; margin-bottom: 12px;
+    font-size: .875rem; display: none;
+    align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; animation: slideDown .25s ease;
   }
   .editing.active { display: flex; }
   .editing button {
-    padding: 8px 14px;
-    font-size: .8125rem;
-    background: #7a5a00;
-    color: #fff;
-    min-height: 36px;
+    padding: 8px 14px; font-size: .8125rem;
+    background: #7a5a00; color: #fff; min-height: 36px;
   }
   .editing button:hover { background: #5c4400; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
-  /* ----- List toolbar ----- */
+  /* ---------- Toolbar ---------- */
   .toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
   }
-  .toolbar h2 { margin: 0; }
+  .toolbar-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .count-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 8px;
+    border-radius: 999px; background: var(--primary-tint); color: var(--primary);
+    font-size: .72rem; font-weight: 700;
+  }
+  .count-pill.filtered { background: #fff1d6; color: #8a5a00; }
+
   .refresh {
-    padding: 9px 14px;
-    font-size: .8125rem;
-    background: var(--border-soft);
-    color: #34455c;
-    min-height: 40px;
+    padding: 9px 14px; font-size: .8125rem;
+    background: #fff; color: var(--text-2);
+    border: 1px solid var(--border-soft); min-height: 40px;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-sm);
   }
-  .refresh:hover { background: #dde5ee; }
+  .refresh:hover { background: var(--bg-2); border-color: var(--border); }
+  .refresh.spinning svg { animation: spin .7s linear; }
 
-  /* ----- Table (desktop) ----- */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .9rem;
+  /* ---------- Filter bar ---------- */
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 10px; margin-bottom: 16px;
+    padding: 12px; background: var(--bg-2);
+    border-radius: 12px; border: 1px solid var(--border-soft);
+    align-items: end;
   }
-  th, td {
-    text-align: left;
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--border-soft);
-    vertical-align: top;
+  .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .filter-field label { margin: 0; font-size: .65rem; color: var(--muted); }
+  .filter-field input,
+  .filter-field select {
+    padding: 9px 12px; font-size: 14px; border-radius: 8px;
+    border-color: var(--border-soft); background: #fff;
   }
-  th {
-    font-size: .7rem;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--muted);
-    font-weight: 700;
-  }
-  td a { color: var(--primary); word-break: break-all; }
+  .filter-field select { padding-right: 34px; }
 
-  .badge {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: .7rem;
-    font-weight: 700;
-    text-transform: capitalize;
+  .search-wrap { position: relative; }
+  .search-wrap input { padding-left: 34px; }
+  .search-wrap .search-icon {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); pointer-events: none; display: flex;
   }
-  .badge.video { background: #e7f0fd; color: #1c5fb8; }
-  .badge.pdf   { background: #fdeee7; color: #b8521c; }
 
-  .actions { display: flex; gap: 6px; white-space: nowrap; }
-  .actions button {
-    padding: 8px 12px;
-    font-size: .8rem;
-    border-radius: 8px;
-    min-height: 36px;
+  .clear-btn {
+    padding: 9px 12px; font-size: .8125rem;
+    background: #fff; color: var(--text-2);
+    border: 1px solid var(--border-soft); border-radius: 8px;
+    min-height: 38px; display: inline-flex; align-items: center;
+    gap: 6px; white-space: nowrap;
   }
-  .edit-btn   { background: var(--border-soft); color: #34455c; }
-  .edit-btn:hover { background: #dde5ee; }
-  .del-btn    { background: var(--err-bg); color: var(--danger); }
-  .del-btn:hover { background: #f9d7d7; }
+  .clear-btn:hover:not(:disabled) { background: #f3f6fa; border-color: var(--border); }
+  .clear-btn:disabled { opacity: .45; cursor: not-allowed; }
 
-  .empty { color: var(--muted); padding: 28px 0; text-align: center; font-size: .9rem; }
+  .result-info {
+    font-size: .8125rem; color: var(--muted);
+    margin: -4px 0 12px; display: flex; align-items: center;
+    gap: 6px; flex-wrap: wrap;
+  }
+  .result-info .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--primary-tint); color: var(--primary);
+    font-size: .72rem; font-weight: 700;
+  }
+  .result-info .chip button {
+    background: transparent; border: none; color: inherit;
+    padding: 0; margin-left: 2px; font-size: .9rem;
+    line-height: 1; cursor: pointer; opacity: .7;
+  }
+  .result-info .chip button:hover { opacity: 1; }
 
-  /* ----- Mobile card list (hidden on desktop by default) ----- */
+  /* ---------- List ---------- */
+  #listWrap { transition: opacity .2s; }
+  #listWrap.loading { opacity: .5; }
+
+  .skeleton-row {
+    border: 1px solid var(--border-soft); border-radius: 12px;
+    padding: 16px; margin-bottom: 10px; background: #fbfcfe;
+  }
+  .skeleton-line {
+    height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, #eef2f7 25%, #e2e8f0 50%, #eef2f7 75%);
+    background-size: 200% 100%; animation: shimmer 1.3s infinite; margin-bottom: 8px;
+  }
+  .skeleton-line.short { width: 40%; }
+  .skeleton-line.mid   { width: 65%; }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ---------- Row cards (mobile) ---------- */
   .row-cards { display: none; }
   .row-card {
-    border: 1px solid var(--border-soft);
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    background: #fbfcfe;
+    position: relative;
+    border: 1px solid var(--border-soft); border-radius: 14px;
+    padding: 14px 14px 14px 16px; margin-bottom: 12px;
+    background: #fff; box-shadow: var(--shadow-sm);
+    animation: fadeIn .25s ease;
+    transition: transform .18s, box-shadow .18s, opacity .25s, border-color .18s;
+    overflow: hidden;
   }
+  .row-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--border); transition: background .2s;
+  }
+  .row-card[data-type="pdf"]::before   { background: var(--pdf); }
+  .row-card[data-type="video"]::before { background: var(--video); }
+  .row-card[data-type="pdf"]   { background: linear-gradient(180deg, var(--pdf-row) 0%, #ffffff 100%); }
+  .row-card[data-type="video"] { background: linear-gradient(180deg, var(--video-row) 0%, #ffffff 100%); }
+  .row-card:hover { box-shadow: 0 6px 20px rgba(15,29,51,.08); transform: translateY(-1px); }
+  .row-card.removing { opacity: 0; transform: translateX(24px) scale(.97); }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   .row-card .top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-    margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 12px; padding-left: 4px;
   }
   .row-card .subject {
-    font-weight: 700;
-    color: var(--text);
-    font-size: 1rem;
-    line-height: 1.25;
+    font-weight: 700; font-size: 1rem; line-height: 1.25;
+    letter-spacing: -0.005em; color: var(--text);
   }
   .row-card .fields {
-    display: grid;
-    grid-template-columns: 72px 1fr;
-    gap: 6px 10px;
-    font-size: .875rem;
-    margin-bottom: 12px;
+    display: grid; grid-template-columns: 72px 1fr; gap: 6px 10px;
+    font-size: .875rem; margin-bottom: 14px; padding-left: 4px;
   }
   .row-card .fields .k { color: var(--muted); font-weight: 600; }
-  .row-card .fields .v { color: var(--text); word-break: break-word; }
-  .row-card .fields .v a { color: var(--primary); word-break: break-all; }
+  .row-card .fields .v { color: var(--text-2); word-break: break-word; }
+  .row-card .fields .v a {
+    color: var(--primary); word-break: break-all; text-decoration: none;
+    border-bottom: 1px dashed transparent; transition: border-color .15s;
+  }
+  .row-card .fields .v a:hover { border-bottom-color: var(--primary); }
   .row-card .actions { gap: 8px; }
-  .row-card .actions button {
-    flex: 1;
-    padding: 10px;
-    font-size: .85rem;
-    min-height: 42px;
+  .row-card .actions button { flex: 1; padding: 10px; font-size: .85rem; min-height: 42px; }
+
+  /* ---------- Desktop table ---------- */
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .9rem; }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 700; background: var(--bg-2);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  thead th:first-child { border-top-left-radius: 10px; }
+  thead th:last-child  { border-top-right-radius: 10px; }
+  tbody td {
+    padding: 12px; border-bottom: 1px solid var(--border-soft);
+    vertical-align: top; color: var(--text-2);
+  }
+  tbody tr {
+    animation: fadeIn .25s ease;
+    transition: opacity .25s, transform .25s, background .2s;
+  }
+  tbody tr[data-type="pdf"]   { background: var(--pdf-row); }
+  tbody tr[data-type="video"] { background: var(--video-row); }
+  tbody tr:hover { background: var(--primary-tint); }
+  tbody tr.removing { opacity: 0; transform: translateX(24px); }
+  tbody tr.flash    { background: #fff8e6 !important; transition: background .3s; }
+
+  td a {
+    color: var(--primary); word-break: break-all; text-decoration: none;
+    border-bottom: 1px dashed transparent; transition: border-color .15s;
+  }
+  td a:hover { border-bottom-color: var(--primary); }
+
+  /* ---------- Type badge ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .badge::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: .85;
+  }
+  .badge.pdf   { background: var(--pdf-bg);   color: var(--pdf);   border-color: var(--pdf-bd); }
+  .badge.video { background: var(--video-bg); color: var(--video); border-color: var(--video-bd); }
+  .badge.other { background: var(--bg-2); color: var(--muted); border-color: var(--border-soft); }
+
+  /* ---------- Action buttons ---------- */
+  .actions { display: flex; gap: 8px; white-space: nowrap; }
+  .actions button {
+    padding: 8px 14px; font-size: .8rem; border-radius: 8px;
+    min-height: 36px; background: #fff;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .edit-btn { color: var(--primary); border: 1.5px solid var(--primary); }
+  .edit-btn:hover {
+    background: var(--primary-tint);
+    border-color: var(--primary-dark); color: var(--primary-dark);
+  }
+  .del-btn { color: var(--danger); border: 1.5px solid var(--danger); }
+  .del-btn:hover {
+    background: var(--danger-tint);
+    border-color: var(--danger-dark); color: var(--danger-dark);
   }
 
-  /* ----- Responsive switch ----- */
+  .empty { color: var(--muted); padding: 40px 16px; text-align: center; font-size: .9rem; }
+  .empty .ico { display: block; font-size: 2rem; margin-bottom: 8px; opacity: .5; }
+
+  /* ---------- Toasts ---------- */
+  #toasts {
+    position: fixed; top: calc(16px + env(safe-area-inset-top));
+    right: 16px; left: 16px;
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: 8px; pointer-events: none; z-index: 9999;
+  }
+  @media (min-width: 640px) { #toasts { left: auto; max-width: 360px; } }
+  .toast {
+    pointer-events: auto; background: #fff; border-radius: 12px;
+    padding: 12px 16px; box-shadow: var(--shadow-lg);
+    font-size: .875rem; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+    min-width: 220px; max-width: 100%;
+    border-left: 4px solid var(--primary);
+    animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2);
+    word-break: break-word;
+  }
+  .toast.ok  { border-left-color: var(--ok); }
+  .toast.err { border-left-color: var(--danger); }
+  .toast.out { animation: toastOut .25s forwards; }
+  .toast .ico { font-size: 1.1rem; line-height: 1; }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-12px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(30px) scale(.95); } }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(15,29,51,.45);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; animation: overlayIn .2s ease;
+  }
+  .modal-overlay.active { display: flex; }
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(15,29,51,.28);
+    width: 100%; max-width: 380px; padding: 24px;
+    animation: modalIn .28s cubic-bezier(.2,.9,.3,1.15);
+    text-align: center;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.92) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal .icon {
+    width: 52px; height: 52px; margin: 0 auto 14px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; background: var(--danger-tint); color: var(--danger);
+  }
+  .modal h3 {
+    margin: 0 0 8px; font-size: 1.1rem; font-weight: 700;
+    color: var(--text); letter-spacing: -0.005em;
+  }
+  .modal p { margin: 0 0 22px; font-size: .875rem; color: var(--muted); line-height: 1.5; }
+  .modal p strong { color: var(--text-2); }
+  .modal .modal-actions { display: flex; gap: 10px; }
+  .modal .modal-actions button {
+    flex: 1; padding: 12px; font-size: .9rem; min-height: 46px; border-radius: 10px;
+  }
+  .modal .btn-cancel {
+    background: #fff; color: var(--text-2);
+    border: 1.5px solid var(--border);
+  }
+  .modal .btn-cancel:hover { background: var(--bg-2); border-color: #c2ccd9; }
+  .modal .btn-confirm {
+    background: var(--danger); color: #fff;
+    border: 1.5px solid var(--danger);
+  }
+  .modal .btn-confirm:hover { background: var(--danger-dark); border-color: var(--danger-dark); }
+
+  /* ---------- Responsive ---------- */
   @media (max-width: 640px) {
-    body { padding: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
+    body { padding: 14px 12px; padding-bottom: calc(28px + env(safe-area-inset-bottom)); gap: 14px; }
     .card { padding: 18px 16px; border-radius: 14px; }
-    h1 { font-size: 1.15rem; }
+    h1 { font-size: 1.18rem; }
     h2 { font-size: 1rem; }
-    table, thead, tbody, th, td, tr { display: none; } /* hide real table */
-    .row-cards { display: block; }                     /* show cards */
-  }
+    table, thead, tbody, th, td, tr { display: none; }
+    .row-cards { display: block; }
 
+    .filter-bar { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+    .filter-field.search-field { grid-column: 1 / -1; }
+    .clear-btn { grid-column: 1 / -1; justify-content: center; }
+  }
   @media (max-width: 360px) {
     .row-card .fields { grid-template-columns: 60px 1fr; font-size: .8125rem; }
+    .filter-bar { grid-template-columns: 1fr; }
+    .filter-field.search-field { grid-column: auto; }
+    /* Very narrow: still keep Chapter/Lecture side-by-side but tighter */
+    .form-row { gap: 8px; }
+    .form-row input { padding: 11px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Confirm modal -->
+  <div class="modal-overlay" id="confirmOverlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="icon">🗑️</div>
+      <h3 id="confirmTitle">Delete this row?</h3>
+      <p id="confirmMessage">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="confirmCancel">Cancel</button>
+        <button type="button" class="btn-confirm" id="confirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
 
   <!-- FORM -->
   <div class="card">
@@ -282,7 +508,7 @@
       <button type="button" id="cancelEditBtn">Cancel</button>
     </div>
 
-    <form id="entryForm">
+    <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
         <option value="" disabled selected>Select subject…</option>
@@ -292,11 +518,17 @@
         <option>Surveying 2</option>
       </select>
 
-      <label for="chapter">Chapter</label>
-      <input id="chapter" name="chapter" type="text" required placeholder="e.g. Chapter 3" />
-
-      <label for="lecture">Lecture</label>
-      <input id="lecture" name="lecture" type="text" required placeholder="e.g. Lecture 5" />
+      <!-- Chapter + Lecture side by side -->
+      <div class="form-row">
+        <div class="field">
+          <label for="chapter">Chapter</label>
+          <input id="chapter" name="chapter" type="text" required placeholder="e.g. 3" />
+        </div>
+        <div class="field">
+          <label for="lecture">Lecture</label>
+          <input id="lecture" name="lecture" type="text" required placeholder="e.g. 5" />
+        </div>
+      </div>
 
       <label for="type">Type</label>
       <select id="type" name="type" required>
@@ -310,140 +542,384 @@
              inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" />
 
       <button type="submit" class="submit-btn" id="submitBtn">Submit</button>
-      <div class="msg" id="msg"></div>
     </form>
   </div>
 
   <!-- LIST -->
   <div class="card">
     <div class="toolbar">
-      <h2>All Resources</h2>
-      <button type="button" class="refresh" id="refreshBtn">↻ Refresh</button>
+      <div class="toolbar-title">
+        <h2>All Resources</h2>
+        <span class="count-pill" id="countPill">0</span>
+      </div>
+      <button type="button" class="refresh" id="refreshBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
+      </button>
     </div>
+
+    <div class="filter-bar">
+      <div class="filter-field search-field">
+        <label for="filterSearch">Search</label>
+        <div class="search-wrap">
+          <span class="search-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input id="filterSearch" type="search" placeholder="Search chapter, lecture, link…" />
+        </div>
+      </div>
+
+      <div class="filter-field">
+        <label for="filterSubject">Subject</label>
+        <select id="filterSubject">
+          <option value="">All subjects</option>
+          <option>Accounting</option>
+          <option>Estimating &amp; Costing 1</option>
+          <option>Geotechnical Engineering</option>
+          <option>Surveying 2</option>
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="filterType">Type</label>
+        <select id="filterType">
+          <option value="">All types</option>
+          <option value="video">Video</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+
+      <button type="button" class="clear-btn" id="clearFilters" disabled>
+        ✕ Clear
+      </button>
+    </div>
+
+    <div class="result-info" id="resultInfo" style="display:none;"></div>
+
     <div id="listWrap">
-      <div class="empty">Loading…</div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
     </div>
   </div>
 
 <script>
-  const BASE = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+  /* =====================================================
+     CONFIG
+     ===================================================== */
+  const BASE  = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+  const TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
+  const HEADERS = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + TOKEN
+  };
 
-  const form        = document.getElementById('entryForm');
-  const submitBtn   = document.getElementById('submitBtn');
-  const msg         = document.getElementById('msg');
-  const listWrap    = document.getElementById('listWrap');
-  const refreshBtn  = document.getElementById('refreshBtn');
-  const editBanner  = document.getElementById('editBanner');
-  const editIdLabel = document.getElementById('editIdLabel');
-  const cancelBtn   = document.getElementById('cancelEditBtn');
-  const subtitle    = document.getElementById('formSubtitle');
+  const $ = (id) => document.getElementById(id);
+  const form        = $('entryForm');
+  const submitBtn   = $('submitBtn');
+  const listWrap    = $('listWrap');
+  const refreshBtn  = $('refreshBtn');
+  const editBanner  = $('editBanner');
+  const editIdLabel = $('editIdLabel');
+  const cancelBtn   = $('cancelEditBtn');
+  const subtitle    = $('formSubtitle');
+  const toasts      = $('toasts');
+  const countPill   = $('countPill');
+  const resultInfo  = $('resultInfo');
 
-  let editingId = null;
+  const filterSearch  = $('filterSearch');
+  const filterSubject = $('filterSubject');
+  const filterType    = $('filterType');
+  const clearFilters  = $('clearFilters');
+
+  const confirmOverlay = $('confirmOverlay');
+  const confirmTitle   = $('confirmTitle');
+  const confirmMessage = $('confirmMessage');
+  const confirmOk      = $('confirmOk');
+  const confirmCancel  = $('confirmCancel');
+
+  let editingId  = null;
   let cachedRows = [];
+  let visibleRows = [];
+  let isFetching = false;
 
-  function show(text, type) {
-    msg.textContent = text;
-    msg.className = 'msg ' + type;
-    if (type === 'ok') setTimeout(() => { msg.className = 'msg'; }, 2500);
-  }
-
+  /* =====================================================
+     UTIL
+     ===================================================== */
   function esc(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => (
       { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
     ));
   }
-
-  /* ---------- READ ---------- */
-  async function loadRows() {
-    listWrap.innerHTML = '<div class="empty">Loading…</div>';
-    try {
-      const res = await fetch(BASE);
-      const json = await res.json();
-      cachedRows = json.sheet1 || [];
-      renderList(cachedRows);
-    } catch (err) {
-      listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
-    }
+  function normalizeType(t) {
+    const v = String(t ?? '').trim().toLowerCase();
+    if (v === 'pdf')   return 'pdf';
+    if (v === 'video') return 'video';
+    return 'other';
+  }
+  function typeLabel(t) {
+    const v = String(t ?? '').trim();
+    return v ? v.toUpperCase() : '—';
+  }
+  function toast(message, type = 'ok', duration = 3000) {
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = `<span class="ico">${type === 'ok' ? '✅' : '❌'}</span><span>${esc(message)}</span>`;
+    toasts.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }, duration);
   }
 
+  /* =====================================================
+     FILTER LOGIC
+     ===================================================== */
+  function getFilters() {
+    return {
+      search:  filterSearch.value.trim().toLowerCase(),
+      subject: filterSubject.value,
+      type:    filterType.value
+    };
+  }
+  function hasActiveFilters(f) { return !!(f.search || f.subject || f.type); }
+
+  function applyFilters() {
+    const f = getFilters();
+
+    visibleRows = cachedRows.filter(row => {
+      if (f.subject && String(row.subject || '') !== f.subject) return false;
+      if (f.type && normalizeType(row.type) !== f.type) return false;
+      if (f.search) {
+        const hay = [row.subject, row.chapter, row.lecture, row.link]
+          .map(v => String(v ?? '').toLowerCase()).join(' ');
+        if (!hay.includes(f.search)) return false;
+      }
+      return true;
+    });
+
+    renderList(visibleRows);
+    updateFilterUI(f);
+  }
+
+  function updateFilterUI(f) {
+    clearFilters.disabled = !hasActiveFilters(f);
+
+    if (hasActiveFilters(f)) {
+      countPill.textContent = `${visibleRows.length}/${cachedRows.length}`;
+      countPill.classList.add('filtered');
+    } else {
+      countPill.textContent = cachedRows.length;
+      countPill.classList.remove('filtered');
+    }
+
+    const chips = [];
+    if (f.subject) chips.push({ key: 'subject', label: `Subject: ${f.subject}` });
+    if (f.type)    chips.push({ key: 'type',    label: `Type: ${f.type.toUpperCase()}` });
+    if (f.search)  chips.push({ key: 'search',  label: `"${filterSearch.value.trim()}"` });
+
+    if (!chips.length) {
+      resultInfo.style.display = 'none';
+      resultInfo.innerHTML = '';
+      return;
+    }
+    resultInfo.style.display = 'flex';
+    resultInfo.innerHTML = `
+      <span>Showing ${visibleRows.length} of ${cachedRows.length}</span>
+      ${chips.map(c => `
+        <span class="chip">
+          ${esc(c.label)}
+          <button type="button" data-clear-chip="${c.key}" aria-label="Remove filter">✕</button>
+        </span>
+      `).join('')}
+    `;
+    resultInfo.querySelectorAll('[data-clear-chip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.clearChip;
+        if (k === 'subject') filterSubject.value = '';
+        if (k === 'type')    filterType.value = '';
+        if (k === 'search')  filterSearch.value = '';
+        applyFilters();
+      });
+    });
+  }
+
+  function clearAllFilters() {
+    filterSearch.value = '';
+    filterSubject.value = '';
+    filterType.value = '';
+    applyFilters();
+  }
+
+  /* =====================================================
+     CONFIRM MODAL
+     ===================================================== */
+  function openConfirm({ title, message, confirmText = 'Delete' }) {
+    return new Promise((resolve) => {
+      confirmTitle.textContent = title;
+      confirmMessage.innerHTML = message;
+      confirmOk.textContent    = confirmText;
+      confirmOverlay.classList.add('active');
+      setTimeout(() => confirmOk.focus(), 60);
+
+      function cleanup() {
+        confirmOverlay.classList.remove('active');
+        confirmOk.removeEventListener('click', onOk);
+        confirmCancel.removeEventListener('click', onCancel);
+        confirmOverlay.removeEventListener('click', onOverlay);
+        document.removeEventListener('keydown', onKey);
+      }
+      function onOk()      { cleanup(); resolve(true); }
+      function onCancel()  { cleanup(); resolve(false); }
+      function onOverlay(e){ if (e.target === confirmOverlay) onCancel(); }
+      function onKey(e)    { if (e.key === 'Escape') onCancel(); }
+
+      confirmOk.addEventListener('click', onOk);
+      confirmCancel.addEventListener('click', onCancel);
+      confirmOverlay.addEventListener('click', onOverlay);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  /* =====================================================
+     RENDER
+     ===================================================== */
   function renderList(rows) {
     if (!rows.length) {
-      listWrap.innerHTML = '<div class="empty">No resources yet.</div>';
+      const f = getFilters();
+      const msg = hasActiveFilters(f)
+        ? 'No resources match your filters.'
+        : 'No resources yet. Add your first one above.';
+      listWrap.innerHTML = `
+        <div class="empty">
+          <span class="ico">${hasActiveFilters(f) ? '🔍' : '📚'}</span>
+          ${esc(msg)}
+        </div>
+      `;
       return;
     }
 
-    /* ----- Desktop table ----- */
     const tableHTML = `
       <table>
         <thead>
           <tr>
-            <th>Subject</th>
-            <th>Chapter</th>
-            <th>Lecture</th>
-            <th>Type</th>
-            <th>Link</th>
-            <th></th>
+            <th>Subject</th><th>Chapter</th><th>Lecture</th><th>Type</th><th>Link</th><th></th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(r => `
-            <tr>
-              <td>${esc(r.subject)}</td>
-              <td>${esc(r.chapter)}</td>
-              <td>${esc(r.lecture)}</td>
-              <td><span class="badge ${esc(r.type)}">${esc(r.type)}</span></td>
-              <td><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></td>
-              <td>
-                <div class="actions">
-                  <button class="edit-btn" data-edit="${r.id}">Edit</button>
-                  <button class="del-btn"  data-del="${r.id}">Delete</button>
-                </div>
-              </td>
-            </tr>
-          `).join('')}
+          ${rows.map(r => {
+            const t = normalizeType(r.type);
+            return `
+              <tr data-row-id="${r.id}" data-type="${t}">
+                <td>${esc(r.subject)}</td>
+                <td>${esc(r.chapter)}</td>
+                <td>${esc(r.lecture)}</td>
+                <td><span class="badge ${t}">${esc(typeLabel(r.type))}</span></td>
+                <td><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></td>
+                <td>
+                  <div class="actions">
+                    <button class="edit-btn" data-edit="${r.id}">Edit</button>
+                    <button class="del-btn"  data-del="${r.id}">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
         </tbody>
       </table>
     `;
 
-    /* ----- Mobile cards ----- */
     const cardsHTML = `
       <div class="row-cards">
-        ${rows.map(r => `
-          <div class="row-card">
-            <div class="top">
-              <div class="subject">${esc(r.subject)}</div>
-              <span class="badge ${esc(r.type)}">${esc(r.type)}</span>
+        ${rows.map(r => {
+          const t = normalizeType(r.type);
+          return `
+            <div class="row-card" data-row-id="${r.id}" data-type="${t}">
+              <div class="top">
+                <div class="subject">${esc(r.subject)}</div>
+                <span class="badge ${t}">${esc(typeLabel(r.type))}</span>
+              </div>
+              <div class="fields">
+                <div class="k">Chapter</div><div class="v">${esc(r.chapter)}</div>
+                <div class="k">Lecture</div><div class="v">${esc(r.lecture)}</div>
+                <div class="k">Link</div>
+                <div class="v"><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></div>
+              </div>
+              <div class="actions">
+                <button class="edit-btn" data-edit="${r.id}">Edit</button>
+                <button class="del-btn"  data-del="${r.id}">Delete</button>
+              </div>
             </div>
-            <div class="fields">
-              <div class="k">Chapter</div><div class="v">${esc(r.chapter)}</div>
-              <div class="k">Lecture</div><div class="v">${esc(r.lecture)}</div>
-              <div class="k">Link</div>
-              <div class="v"><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></div>
-            </div>
-            <div class="actions">
-              <button class="edit-btn" data-edit="${r.id}">Edit</button>
-              <button class="del-btn"  data-del="${r.id}">Delete</button>
-            </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     `;
 
     listWrap.innerHTML = tableHTML + cardsHTML;
 
-    listWrap.querySelectorAll('[data-edit]').forEach(btn => {
-      btn.addEventListener('click', () => startEdit(cachedRows.find(r => String(r.id) === btn.dataset.edit)));
-    });
-    listWrap.querySelectorAll('[data-del]').forEach(btn => {
-      btn.addEventListener('click', () => deleteRow(btn.dataset.del));
-    });
+    if (!listWrap.dataset.bound) {
+      listWrap.addEventListener('click', handleListClick);
+      listWrap.dataset.bound = '1';
+    }
   }
 
-  /* ---------- CREATE / UPDATE ---------- */
+  function handleListClick(e) {
+    const editBtn = e.target.closest('[data-edit]');
+    const delBtn  = e.target.closest('[data-del]');
+    if (editBtn) {
+      const row = cachedRows.find(r => String(r.id) === editBtn.dataset.edit);
+      startEdit(row);
+    }
+    if (delBtn) deleteRow(delBtn.dataset.del);
+  }
+
+  function showSkeleton() {
+    listWrap.innerHTML = `
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+    `;
+  }
+
+  /* =====================================================
+     READ
+     ===================================================== */
+  async function loadRows({ showSpinner = false } = {}) {
+    if (isFetching) return;
+    isFetching = true;
+    if (showSpinner) refreshBtn.classList.add('spinning');
+    else showSkeleton();
+
+    try {
+      const res = await fetch(BASE, { headers: HEADERS });
+      const json = await res.json();
+      cachedRows = json.sheet1 || [];
+      applyFilters();
+    } catch (err) {
+      listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
+      toast('Failed to load resources', 'err');
+    } finally {
+      isFetching = false;
+      setTimeout(() => refreshBtn.classList.remove('spinning'), 700);
+    }
+  }
+
+  /* =====================================================
+     CREATE / UPDATE
+     ===================================================== */
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (submitBtn.disabled) return;
+
+    const isEdit = !!editingId;
     submitBtn.disabled = true;
-    submitBtn.textContent = editingId ? 'Updating…' : 'Submitting…';
+    submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
+    setFormDisabled(true);
 
     const payload = {
       sheet1: {
@@ -456,48 +932,66 @@
     };
 
     try {
-      const url    = editingId ? `${BASE}/${editingId}` : BASE;
-      const method = editingId ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
+      const url    = isEdit ? `${BASE}/${editingId}` : BASE;
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(payload) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-      show(editingId ? '✅ Updated successfully!' : '✅ Added successfully!', 'ok');
+      const saved = json.sheet1;
+
+      if (isEdit) {
+        const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
+        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...payload.sheet1 };
+      } else {
+        cachedRows.push(saved);
+      }
+      applyFilters();
+
+      requestAnimationFrame(() => {
+        const el = listWrap.querySelector(`[data-row-id="${saved.id}"]`);
+        if (el) {
+          el.classList.add('flash');
+          setTimeout(() => el.classList.remove('flash'), 900);
+        }
+      });
+
+      toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
       resetForm();
-      loadRows();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error(err);
-      show('❌ ' + err.message, 'err');
+      toast(err.message, 'err', 4500);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = editingId ? 'Update' : 'Submit';
+      submitBtn.textContent = isEdit ? 'Update' : 'Submit';
+      setFormDisabled(false);
     }
   });
 
-  /* ---------- EDIT ---------- */
+  function setFormDisabled(disabled) {
+    ['subject','chapter','lecture','type','link'].forEach(id => {
+      form[id].disabled = disabled;
+    });
+  }
+
+  /* =====================================================
+     EDIT
+     ===================================================== */
   function startEdit(row) {
     if (!row) return;
     editingId = row.id;
-
     form.subject.value = row.subject || '';
     form.chapter.value = row.chapter || '';
     form.lecture.value = row.lecture || '';
-    form.type.value    = row.type    || '';
-    form.link.value    = row.link    || '';
-
+    form.type.value    = normalizeType(row.type) === 'other' ? '' : row.type;
+    form.link.value    = row.link || '';
     editIdLabel.textContent = '#' + row.id;
     editBanner.classList.add('active');
     submitBtn.textContent = 'Update';
     subtitle.textContent  = 'Editing an existing resource.';
-    msg.className = 'msg';
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    form.subject.focus();
+    setTimeout(() => form.subject.focus(), 300);
   }
 
   function resetForm() {
@@ -510,25 +1004,56 @@
 
   cancelBtn.addEventListener('click', resetForm);
 
-  /* ---------- DELETE ---------- */
+  /* =====================================================
+     DELETE
+     ===================================================== */
   async function deleteRow(id) {
-    if (!confirm(`Delete row #${id}? This cannot be undone.`)) return;
+    const row = cachedRows.find(r => String(r.id) === String(id));
+    const label = row ? `"${row.subject} — ${row.lecture}"` : `#${id}`;
+
+    const ok = await openConfirm({
+      title: 'Delete this row?',
+      message: `You're about to delete <strong>${esc(label)}</strong>. This action cannot be undone.`,
+      confirmText: 'Delete'
+    });
+    if (!ok) return;
+
+    const el = listWrap.querySelector(`[data-row-id="${id}"]`);
+    const backup = cachedRows.slice();
+
+    if (el) el.classList.add('removing');
+    cachedRows = cachedRows.filter(r => String(r.id) !== String(id));
+
+    setTimeout(() => {
+      applyFilters();
+      if (String(id) === String(editingId)) resetForm();
+    }, 250);
+
     try {
-      const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${BASE}/${id}`, { method: 'DELETE', headers: HEADERS });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
       }
-      if (String(id) === String(editingId)) resetForm();
-      loadRows();
+      toast('Deleted successfully', 'ok');
     } catch (err) {
       console.error(err);
-      alert('❌ Delete failed: ' + err.message);
+      cachedRows = backup;
+      applyFilters();
+      toast('Delete failed: ' + err.message, 'err', 4500);
     }
   }
 
-  /* ---------- INIT ---------- */
-  refreshBtn.addEventListener('click', loadRows);
+  /* =====================================================
+     INIT
+     ===================================================== */
+  refreshBtn.addEventListener('click', () => loadRows({ showSpinner: true }));
+
+  filterSearch.addEventListener('input', applyFilters);
+  filterSubject.addEventListener('change', applyFilters);
+  filterType.addEventListener('change', applyFilters);
+  clearFilters.addEventListener('click', clearAllFilters);
+
   loadRows();
 </script>
 </body>
