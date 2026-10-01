@@ -108,6 +108,29 @@
     background: #f7f9fc; color: var(--muted); cursor: not-allowed;
   }
 
+  /* Link field highlight when auto-filled */
+  #link.autofilled {
+    background: #f7fbff;
+    border-color: var(--pdf-bd);
+  }
+  #link.autofilled:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59,125,221,.14);
+  }
+  .link-hint {
+    font-size: .72rem;
+    color: var(--muted);
+    margin-top: 6px;
+    display: none;
+    align-items: center;
+    gap: 5px;
+  }
+  .link-hint.show { display: flex; }
+  .link-hint .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--pdf); flex-shrink: 0;
+  }
+
   /* ---------- Two-column row (Chapter + Lecture) ---------- */
   .form-row {
     display: grid;
@@ -116,7 +139,6 @@
     align-items: start;
   }
   .form-row .field { min-width: 0; }
-  /* First label in the row: keep the same top margin rhythm */
   .form-row .field > label { margin-top: 16px; }
 
   /* ---------- Buttons ---------- */
@@ -472,7 +494,6 @@
     .row-card .fields { grid-template-columns: 60px 1fr; font-size: .8125rem; }
     .filter-bar { grid-template-columns: 1fr; }
     .filter-field.search-field { grid-column: auto; }
-    /* Very narrow: still keep Chapter/Lecture side-by-side but tighter */
     .form-row { gap: 8px; }
     .form-row input { padding: 11px 10px; }
   }
@@ -540,6 +561,10 @@
       <label for="link">Link</label>
       <input id="link" name="link" type="url" required placeholder="https://…"
              inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <div class="link-hint" id="linkHint">
+        <span class="dot"></span>
+        <span>PDF folder prefilled — just add the filename (e.g. <strong>s2c1l1.pdf</strong>)</span>
+      </div>
 
       <button type="submit" class="submit-btn" id="submitBtn">Submit</button>
     </form>
@@ -619,6 +644,9 @@
     'Authorization': 'Bearer ' + TOKEN
   };
 
+  /* Auto-fill base for PDF links */
+  const PDF_BASE = 'https://ots.zya.me/pdf/';
+
   const $ = (id) => document.getElementById(id);
   const form        = $('entryForm');
   const submitBtn   = $('submitBtn');
@@ -631,6 +659,7 @@
   const toasts      = $('toasts');
   const countPill   = $('countPill');
   const resultInfo  = $('resultInfo');
+  const linkHint    = $('linkHint');
 
   const filterSearch  = $('filterSearch');
   const filterSubject = $('filterSubject');
@@ -643,10 +672,10 @@
   const confirmOk      = $('confirmOk');
   const confirmCancel  = $('confirmCancel');
 
-  let editingId  = null;
-  let cachedRows = [];
+  let editingId   = null;
+  let cachedRows  = [];
   let visibleRows = [];
-  let isFetching = false;
+  let isFetching  = false;
 
   /* =====================================================
      UTIL
@@ -678,6 +707,59 @@
   }
 
   /* =====================================================
+     PDF LINK AUTO-FILL
+     ===================================================== */
+  /**
+   * When user picks "PDF" in the type dropdown:
+   *  - If link is empty OR was already an auto-filled PDF base, set it to PDF_BASE
+   *  - Cursor jumps to end so user can type just the filename
+   * When user picks "Video":
+   *  - If link equals PDF_BASE exactly (untouched), clear it
+   *  - If link starts with PDF_BASE but has extra text, leave it alone (user typed something)
+   */
+  function handleTypeChange() {
+    const type = normalizeType(form.type.value);
+    const current = form.link.value;
+
+    if (type === 'pdf') {
+      // Only prefill if empty or still the bare prefix
+      if (!current || current === PDF_BASE || current.startsWith(PDF_BASE) === false && current.length === 0) {
+        form.link.value = PDF_BASE;
+        form.link.classList.add('autofilled');
+        linkHint.classList.add('show');
+        // Put caret at end so user types filename directly
+        requestAnimationFrame(() => {
+          form.link.focus();
+          try { form.link.setSelectionRange(form.link.value.length, form.link.value.length); } catch(_) {}
+        });
+      } else {
+        form.link.classList.remove('autofilled');
+        linkHint.classList.remove('show');
+      }
+    } else {
+      // Not PDF
+      if (current === PDF_BASE) {
+        form.link.value = '';
+      }
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+  }
+
+  /* Clear the "autofilled" look as soon as user edits the link */
+  form.link.addEventListener('input', () => {
+    if (form.link.value === PDF_BASE) {
+      form.link.classList.add('autofilled');
+      linkHint.classList.add('show');
+    } else {
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+  });
+
+  form.type.addEventListener('change', handleTypeChange);
+
+  /* =====================================================
      FILTER LOGIC
      ===================================================== */
   function getFilters() {
@@ -691,7 +773,6 @@
 
   function applyFilters() {
     const f = getFilters();
-
     visibleRows = cachedRows.filter(row => {
       if (f.subject && String(row.subject || '') !== f.subject) return false;
       if (f.type && normalizeType(row.type) !== f.type) return false;
@@ -702,7 +783,6 @@
       }
       return true;
     });
-
     renderList(visibleRows);
     updateFilterUI(f);
   }
@@ -986,6 +1066,16 @@
     form.lecture.value = row.lecture || '';
     form.type.value    = normalizeType(row.type) === 'other' ? '' : row.type;
     form.link.value    = row.link || '';
+
+    // Sync the auto-fill visual state when editing
+    if (normalizeType(row.type) === 'pdf' && form.link.value === PDF_BASE) {
+      form.link.classList.add('autofilled');
+      linkHint.classList.add('show');
+    } else {
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+
     editIdLabel.textContent = '#' + row.id;
     editBanner.classList.add('active');
     submitBtn.textContent = 'Update';
@@ -997,6 +1087,8 @@
   function resetForm() {
     editingId = null;
     form.reset();
+    form.link.classList.remove('autofilled');
+    linkHint.classList.remove('show');
     editBanner.classList.remove('active');
     submitBtn.textContent = 'Submit';
     subtitle.textContent  = 'Add a new lecture resource.';
