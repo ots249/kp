@@ -2,82 +2,285 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Civil 4th Diploma Tutor — Add Resource</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#3b7ddd" />
+<title>Civil 4th Diploma Tutor — Manage Resources</title>
 <style>
-  * { box-sizing: border-box; }
+  :root {
+    --bg: #f4f6f8;
+    --card: #fff;
+    --border: #d3dae3;
+    --border-soft: #eef2f7;
+    --text: #1a2b45;
+    --muted: #6b7a90;
+    --primary: #3b7ddd;
+    --primary-dark: #2f66b8;
+    --danger: #b42318;
+    --ok-bg: #e6f7ed;
+    --ok-fg: #1b7a43;
+    --err-bg: #fdecec;
+    --radius: 12px;
+    --shadow: 0 4px 20px rgba(0,0,0,.08);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
   body {
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 40px 16px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+    padding: 16px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-height: 100vh;
   }
+
   .card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.08);
-    padding: 32px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
     width: 100%;
-    max-width: 480px;
+    max-width: 720px;
   }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; color: #1a2b45; }
-  p.sub { color: #6b7a90; margin: 0 0 24px; font-size: .9rem; }
+
+  h1 { font-size: 1.25rem; margin: 0 0 4px; color: var(--text); }
+  h2 { font-size: 1.05rem; margin: 0 0 12px; color: var(--text); }
+  p.sub { color: var(--muted); margin: 0 0 16px; font-size: .875rem; }
+
+  /* ----- Form ----- */
   label {
     display: block;
-    font-size: .8rem;
-    font-weight: 600;
+    font-size: .75rem;
+    font-weight: 700;
     color: #34455c;
-    margin: 16px 0 6px;
+    margin: 14px 0 6px;
     text-transform: uppercase;
     letter-spacing: .04em;
   }
+
   input, select {
     width: 100%;
-    padding: 11px 12px;
-    border: 1px solid #d3dae3;
-    border-radius: 8px;
-    font-size: 1rem;
+    /* 16px prevents iOS auto-zoom on focus */
+    font-size: 16px;
     font-family: inherit;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     background: #fff;
+    color: var(--text);
     transition: border-color .15s, box-shadow .15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7a90' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
   }
   input:focus, select:focus {
     outline: none;
-    border-color: #3b7ddd;
+    border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(59,125,221,.15);
   }
+
+  /* ----- Buttons ----- */
   button {
-    margin-top: 24px;
-    width: 100%;
-    padding: 13px;
-    background: #3b7ddd;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
+    font-family: inherit;
     cursor: pointer;
-    transition: background .15s;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: background .15s, transform .05s;
   }
-  button:hover:not(:disabled) { background: #2f66b8; }
-  button:disabled { background: #9db6d6; cursor: not-allowed; }
+  button:active:not(:disabled) { transform: scale(.985); }
+
+  .submit-btn {
+    margin-top: 20px;
+    width: 100%;
+    /* 48px+ touch target */
+    padding: 14px;
+    font-size: 1rem;
+    background: var(--primary);
+    color: #fff;
+    min-height: 48px;
+  }
+  .submit-btn:hover:not(:disabled) { background: var(--primary-dark); }
+  .submit-btn:disabled { background: #9db6d6; cursor: not-allowed; }
+
+  /* ----- Messages ----- */
   .msg {
-    margin-top: 18px;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: .9rem;
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: .875rem;
     display: none;
+    word-break: break-word;
   }
-  .msg.ok  { background: #e6f7ed; color: #1b7a43; display: block; }
-  .msg.err { background: #fdecec; color: #b42318; display: block; }
+  .msg.ok  { background: var(--ok-bg); color: var(--ok-fg); display: block; }
+  .msg.err { background: var(--err-bg); color: var(--danger); display: block; }
+
+  /* ----- Edit banner ----- */
+  .editing {
+    background: #fff8e6;
+    border: 1px solid #f0d999;
+    color: #7a5a00;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-size: .875rem;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .editing.active { display: flex; }
+  .editing button {
+    padding: 8px 14px;
+    font-size: .8125rem;
+    background: #7a5a00;
+    color: #fff;
+    min-height: 36px;
+  }
+  .editing button:hover { background: #5c4400; }
+
+  /* ----- List toolbar ----- */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar h2 { margin: 0; }
+  .refresh {
+    padding: 9px 14px;
+    font-size: .8125rem;
+    background: var(--border-soft);
+    color: #34455c;
+    min-height: 40px;
+  }
+  .refresh:hover { background: #dde5ee; }
+
+  /* ----- Table (desktop) ----- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+  }
+  th {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  td a { color: var(--primary); word-break: break-all; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: capitalize;
+  }
+  .badge.video { background: #e7f0fd; color: #1c5fb8; }
+  .badge.pdf   { background: #fdeee7; color: #b8521c; }
+
+  .actions { display: flex; gap: 6px; white-space: nowrap; }
+  .actions button {
+    padding: 8px 12px;
+    font-size: .8rem;
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  .edit-btn   { background: var(--border-soft); color: #34455c; }
+  .edit-btn:hover { background: #dde5ee; }
+  .del-btn    { background: var(--err-bg); color: var(--danger); }
+  .del-btn:hover { background: #f9d7d7; }
+
+  .empty { color: var(--muted); padding: 28px 0; text-align: center; font-size: .9rem; }
+
+  /* ----- Mobile card list (hidden on desktop by default) ----- */
+  .row-cards { display: none; }
+  .row-card {
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 10px;
+    background: #fbfcfe;
+  }
+  .row-card .top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .row-card .subject {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+  .row-card .fields {
+    display: grid;
+    grid-template-columns: 72px 1fr;
+    gap: 6px 10px;
+    font-size: .875rem;
+    margin-bottom: 12px;
+  }
+  .row-card .fields .k { color: var(--muted); font-weight: 600; }
+  .row-card .fields .v { color: var(--text); word-break: break-word; }
+  .row-card .fields .v a { color: var(--primary); word-break: break-all; }
+  .row-card .actions { gap: 8px; }
+  .row-card .actions button {
+    flex: 1;
+    padding: 10px;
+    font-size: .85rem;
+    min-height: 42px;
+  }
+
+  /* ----- Responsive switch ----- */
+  @media (max-width: 640px) {
+    body { padding: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); gap: 12px; }
+    .card { padding: 18px 16px; border-radius: 14px; }
+    h1 { font-size: 1.15rem; }
+    h2 { font-size: 1rem; }
+    table, thead, tbody, th, td, tr { display: none; } /* hide real table */
+    .row-cards { display: block; }                     /* show cards */
+  }
+
+  @media (max-width: 360px) {
+    .row-card .fields { grid-template-columns: 60px 1fr; font-size: .8125rem; }
+  }
 </style>
 </head>
 <body>
+
+  <!-- FORM -->
   <div class="card">
     <h1>Civil 4th Diploma Tutor</h1>
-    <p class="sub">Add a new lecture resource.</p>
+    <p class="sub" id="formSubtitle">Add a new lecture resource.</p>
+
+    <div class="editing" id="editBanner">
+      <span>✏️ Editing row <strong id="editIdLabel"></strong></span>
+      <button type="button" id="cancelEditBtn">Cancel</button>
+    </div>
 
     <form id="entryForm">
       <label for="subject">Subject</label>
@@ -103,31 +306,146 @@
       </select>
 
       <label for="link">Link</label>
-      <input id="link" name="link" type="url" required placeholder="https://…" />
+      <input id="link" name="link" type="url" required placeholder="https://…"
+             inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" />
 
-      <button type="submit" id="submitBtn">Submit</button>
+      <button type="submit" class="submit-btn" id="submitBtn">Submit</button>
       <div class="msg" id="msg"></div>
     </form>
   </div>
 
+  <!-- LIST -->
+  <div class="card">
+    <div class="toolbar">
+      <h2>All Resources</h2>
+      <button type="button" class="refresh" id="refreshBtn">↻ Refresh</button>
+    </div>
+    <div id="listWrap">
+      <div class="empty">Loading…</div>
+    </div>
+  </div>
+
 <script>
-  const URL  = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
-  const form = document.getElementById('entryForm');
-  const btn  = document.getElementById('submitBtn');
-  const msg  = document.getElementById('msg');
+  const BASE = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+
+  const form        = document.getElementById('entryForm');
+  const submitBtn   = document.getElementById('submitBtn');
+  const msg         = document.getElementById('msg');
+  const listWrap    = document.getElementById('listWrap');
+  const refreshBtn  = document.getElementById('refreshBtn');
+  const editBanner  = document.getElementById('editBanner');
+  const editIdLabel = document.getElementById('editIdLabel');
+  const cancelBtn   = document.getElementById('cancelEditBtn');
+  const subtitle    = document.getElementById('formSubtitle');
+
+  let editingId = null;
+  let cachedRows = [];
 
   function show(text, type) {
     msg.textContent = text;
     msg.className = 'msg ' + type;
+    if (type === 'ok') setTimeout(() => { msg.className = 'msg'; }, 2500);
   }
 
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => (
+      { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+    ));
+  }
+
+  /* ---------- READ ---------- */
+  async function loadRows() {
+    listWrap.innerHTML = '<div class="empty">Loading…</div>';
+    try {
+      const res = await fetch(BASE);
+      const json = await res.json();
+      cachedRows = json.sheet1 || [];
+      renderList(cachedRows);
+    } catch (err) {
+      listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderList(rows) {
+    if (!rows.length) {
+      listWrap.innerHTML = '<div class="empty">No resources yet.</div>';
+      return;
+    }
+
+    /* ----- Desktop table ----- */
+    const tableHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Chapter</th>
+            <th>Lecture</th>
+            <th>Type</th>
+            <th>Link</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>${esc(r.subject)}</td>
+              <td>${esc(r.chapter)}</td>
+              <td>${esc(r.lecture)}</td>
+              <td><span class="badge ${esc(r.type)}">${esc(r.type)}</span></td>
+              <td><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></td>
+              <td>
+                <div class="actions">
+                  <button class="edit-btn" data-edit="${r.id}">Edit</button>
+                  <button class="del-btn"  data-del="${r.id}">Delete</button>
+                </div>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    /* ----- Mobile cards ----- */
+    const cardsHTML = `
+      <div class="row-cards">
+        ${rows.map(r => `
+          <div class="row-card">
+            <div class="top">
+              <div class="subject">${esc(r.subject)}</div>
+              <span class="badge ${esc(r.type)}">${esc(r.type)}</span>
+            </div>
+            <div class="fields">
+              <div class="k">Chapter</div><div class="v">${esc(r.chapter)}</div>
+              <div class="k">Lecture</div><div class="v">${esc(r.lecture)}</div>
+              <div class="k">Link</div>
+              <div class="v"><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></div>
+            </div>
+            <div class="actions">
+              <button class="edit-btn" data-edit="${r.id}">Edit</button>
+              <button class="del-btn"  data-del="${r.id}">Delete</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    listWrap.innerHTML = tableHTML + cardsHTML;
+
+    listWrap.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => startEdit(cachedRows.find(r => String(r.id) === btn.dataset.edit)));
+    });
+    listWrap.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', () => deleteRow(btn.dataset.del));
+    });
+  }
+
+  /* ---------- CREATE / UPDATE ---------- */
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    btn.disabled = true;
-    btn.textContent = 'Submitting…';
-    msg.className = 'msg';
+    submitBtn.disabled = true;
+    submitBtn.textContent = editingId ? 'Updating…' : 'Submitting…';
 
-    const body = {
+    const payload = {
       sheet1: {
         subject: form.subject.value,
         chapter: form.chapter.value.trim(),
@@ -138,29 +456,80 @@
     };
 
     try {
-      const res = await fetch(URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-          // 'Authorization': 'Bearer YOUR_TOKEN'  // uncomment if sheet is private
-        },
-        body: JSON.stringify(body)
+      const url    = editingId ? `${BASE}/${editingId}` : BASE;
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
 
-      console.log('Created row:', json.sheet1);
-      show('✅ Added successfully!', 'ok');
-      form.reset();
+      show(editingId ? '✅ Updated successfully!' : '✅ Added successfully!', 'ok');
+      resetForm();
+      loadRows();
     } catch (err) {
       console.error(err);
       show('❌ ' + err.message, 'err');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Submit';
+      submitBtn.disabled = false;
+      submitBtn.textContent = editingId ? 'Update' : 'Submit';
     }
   });
+
+  /* ---------- EDIT ---------- */
+  function startEdit(row) {
+    if (!row) return;
+    editingId = row.id;
+
+    form.subject.value = row.subject || '';
+    form.chapter.value = row.chapter || '';
+    form.lecture.value = row.lecture || '';
+    form.type.value    = row.type    || '';
+    form.link.value    = row.link    || '';
+
+    editIdLabel.textContent = '#' + row.id;
+    editBanner.classList.add('active');
+    submitBtn.textContent = 'Update';
+    subtitle.textContent  = 'Editing an existing resource.';
+    msg.className = 'msg';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    form.subject.focus();
+  }
+
+  function resetForm() {
+    editingId = null;
+    form.reset();
+    editBanner.classList.remove('active');
+    submitBtn.textContent = 'Submit';
+    subtitle.textContent  = 'Add a new lecture resource.';
+  }
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  /* ---------- DELETE ---------- */
+  async function deleteRow(id) {
+    if (!confirm(`Delete row #${id}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      if (String(id) === String(editingId)) resetForm();
+      loadRows();
+    } catch (err) {
+      console.error(err);
+      alert('❌ Delete failed: ' + err.message);
+    }
+  }
+
+  /* ---------- INIT ---------- */
+  refreshBtn.addEventListener('click', loadRows);
+  loadRows();
 </script>
 </body>
 </html>
