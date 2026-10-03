@@ -489,7 +489,6 @@ window.toggleComplete = function(itemId, checkbox, event) {
     updateOverallProgress();
 };
 
-// Auto-mark completed (from video watch 90%)
 function markCompletedAuto(itemId) {
     if (completedItems[itemId]) return false;
     
@@ -509,7 +508,6 @@ function markCompletedAuto(itemId) {
     return true;
 }
 
-// Completion burst animation
 function showCompletionBurst(element) {
     const burst = document.createElement('div');
     burst.textContent = '✓';
@@ -646,7 +644,8 @@ window.openPDFViewer = function(pdfUrl, title) {
             @keyframes pdfFadeIn { from { opacity: 0; } to { opacity: 1; } }
             body.pdf-overlay-open { overflow: hidden !important; }
             #pdf-overlay-viewer {
-                position: fixed; inset: 0; background: #f1f5f9; z-index: 999999;
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: #f1f5f9; z-index: 999999;
                 display: flex; flex-direction: column; animation: pdfFadeIn 0.25s ease;
             }
             #pdf-overlay-viewer .pdf-toolbar {
@@ -730,7 +729,7 @@ window.openPDFViewer = function(pdfUrl, title) {
 };
 
 // ============================================================
-// ▶️ YouTube Player — IFrame API (with 90% auto-complete)
+// ▶️ YouTube Player — IFrame API (FULLSCREEN FIXED)
 // ============================================================
 window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     const videoId = extractYouTubeVideoId(videoUrl);
@@ -756,8 +755,13 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             body.yt-overlay-open { overflow: hidden !important; }
             
             #yt-overlay-player {
-                position: fixed; inset: 0; background: #000; z-index: 999999;
-                display: flex; flex-direction: column; animation: ytFadeIn 0.25s ease;
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: #000;
+                z-index: 999999;
+                display: flex;
+                flex-direction: column;
+                animation: ytFadeIn 0.25s ease;
             }
             #yt-overlay-player .yt-toolbar {
                 background: #1a1a1a; padding: 0.6rem 1rem;
@@ -794,15 +798,19 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             #yt-overlay-player .yt-btn.yt-yt-btn:hover { background: #cc0000; }
             
             #yt-overlay-player .yt-video-wrap {
-                flex: 1; position: relative; background: #000;
-                min-height: 0; overflow: hidden;
+                flex: 1;
+                position: relative;
+                background: #000;
+                min-height: 0;
+                overflow: hidden;
             }
             #yt-overlay-player #yt-player-container {
-                position: absolute; inset: 0; width: 100%; height: 100%;
+                position: absolute;
+                top: 0; left: 0;
+                width: 100%;
+                height: 100%;
             }
-            #yt-overlay-player #yt-player-container iframe {
-                width: 100% !important; height: 100% !important;
-            }
+            /* ⚠️ iframe-এ width/height force করা হচ্ছে না — YouTube নিজে manage করবে */
             
             #yt-overlay-player .yt-progress-info {
                 background: #111; padding: 0.5rem 1rem;
@@ -885,14 +893,16 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     let progressCheckInterval = null;
     let completedFlag = false;
     
-    // Resume from last position if 90% দেখা হয়নি
     const savedProgress = videoWatchProgress[itemId] || 0;
     const startSeconds = (savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) 
         ? Math.floor(savedProgress * 60 * 60) 
         : 0;
     
+    // ✅ width/height '100%' — YouTube নিজে size handle করবে
     player = new YT.Player('yt-player-container', {
         videoId: videoId,
+        width: '100%',
+        height: '100%',
         playerVars: {
             'autoplay': 1,
             'rel': 0,
@@ -962,7 +972,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             saveVideoProgress();
         }
         
-        // ✅ 90% হলে auto-complete
         if ((percentage >= COMPLETION_THRESHOLD || forceComplete) && !completedFlag) {
             completedFlag = true;
             
@@ -1003,7 +1012,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     }
     
     function closeOverlay() {
-        // Save final progress
         if (player && player.getCurrentTime && player.getDuration) {
             try {
                 const duration = player.getDuration();
@@ -1290,7 +1298,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
     
-    // ✅ Preload YouTube IFrame API
     loadYouTubeIframeAPI();
     
     loadSections();
