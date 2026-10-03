@@ -29,14 +29,53 @@ const API_ENDPOINTS = [
 // ============================================================
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 
+// ✅ Video completion threshold (90%)
+const COMPLETION_THRESHOLD = 0.90;
+
 // Complete status tracking
 let completedItems = {};
+
+// Video watch progress tracking (0-1)
+let videoWatchProgress = {};
 
 // Cache for video durations
 let videoDurationCache = {};
 
 // Debounce timer for cache save
 let cacheSaveTimer = null;
+
+// ============================================================
+// 📺 YouTube IFrame API Loader
+// ============================================================
+let ytApiReady = false;
+let ytApiReadyCallbacks = [];
+
+function loadYouTubeIframeAPI() {
+    if (window.YT && window.YT.Player) {
+        ytApiReady = true;
+        ytApiReadyCallbacks.forEach(cb => cb());
+        ytApiReadyCallbacks = [];
+        return Promise.resolve();
+    }
+    
+    return new Promise((resolve) => {
+        ytApiReadyCallbacks.push(resolve);
+        
+        if (document.getElementById('yt-iframe-api-script')) return;
+        
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-api-script';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    });
+}
+
+// YouTube API global callback
+window.onYouTubeIframeAPIReady = function() {
+    ytApiReady = true;
+    ytApiReadyCallbacks.forEach(cb => cb());
+    ytApiReadyCallbacks = [];
+};
 
 // ============================================================
 // 💾 localStorage লোড/সেভ
@@ -59,12 +98,28 @@ function saveCompletedItems() {
     }
 }
 
+function loadVideoProgress() {
+    try {
+        const saved = localStorage.getItem('videoWatchProgress');
+        if (saved) videoWatchProgress = JSON.parse(saved);
+    } catch (error) {
+        videoWatchProgress = {};
+    }
+}
+
+function saveVideoProgress() {
+    try {
+        localStorage.setItem('videoWatchProgress', JSON.stringify(videoWatchProgress));
+    } catch (error) {
+        console.error('Error saving video progress:', error);
+    }
+}
+
 function loadVideoDurationCache() {
     try {
         const saved = localStorage.getItem('videoDurationCache');
         if (saved) videoDurationCache = JSON.parse(saved);
     } catch (error) {
-        console.error('Error loading video duration cache:', error);
         videoDurationCache = {};
     }
 }
@@ -78,6 +133,76 @@ function saveVideoDurationCache() {
             console.error('Error saving video duration cache:', error);
         }
     }, 1000);
+}
+
+// ============================================================
+// 🔓 Lecture Lock/Unlock System
+// ============================================================
+// Rule: Lecture N unlock হবে যদি Lecture N-1 সম্পন্ন হয়
+//       প্রথম lecture সবসময় unlocked
+
+let lectureUnlockState = {};
+
+function loadUnlockState() {
+    try {
+        const saved = localStorage.getItem('lectureUnlockState');
+        if (saved) lectureUnlockState = JSON.parse(saved);
+    } catch (error) {
+        lectureUnlockState = {};
+    }
+}
+
+function saveUnlockState() {
+    try {
+        localStorage.setItem('lectureUnlockState', JSON.stringify(lectureUnlockState));
+    } catch (error) {
+        console.error('Error saving unlock state:', error);
+    }
+}
+
+// সব lecture-এর ordered list তৈরি করি
+function getAllLecturesOrdered(sections) {
+    const ordered = [];
+    sections.forEach(section => {
+        (section.contents || []).forEach(content => {
+            ordered.push({
+                sectionId: section.id,
+                sectionTitle: section.title,
+                contentId: content.id,
+                title: content.title,
+                link: content.link || (content.resource && content.resource.resourceable && content.resource.resourceable.link) || '#'
+            });
+        });
+    });
+    return ordered;
+}
+
+// কোনো lecture unlocked কিনা চেক
+function isLectureUnlocked(itemId, allLectures) {
+    const index = allLectures.findIndex(l => getContentItemId(l, allLectures) === itemId);
+    if (index <= 0) return true; // প্রথম lecture unlocked
+    
+    // আগের lecture completed কিনা চেক
+    const prev = allLectures[index - 1];
+    const prevId = getContentItemId(prev, allLectures);
+    return completedItems[prevId] === true;
+}
+
+// Content item ID generator (displaySections এর সাথে consistent)
+function getContentItemId(lecture, allLectures) {
+    const idx = allLectures.indexOf(lecture);
+    return `section_${lecture.sectionId}_content_${lecture.contentId}_${lecture.title.replace(/\s+/g, '_')}`;
+}
+
+// সব unlock state refresh করি
+function refreshUnlockStates(sections) {
+    const allLectures = getAllLecturesOrdered(sections);
+    allLectures.forEach(lecture => {
+        const id = getContentItemId(lecture, allLectures);
+        lectureUnlockState[id] = isLectureUnlocked(id, allLectures);
+    });
+    saveUnlockState();
+    return allLectures;
 }
 
 // ============================================================
@@ -96,7 +221,6 @@ function fetchWithTimeout(url, timeoutMs = 10000) {
 // ============================================================
 function normalizeApiResponse(data, apiName) {
     if (!data) return null;
-    
     if (data.success && Array.isArray(data.classes)) return data.classes;
     if (Array.isArray(data.classes)) return data.classes;
     if (Array.isArray(data)) return data;
@@ -110,8 +234,6 @@ function normalizeApiResponse(data, apiName) {
             }
         }
     }
-    
-    console.warn(`⚠️ ${apiName}: unknown response format`, data);
     return null;
 }
 
@@ -223,7 +345,6 @@ function transformClassesToSections(classes) {
 // ============================================================
 function extractYouTubeVideoId(url) {
     let videoId = '';
-    
     if (!url) return '';
     
     if (url.includes('youtu.be/')) {
@@ -258,7 +379,6 @@ function formatDuration(duration) {
     const seconds = (match[3] || '').replace('S', '');
     
     let result = '';
-    
     if (hours) {
         result += `${hours.padStart(2, '0')}:`;
         result += `${(minutes || '0').padStart(2, '0')}:`;
@@ -269,7 +389,6 @@ function formatDuration(duration) {
     } else {
         result = `00:${(seconds || '0').padStart(2, '0')}`;
     }
-    
     return result;
 }
 
@@ -292,7 +411,6 @@ async function getVideoDurationsBatch(videoIds) {
     if (uncachedIds.length === 0) return result;
     
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-        console.warn('⚠️ YouTube API Key সেট করা নেই');
         uncachedIds.forEach(id => result[id] = '--:--');
         return result;
     }
@@ -303,13 +421,10 @@ async function getVideoDurationsBatch(videoIds) {
         
         try {
             const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${chunk.join(',')}&key=${YOUTUBE_API_KEY}`;
-            console.log(`📡 YouTube API batch call: ${chunk.length}টি ভিডিও`);
-            
             const response = await fetch(apiUrl);
             const data = await response.json();
             
             if (!response.ok || data.error) {
-                console.error('❌ YouTube API Error:', data.error);
                 chunk.forEach(id => result[id] = '--:--');
                 continue;
             }
@@ -325,9 +440,7 @@ async function getVideoDurationsBatch(videoIds) {
             }
             
             chunk.forEach(id => {
-                if (!foundIds.has(id)) {
-                    result[id] = '--:--';
-                }
+                if (!foundIds.has(id)) result[id] = '--:--';
             });
             
         } catch (error) {
@@ -345,15 +458,13 @@ async function getVideoDurationsBatch(videoIds) {
 // ============================================================
 async function updateAllVideoDurations() {
     const videoItems = document.querySelectorAll('.content-item .fa-youtube');
-    
     const itemsWithId = [];
     const allIds = [];
     
     videoItems.forEach(videoIcon => {
         const contentItem = videoIcon.closest('.content-item');
         const linkIcon = contentItem.querySelector('.link-icon');
-        
-        let videoLink = contentItem.dataset.link || '';
+        const videoLink = contentItem.dataset.link || '';
         
         if (videoLink) {
             const videoId = extractYouTubeVideoId(videoLink);
@@ -365,15 +476,11 @@ async function updateAllVideoDurations() {
                     durationSpan = document.createElement('span');
                     durationSpan.className = 'video-duration';
                     
-                    if (linkIcon) {
-                        contentItem.insertBefore(durationSpan, linkIcon);
-                    } else {
-                        contentItem.appendChild(durationSpan);
-                    }
+                    if (linkIcon) contentItem.insertBefore(durationSpan, linkIcon);
+                    else contentItem.appendChild(durationSpan);
                 }
                 
                 durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
                 itemsWithId.push({ videoId, durationSpan });
                 allIds.push(videoId);
             }
@@ -432,17 +539,15 @@ function showNotification(message, type = 'success') {
 }
 
 // ============================================================
-// ✅ Complete toggle
+// ✅ Complete toggle (manual)
 // ============================================================
 window.toggleComplete = function(itemId, checkbox, event) {
     if (event) event.stopPropagation();
     
     if (checkbox.checked) {
         completedItems[itemId] = true;
-        showNotification('✓ সম্পন্ন হিসেবে চিহ্নিত করা হয়েছে', 'success');
     } else {
         delete completedItems[itemId];
-        showNotification('সম্পন্ন চিহ্নিত করা সরানো হয়েছে', 'info');
     }
     saveCompletedItems();
     
@@ -454,7 +559,63 @@ window.toggleComplete = function(itemId, checkbox, event) {
     
     updateSectionProgress(checkbox.closest('.section-card'));
     updateOverallProgress();
+    
+    // ✅ Unlock state refresh
+    if (window._currentSections) {
+        refreshUnlockStates(window._currentSections);
+        updateLockStatesInUI();
+    }
 };
+
+// Mark completed automatically (from video watch)
+function markCompletedAuto(itemId) {
+    if (completedItems[itemId]) return false; // already completed
+    
+    completedItems[itemId] = true;
+    saveCompletedItems();
+    
+    // Update UI
+    const contentItem = document.querySelector(`.content-item[data-item-id="${CSS.escape(itemId)}"]`);
+    if (contentItem) {
+        const checkbox = contentItem.querySelector('.complete-checkbox');
+        if (checkbox) checkbox.checked = true;
+        contentItem.classList.add('completed');
+        
+        // Show check animation
+        showCompletionBurst(contentItem);
+    }
+    
+    // Refresh unlock
+    if (window._currentSections) {
+        refreshUnlockStates(window._currentSections);
+        updateLockStatesInUI();
+    }
+    
+    updateAllProgress();
+    return true;
+}
+
+// Completion burst animation
+function showCompletionBurst(element) {
+    const burst = document.createElement('div');
+    burst.textContent = '✓';
+    burst.style.cssText = `
+        position: fixed;
+        z-index: 99998;
+        font-size: 2rem;
+        color: #10b981;
+        font-weight: bold;
+        pointer-events: none;
+        animation: completeBurst 1s ease forwards;
+    `;
+    
+    const rect = element.getBoundingClientRect();
+    burst.style.left = (rect.left + 20) + 'px';
+    burst.style.top = (rect.top + rect.height / 2) + 'px';
+    
+    document.body.appendChild(burst);
+    setTimeout(() => burst.remove(), 1000);
+}
 
 // ============================================================
 // 📊 Progress
@@ -500,6 +661,35 @@ function updateAllProgress() {
         updateSectionProgress(section);
     });
     updateOverallProgress();
+}
+
+// ============================================================
+// 🔒 Update lock icons in UI
+// ============================================================
+function updateLockStatesInUI() {
+    document.querySelectorAll('.content-item').forEach(item => {
+        const itemId = item.dataset.itemId;
+        const isVideo = item.dataset.type === 'video';
+        
+        if (!isVideo) return;
+        
+        const unlocked = lectureUnlockState[itemId] !== false;
+        const isCompleted = completedItems[itemId] === true;
+        
+        if (unlocked) {
+            item.classList.remove('locked');
+            const lockIcon = item.querySelector('.lock-icon');
+            if (lockIcon) lockIcon.remove();
+        } else {
+            item.classList.add('locked');
+            if (!item.querySelector('.lock-icon')) {
+                const lockIcon = document.createElement('i');
+                lockIcon.className = 'fas fa-lock lock-icon';
+                lockIcon.title = 'আগের লেকচার সম্পন্ন করুন';
+                item.appendChild(lockIcon);
+            }
+        }
+    });
 }
 
 // ============================================================
@@ -561,107 +751,50 @@ window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
     const safeTitle = escapeHtml(title);
     
-    // পুরনো overlay সরাই
     const existing = document.getElementById('pdf-overlay-viewer');
     if (existing) existing.remove();
     
-    // Style inject একবার
     if (!document.getElementById('pdf-overlay-style')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'pdf-overlay-style';
         styleEl.textContent = `
-            @keyframes pdfFadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
+            @keyframes pdfFadeIn { from { opacity: 0; } to { opacity: 1; } }
             body.pdf-overlay-open { overflow: hidden !important; }
-            
             #pdf-overlay-viewer {
-                position: fixed;
-                inset: 0;
-                background: #f1f5f9;
-                z-index: 999999;
-                display: flex;
-                flex-direction: column;
-                animation: pdfFadeIn 0.25s ease;
+                position: fixed; inset: 0; background: #f1f5f9; z-index: 999999;
+                display: flex; flex-direction: column; animation: pdfFadeIn 0.25s ease;
             }
             #pdf-overlay-viewer .pdf-toolbar {
-                background: #fff;
-                padding: 0.75rem 1.25rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-                border-bottom: 1px solid #e2e8f0;
-                flex-shrink: 0;
-                gap: 0.75rem;
+                background: #fff; padding: 0.75rem 1.25rem;
+                display: flex; justify-content: space-between; align-items: center;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-bottom: 1px solid #e2e8f0;
+                flex-shrink: 0; gap: 0.75rem;
             }
             #pdf-overlay-viewer .pdf-title-wrap {
-                display: flex;
-                align-items: center;
-                gap: 0.6rem;
-                flex: 1;
-                min-width: 0;
+                display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0;
             }
-            #pdf-overlay-viewer .pdf-title-wrap i {
-                color: #ef4444;
-                font-size: 1.4rem;
-                flex-shrink: 0;
-            }
+            #pdf-overlay-viewer .pdf-title-wrap i { color: #ef4444; font-size: 1.4rem; flex-shrink: 0; }
             #pdf-overlay-viewer .pdf-title {
-                color: #1e293b;
-                font-size: 1rem;
-                font-weight: 600;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                margin: 0;
+                color: #1e293b; font-size: 1rem; font-weight: 600;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;
             }
-            #pdf-overlay-viewer .pdf-actions {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                flex-shrink: 0;
-            }
+            #pdf-overlay-viewer .pdf-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
             #pdf-overlay-viewer .pdf-btn {
-                background: #2563eb;
-                color: #fff;
-                border: none;
-                border-radius: 0.5rem;
-                padding: 0.55rem 1rem;
-                font-size: 0.9rem;
-                font-weight: 500;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                gap: 0.4rem;
-                text-decoration: none;
-                -webkit-tap-highlight-color: transparent;
+                background: #2563eb; color: #fff; border: none; border-radius: 0.5rem;
+                padding: 0.55rem 1rem; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+                display: flex; align-items: center; gap: 0.4rem; text-decoration: none;
             }
             #pdf-overlay-viewer .pdf-btn:hover { background: #1d4ed8; }
             #pdf-overlay-viewer .pdf-btn-close {
-                background: #fff;
-                color: #64748b;
-                border: 1px solid #e2e8f0;
-                width: 40px;
-                height: 40px;
-                padding: 0;
-                justify-content: center;
-                border-radius: 50%;
-                font-size: 1rem;
+                background: #fff; color: #64748b; border: 1px solid #e2e8f0;
+                width: 40px; height: 40px; padding: 0; justify-content: center;
+                border-radius: 50%; font-size: 1rem;
             }
-            #pdf-overlay-viewer .pdf-btn-close:hover { background: #f1f5f9; color: #334155; }
-            #pdf-overlay-viewer .pdf-frame {
-                flex: 1;
-                width: 100%;
-                border: none;
-                background: #e2e8f0;
-            }
+            #pdf-overlay-viewer .pdf-frame { flex: 1; width: 100%; border: none; background: #e2e8f0; }
             @media (max-width: 480px) {
                 #pdf-overlay-viewer .pdf-title { font-size: 0.85rem; }
                 #pdf-overlay-viewer .pdf-btn span { display: none; }
                 #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
-                #pdf-overlay-viewer .pdf-toolbar { padding: 0.5rem 0.75rem; }
             }
         `;
         document.head.appendChild(styleEl);
@@ -676,11 +809,11 @@ window.openPDFViewer = function(pdfUrl, title) {
                 <h3 class="pdf-title">${safeTitle}</h3>
             </div>
             <div class="pdf-actions">
-                <a class="pdf-btn" href="${escapeAttr(pdfUrl)}" download target="_blank" rel="noopener" title="ডাউনলোড">
+                <a class="pdf-btn" href="${escapeAttr(pdfUrl)}" download target="_blank" rel="noopener">
                     <i class="fas fa-download"></i>
                     <span>ডাউনলোড</span>
                 </a>
-                <button class="pdf-btn pdf-btn-close" id="pdf-overlay-close" title="বন্ধ করুন (ESC)">
+                <button class="pdf-btn pdf-btn-close" id="pdf-overlay-close">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -690,14 +823,6 @@ window.openPDFViewer = function(pdfUrl, title) {
     
     document.body.appendChild(overlay);
     document.body.classList.add('pdf-overlay-open');
-    
-    const closeBtn = document.getElementById('pdf-overlay-close');
-    closeBtn.addEventListener('click', closeOverlay);
-    
-    function onKeydown(e) {
-        if (e.key === 'Escape') closeOverlay();
-    }
-    document.addEventListener('keydown', onKeydown);
     
     function closeOverlay() {
         const el = document.getElementById('pdf-overlay-viewer');
@@ -710,12 +835,19 @@ window.openPDFViewer = function(pdfUrl, title) {
             }, 140);
         }
     }
+    
+    function onKeydown(e) {
+        if (e.key === 'Escape') closeOverlay();
+    }
+    
+    document.getElementById('pdf-overlay-close').addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', onKeydown);
 };
 
 // ============================================================
-// ▶️ YouTube Player — Same-Page Full-Screen Overlay
+// ▶️ YouTube Player — IFrame API Version
 // ============================================================
-window.openYouTubePlayer = function(videoUrl, title) {
+window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     const videoId = extractYouTubeVideoId(videoUrl);
     const safeTitle = escapeHtml(title);
     
@@ -724,132 +856,109 @@ window.openYouTubePlayer = function(videoUrl, title) {
         return;
     }
     
+    // ✅ Lock check
+    if (itemId && lectureUnlockState[itemId] === false) {
+        showNotification('🔒 আগের লেকচার আগে সম্পন্ন করুন', 'error');
+        return;
+    }
+    
     // পুরনো overlay সরাই
     const existing = document.getElementById('yt-overlay-player');
     if (existing) existing.remove();
     
-    // ✅ fs=1 → YouTube fullscreen enable
-    // ✅ playsinline=1 → mobile-এ কাজ করে
-    const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1&fs=1&playsinline=1`;
-    
-    // Style inject একবার
+    // Style inject
     if (!document.getElementById('yt-overlay-style')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'yt-overlay-style';
         styleEl.textContent = `
-            @keyframes ytFadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
+            @keyframes ytFadeIn { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes completeBurst {
+                0% { transform: scale(1) translateY(0); opacity: 1; }
+                100% { transform: scale(2.5) translateY(-50px); opacity: 0; }
             }
             body.yt-overlay-open { overflow: hidden !important; }
             
             #yt-overlay-player {
-                position: fixed;
-                inset: 0;
-                background: #000;
-                z-index: 999999;
-                display: flex;
-                flex-direction: column;
-                animation: ytFadeIn 0.25s ease;
+                position: fixed; inset: 0; background: #000; z-index: 999999;
+                display: flex; flex-direction: column; animation: ytFadeIn 0.25s ease;
             }
             #yt-overlay-player .yt-toolbar {
-                background: #1a1a1a;
-                padding: 0.6rem 1rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid #2a2a2a;
-                flex-shrink: 0;
-                gap: 0.75rem;
+                background: #1a1a1a; padding: 0.6rem 1rem;
+                display: flex; justify-content: space-between; align-items: center;
+                border-bottom: 1px solid #2a2a2a; flex-shrink: 0; gap: 0.75rem;
             }
             #yt-overlay-player .yt-title-wrap {
-                display: flex;
-                align-items: center;
-                gap: 0.6rem;
-                flex: 1;
-                min-width: 0;
+                display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0;
             }
             #yt-overlay-player .yt-title-wrap i.fa-youtube {
-                color: #ff0000;
-                font-size: 1.4rem;
-                flex-shrink: 0;
+                color: #ff0000; font-size: 1.4rem; flex-shrink: 0;
             }
             #yt-overlay-player .yt-title {
-                color: #fff;
-                font-size: 0.95rem;
-                font-weight: 500;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                margin: 0;
-                line-height: 1.3;
+                color: #fff; font-size: 0.95rem; font-weight: 500;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                margin: 0; line-height: 1.3;
             }
             #yt-overlay-player .yt-actions {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                flex-shrink: 0;
+                display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
             }
             #yt-overlay-player .yt-btn {
-                background: rgba(51,51,51,0.85);
-                border: 1px solid #444;
-                border-radius: 50%;
-                width: 40px;
-                height: 40px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                color: #fff;
-                font-size: 1rem;
-                transition: all 0.2s ease;
-                text-decoration: none;
+                background: rgba(51,51,51,0.85); border: 1px solid #444;
+                border-radius: 50%; width: 40px; height: 40px;
+                display: flex; align-items: center; justify-content: center;
+                cursor: pointer; color: #fff; font-size: 1rem;
+                transition: all 0.2s ease; text-decoration: none;
                 -webkit-tap-highlight-color: transparent;
             }
             #yt-overlay-player .yt-btn:hover,
-            #yt-overlay-player .yt-btn:active {
-                background: #333;
-                transform: scale(1.05);
-            }
+            #yt-overlay-player .yt-btn:active { background: #333; transform: scale(1.05); }
             #yt-overlay-player .yt-btn.yt-yt-btn {
-                background: rgba(255,0,0,0.9);
-                border-color: #cc0000;
+                background: rgba(255,0,0,0.9); border-color: #cc0000;
             }
-            #yt-overlay-player .yt-btn.yt-yt-btn:hover {
-                background: #cc0000;
-            }
+            #yt-overlay-player .yt-btn.yt-yt-btn:hover { background: #cc0000; }
+            
             #yt-overlay-player .yt-video-wrap {
-                flex: 1;
-                position: relative;
-                background: #000;
-                min-height: 0;
-                overflow: hidden;
+                flex: 1; position: relative; background: #000;
+                min-height: 0; overflow: hidden;
             }
-            #yt-overlay-player .yt-video-frame {
-                position: absolute;
-                inset: 0;
-                width: 100%;
-                height: 100%;
-                border: 0;
-                background: #000;
+            #yt-overlay-player #yt-player-container {
+                position: absolute; inset: 0; width: 100%; height: 100%;
             }
+            #yt-overlay-player #yt-player-container iframe {
+                width: 100% !important; height: 100% !important;
+            }
+            
+            /* Progress bar at bottom */
+            #yt-overlay-player .yt-progress-info {
+                background: #111; padding: 0.5rem 1rem;
+                display: flex; align-items: center; gap: 0.75rem;
+                flex-shrink: 0; border-top: 1px solid #222;
+            }
+            #yt-overlay-player .yt-progress-bar-wrap {
+                flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden;
+            }
+            #yt-overlay-player .yt-progress-bar {
+                height: 100%; width: 0%; background: linear-gradient(90deg, #ef4444, #10b981);
+                transition: width 0.3s ease; border-radius: 3px;
+            }
+            #yt-overlay-player .yt-progress-text {
+                color: #aaa; font-size: 0.8rem; font-weight: 500;
+                min-width: 45px; text-align: right; font-variant-numeric: tabular-nums;
+            }
+            #yt-overlay-player .yt-progress-text.threshold-reached { color: #10b981; }
+            
             #yt-overlay-player .yt-hint {
-                background: #111;
-                color: #888;
-                padding: 0.4rem 1rem;
-                font-size: 0.75rem;
-                text-align: center;
-                border-top: 1px solid #222;
-                flex-shrink: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 0.4rem;
+                background: #111; color: #888; padding: 0.4rem 1rem;
+                font-size: 0.75rem; text-align: center; border-top: 1px solid #222;
+                flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem;
             }
+            #yt-overlay-player .yt-hint.unlocked {
+                background: linear-gradient(90deg, #065f46, #10b981);
+                color: #fff;
+            }
+            
             @media (max-width: 480px) {
                 #yt-overlay-player .yt-title { font-size: 0.85rem; }
                 #yt-overlay-player .yt-btn { width: 36px; height: 36px; font-size: 0.9rem; }
-                #yt-overlay-player .yt-toolbar { padding: 0.5rem 0.75rem; }
                 #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
             }
         `;
@@ -874,35 +983,198 @@ window.openYouTubePlayer = function(videoUrl, title) {
             </div>
         </div>
         <div class="yt-video-wrap">
-            <iframe 
-                class="yt-video-frame"
-                src="${embedUrl}"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                allowfullscreen="true"
-                webkitallowfullscreen="true"
-                mozallowfullscreen="true"
-                frameborder="0"
-                referrerpolicy="strict-origin-when-cross-origin">
-            </iframe>
+            <div id="yt-player-container"></div>
         </div>
-        <div class="yt-hint">
+        <div class="yt-progress-info">
+            <i class="fas fa-play-circle" style="color:#ef4444;"></i>
+            <div class="yt-progress-bar-wrap">
+                <div class="yt-progress-bar" id="yt-progress-bar"></div>
+            </div>
+            <span class="yt-progress-text" id="yt-progress-text">0%</span>
+        </div>
+        <div class="yt-hint" id="yt-hint">
             <i class="fas fa-info-circle"></i>
-            <span>Fullscreen-এর জন্য player-এর নিচে ডানদিকের 🖵 icon চাপুন</span>
+            <span>ভিডিও <strong>90%</strong> দেখলে অটো Complete হবে</span>
         </div>
     `;
     
     document.body.appendChild(overlay);
     document.body.classList.add('yt-overlay-open');
     
+    // Close button
     const closeBtn = document.getElementById('yt-overlay-close');
-    closeBtn.addEventListener('click', closeOverlay);
     
-    function onKeydown(e) {
-        if (e.key === 'Escape') closeOverlay();
+    // ======================================================
+    // 📺 YouTube IFrame API initialization
+    // ======================================================
+    await loadYouTubeIframeAPI();
+    
+    let player = null;
+    let progressCheckInterval = null;
+    let completedFlag = false;
+    
+    // Restore previous watch progress if any
+    const savedProgress = videoWatchProgress[itemId] || 0;
+    const startSeconds = savedProgress > 0 && savedProgress < COMPLETION_THRESHOLD 
+        ? Math.floor(savedProgress * 60 * 60) 
+        : 0;
+    
+    player = new YT.Player('yt-player-container', {
+        videoId: videoId,
+        playerVars: {
+            'autoplay': 1,
+            'rel': 0,
+            'modestbranding': 1,
+            'playsinline': 1,
+            'fs': 1,
+            'start': startSeconds,
+            'origin': window.location.origin
+        },
+        events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError
+        }
+    });
+    
+    function onPlayerReady(event) {
+        console.log('✅ Player ready');
+        event.target.playVideo();
+        startProgressTracking();
     }
-    document.addEventListener('keydown', onKeydown);
+    
+    function onPlayerStateChange(event) {
+        // YT.PlayerState.PLAYING = 1, PAUSED = 2, ENDED = 0
+        if (event.data === YT.PlayerState.PLAYING) {
+            startProgressTracking();
+        } else if (event.data === YT.PlayerState.PAUSED) {
+            stopProgressTracking();
+        } else if (event.data === YT.PlayerState.ENDED) {
+            // Video শেষ হলে চেক করি 90% দেখা হয়েছে কিনা
+            checkAndMarkCompletion(true);
+            stopProgressTracking();
+        }
+    }
+    
+    function onPlayerError(event) {
+        console.error('Player error:', event.data);
+        showNotification('ভিডিও লোড করা যায়নি', 'error');
+    }
+    
+    function startProgressTracking() {
+        if (progressCheckInterval) return;
+        progressCheckInterval = setInterval(() => {
+            checkAndMarkCompletion(false);
+        }, 1000); // প্রতি সেকেন্ডে চেক
+    }
+    
+    function stopProgressTracking() {
+        if (progressCheckInterval) {
+            clearInterval(progressCheckInterval);
+            progressCheckInterval = null;
+        }
+    }
+    
+    function checkAndMarkCompletion(forceComplete) {
+        if (!player || !player.getDuration) return;
+        
+        const duration = player.getDuration();
+        const current = player.getCurrentTime();
+        
+        if (!duration || duration === 0) return;
+        
+        const percentage = Math.min(current / duration, 1);
+        
+        // Update UI
+        updateProgressUI(percentage);
+        
+        // Save progress
+        if (itemId && percentage > (videoWatchProgress[itemId] || 0)) {
+            videoWatchProgress[itemId] = percentage;
+            saveVideoProgress();
+        }
+        
+        // ✅ 90% হলে mark completed
+        if ((percentage >= COMPLETION_THRESHOLD || forceComplete) && !completedFlag) {
+            completedFlag = true;
+            
+            if (itemId) {
+                const wasNewlyCompleted = markCompletedAuto(itemId);
+                
+                if (wasNewlyCompleted) {
+                    updateHintUI(true);
+                    showNotification('🎉 লেকচার সম্পন্ন! পরের লেকচার unlocked হয়েছে', 'success');
+                    
+                    // Auto-unlock next lecture
+                    unlockNextLecture(itemId);
+                }
+            }
+        }
+    }
+    
+    function updateProgressUI(percentage) {
+        const bar = document.getElementById('yt-progress-bar');
+        const text = document.getElementById('yt-progress-text');
+        
+        if (bar && text) {
+            bar.style.width = (percentage * 100) + '%';
+            text.textContent = Math.round(percentage * 100) + '%';
+            
+            if (percentage >= COMPLETION_THRESHOLD) {
+                text.classList.add('threshold-reached');
+            }
+        }
+    }
+    
+    function updateHintUI(completed) {
+        const hint = document.getElementById('yt-hint');
+        if (hint && completed) {
+            hint.classList.add('unlocked');
+            hint.innerHTML = `
+                <i class="fas fa-check-circle"></i>
+                <span><strong>সম্পন্ন ✓</strong> — পরের লেকচার unlocked!</span>
+            `;
+        }
+    }
+    
+    function unlockNextLecture(currentItemId) {
+        if (!window._currentSections) return;
+        
+        const allLectures = getAllLecturesOrdered(window._currentSections);
+        const currentIndex = allLectures.findIndex(l => getContentItemId(l, allLectures) === currentItemId);
+        
+        if (currentIndex >= 0 && currentIndex < allLectures.length - 1) {
+            const nextLecture = allLectures[currentIndex + 1];
+            const nextId = getContentItemId(nextLecture, allLectures);
+            lectureUnlockState[nextId] = true;
+            saveUnlockState();
+            
+            console.log(`🔓 Unlocked: ${nextLecture.title}`);
+        }
+    }
     
     function closeOverlay() {
+        // Save final progress
+        if (player && player.getCurrentTime && player.getDuration) {
+            try {
+                const duration = player.getDuration();
+                const current = player.getCurrentTime();
+                if (duration > 0 && itemId) {
+                    const percentage = Math.min(current / duration, 1);
+                    if (percentage > (videoWatchProgress[itemId] || 0)) {
+                        videoWatchProgress[itemId] = percentage;
+                        saveVideoProgress();
+                    }
+                }
+            } catch (e) {}
+        }
+        
+        stopProgressTracking();
+        
+        if (player && player.destroy) {
+            try { player.destroy(); } catch (e) {}
+        }
+        
         const el = document.getElementById('yt-overlay-player');
         if (el) {
             el.style.animation = 'ytFadeIn 0.15s ease reverse';
@@ -914,6 +1186,13 @@ window.openYouTubePlayer = function(videoUrl, title) {
         }
     }
     
+    function onKeydown(e) {
+        if (e.key === 'Escape') closeOverlay();
+    }
+    
+    closeBtn.addEventListener('click', closeOverlay);
+    document.addEventListener('keydown', onKeydown);
+    
     setTimeout(() => closeBtn.focus(), 100);
 };
 
@@ -922,7 +1201,9 @@ window.openYouTubePlayer = function(videoUrl, title) {
 // ============================================================
 async function loadSections() {
     loadCompletedItems();
+    loadVideoProgress();
     loadVideoDurationCache();
+    loadUnlockState();
     
     try {
         const classes = await fetchClassesWithFallback();
@@ -930,10 +1211,18 @@ async function loadSections() {
         document.getElementById('course-title').textContent = 'Civil 4th Semester';
         
         const sections = transformClassesToSections(classes);
+        
+        // ✅ Store globally for unlock logic
+        window._currentSections = sections;
+        
+        // ✅ Refresh unlock states
+        refreshUnlockStates(sections);
+        
         displaySections(sections);
         
         setTimeout(() => {
             updateAllVideoDurations();
+            updateLockStatesInUI();
         }, 500);
         
     } catch (error) {
@@ -943,9 +1232,6 @@ async function loadSections() {
                 <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
                 <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 0.5rem;">
                     সব API থেকে ডেটা লোড করা যায়নি।
-                </p>
-                <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem;">
-                    ইন্টারনেট সংযোগ পরীক্ষা করুন।
                 </p>
                 <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: #2563eb; color: white; border: none; border-radius: 1rem; cursor: pointer; font-size: 1rem; font-weight: 500;">
                     <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>
@@ -1071,11 +1357,12 @@ function attachEventHandlers() {
             const link = contentItem.dataset.link;
             const title = contentItem.dataset.title;
             const type = contentItem.dataset.type;
+            const itemId = contentItem.dataset.itemId;
             
             if (type === 'pdf') {
                 window.openPDFViewer(link, title);
             } else if (type === 'video') {
-                window.openYouTubePlayer(link, title);
+                window.openYouTubePlayer(link, title, itemId);
             } else {
                 window.open(link, '_blank');
             }
@@ -1121,15 +1408,26 @@ function decodeUnicode(str) {
 // 🔄 Reset All Progress
 // ============================================================
 window.resetAllProgress = function() {
-    if (confirm('সব সম্পন্ন চিহ্নিত করা মুছে ফেলতে চান?')) {
+    if (confirm('সব সম্পন্ন চিহ্নিত করা এবং unlock status মুছে ফেলতে চান?')) {
         completedItems = {};
+        videoWatchProgress = {};
+        lectureUnlockState = {};
+        
         saveCompletedItems();
+        saveVideoProgress();
+        saveUnlockState();
         
         document.querySelectorAll('.complete-checkbox').forEach(checkbox => {
             checkbox.checked = false;
             const contentItem = checkbox.closest('.content-item');
             if (contentItem) contentItem.classList.remove('completed');
         });
+        
+        // Refresh unlocks
+        if (window._currentSections) {
+            refreshUnlockStates(window._currentSections);
+            updateLockStatesInUI();
+        }
         
         updateAllProgress();
         showNotification('সব প্রোগ্রেস রিসেট করা হয়েছে', 'info');
@@ -1150,8 +1448,35 @@ document.addEventListener('DOMContentLoaded', () => {
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
+        
+        /* Locked lecture style */
+        .content-item.locked {
+            opacity: 0.55;
+            cursor: not-allowed;
+            position: relative;
+        }
+        .content-item.locked .content-title {
+            cursor: not-allowed !important;
+            text-decoration: line-through;
+            text-decoration-color: #94a3b8;
+        }
+        .content-item.locked::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            cursor: not-allowed;
+        }
+        .content-item .lock-icon {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-left: auto;
+            padding-left: 0.5rem;
+        }
     `;
     document.head.appendChild(style);
+    
+    // ✅ Preload YouTube IFrame API
+    loadYouTubeIframeAPI();
     
     loadSections();
     
@@ -1163,16 +1488,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (!navigator.onLine) {
-        showNotification('আপনি অফলাইনে আছেন। কিছু ফিচার কাজ নাও করতে পারে।', 'info');
+        showNotification('আপনি অফলাইনে আছেন।', 'info');
     }
     
-    window.addEventListener('online', () => {
-        showNotification('আপনি অনলাইনে ফিরে এসেছেন!', 'success');
-    });
-    
-    window.addEventListener('offline', () => {
-        showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
-    });
+    window.addEventListener('online', () => showNotification('আপনি অনলাইনে ফিরে এসেছেন!', 'success'));
+    window.addEventListener('offline', () => showNotification('আপনি অফলাইনে চলে গেছেন।', 'info'));
     
     const reloadBtn = document.getElementById('floating-reload-btn');
     if (reloadBtn) {
@@ -1187,7 +1507,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const icon = themeToggle.querySelector('i');
-        
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.add('dark-mode');
@@ -1199,7 +1518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         themeToggle.addEventListener('click', function() {
             document.body.classList.toggle('dark-mode');
-            
             if (document.body.classList.contains('dark-mode')) {
                 icon.classList.remove('fa-sun');
                 icon.classList.add('fa-moon');
@@ -1217,25 +1535,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const notification = document.createElement('div');
             notification.className = 'auto-save-status show';
             notification.style.cssText = `
-                position: fixed;
-                top: 80px;
-                right: 20px;
-                background: var(--primary);
-                color: white;
-                padding: 10px 20px;
-                border-radius: 50px;
-                font-size: 14px;
-                z-index: 2001;
+                position: fixed; top: 80px; right: 20px;
+                background: var(--primary); color: white;
+                padding: 10px 20px; border-radius: 50px;
+                font-size: 14px; z-index: 2001;
             `;
             notification.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
             document.body.appendChild(notification);
-            
             setTimeout(() => notification.remove(), 2000);
         }
     }
 });
 
-// System theme preference
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     const savedTheme = localStorage.getItem('theme');
     if (!savedTheme) {
@@ -1273,7 +1584,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     }
 });
 
-window.addEventListener('appinstalled', (evt) => {
-    console.log('App was installed.');
+window.addEventListener('appinstalled', () => {
     showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
 });
