@@ -4,7 +4,7 @@
 const API_ENDPOINTS = [
     {
         name: 'API 1 (Primary)',
-        url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj',
+        url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
         timeout: 8000
     },
     {
@@ -14,7 +14,7 @@ const API_ENDPOINTS = [
     },
     {
         name: 'API 3 (Fallback)',
-        url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
+        url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj',
         timeout: 10000
     },
     {
