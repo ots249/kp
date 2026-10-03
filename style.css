@@ -1,3 +1,7 @@
+/* ============================================================
+   🎨 COMPLETE CSS — Fullscreen Fixed
+   ============================================================ */
+
 * {
     margin: 0;
     padding: 0;
@@ -520,54 +524,53 @@ html {
 
 /* Animations */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes checkPulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.3);
-    }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+}
+
+@keyframes completeBurst {
+    0% { transform: scale(1) translateY(0); opacity: 1; }
+    100% { transform: scale(2.5) translateY(-50px); opacity: 0; }
+}
+
+@keyframes ytFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pdfFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
 }
 
 .content-item {
@@ -664,11 +667,6 @@ html {
         font-size: 0.85rem;
     }
     
-    .content-count {
-        padding: 0.2rem 0.8rem;
-        font-size: 0.8rem;
-    }
-    
     .contents-list {
         padding: 1rem;
     }
@@ -746,11 +744,6 @@ html {
     
     .progress-text {
         font-size: 0.8rem;
-    }
-    
-    .content-count {
-        padding: 0.15rem 0.7rem;
-        font-size: 0.75rem;
     }
     
     .content-item {
@@ -852,7 +845,7 @@ html {
     animation: spin 1s linear infinite;
 }
 
-/* Live Video Styles - Improved */
+/* Live Video Styles */
 .live-video-container {
     position: relative;
     width: 100%;
@@ -871,12 +864,7 @@ html {
     height: 100%;
     border: none;
     background: #000;
-    object-fit: contain; /* ভিডিও পুরো দেখাবে */
-}
-
-/* Alternative: যদি ভিডিও পুরো কভার করতে চান */
-.live-video-frame.cover-mode {
-    object-fit: cover;
+    object-fit: contain;
 }
 
 .live-badge {
@@ -907,32 +895,16 @@ html {
 }
 
 @keyframes liveBlink {
-    0%, 50% {
-        opacity: 1;
-        color: #ff3333;
-    }
-    51%, 100% {
-        opacity: 0.5;
-        color: #ff9999;
-    }
+    0%, 50% { opacity: 1; color: #ff3333; }
+    51%, 100% { opacity: 0.5; color: #ff9999; }
 }
 
 @keyframes livePulse {
-    0% {
-        transform: scale(1);
-        box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
-    }
-    50% {
-        transform: scale(1.02);
-        box-shadow: 0 8px 25px rgba(255, 0, 0, 0.6);
-    }
-    100% {
-        transform: scale(1);
-        box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
-    }
+    0% { transform: scale(1); box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 8px 25px rgba(255, 0, 0, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4); }
 }
 
-/* Video Controls for better UX */
 .live-video-controls {
     position: absolute;
     bottom: 1rem;
@@ -961,12 +933,12 @@ html {
     font-size: 0.9rem;
 }
 
-/* New Badge Styles - শুধু "নতুন" লেখা, হালকা সবুজ ব্যাকগ্রাউন্ড */
+/* New Badge Styles */
 .new-badge {
     display: inline-flex;
     align-items: center;
-    background: rgba(16, 185, 129, 0.15); /* হালকা সবুজ, 15% opacity */
-    color: #047857; /* গাঢ় সবুজ লেখা */
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
     font-size: 0.65rem;
     font-weight: 600;
     padding: 0.2rem 0.5rem;
@@ -979,7 +951,6 @@ html {
     line-height: 1.2;
 }
 
-/* Section Header Title with New Badge */
 .section-header h3 {
     display: flex;
     align-items: center;
@@ -987,15 +958,6 @@ html {
     gap: 0.5rem;
 }
 
-/* Content Title with New Badge */
-.content-title {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-/* Mobile responsive for live video and new badge */
 @media (max-width: 768px) {
     .live-badge {
         top: 0.75rem;
@@ -1005,9 +967,7 @@ html {
         gap: 0.5rem;
     }
     
-    .live-badge i {
-        font-size: 0.6rem;
-    }
+    .live-badge i { font-size: 0.6rem; }
     
     .live-video-controls {
         bottom: 0.75rem;
@@ -1034,19 +994,11 @@ html {
     }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .live-video-container {
-        background: #000;
-        border-color: #333;
-    }
-}
-
-/* Floating Reload Button - WhatsApp style (Right side) */
+/* Floating Reload Button */
 .floating-reload-btn {
     position: fixed;
     bottom: 20px;
-    right: 20px;  /* Left থেকে Right পরিবর্তন */
+    right: 20px;
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -1081,24 +1033,16 @@ html {
     transform: scale(0.95);
 }
 
-/* Animation for floating effect */
 @keyframes floatButton {
-    0% {
-        transform: translateY(0px);
-    }
-    50% {
-        transform: translateY(-5px);
-    }
-    100% {
-        transform: translateY(0px);
-    }
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+    100% { transform: translateY(0px); }
 }
 
-/* Tooltip text - ডান পাশের জন্য adjust */
 .floating-reload-btn::after {
     content: "রিফ্রেশ করুন";
     position: absolute;
-    right: 70px;  /* Left থেকে Right পরিবর্তন */
+    right: 70px;
     background: var(--dark);
     color: white;
     padding: 5px 10px;
@@ -1115,81 +1059,54 @@ html {
 .floating-reload-btn:hover::after {
     opacity: 1;
     visibility: visible;
-    right: 75px;  /* Left থেকে Right পরিবর্তন */
+    right: 75px;
 }
 
-/* Mobile responsive adjustments */
 @media (max-width: 768px) {
     .floating-reload-btn {
         bottom: 15px;
-        right: 15px;  /* Left থেকে Right পরিবর্তন */
+        right: 15px;
         width: 55px;
         height: 55px;
         font-size: 22px;
     }
-    
     .floating-reload-btn::after {
         font-size: 12px;
         padding: 4px 8px;
-        right: 65px;  /* Left থেকে Right পরিবর্তন */
+        right: 65px;
     }
-    
-    .floating-reload-btn:hover::after {
-        right: 70px;  /* Left থেকে Right পরিবর্তন */
-    }
+    .floating-reload-btn:hover::after { right: 70px; }
 }
 
 @media (max-width: 480px) {
     .floating-reload-btn {
         bottom: 10px;
-        right: 10px;  /* Left থেকে Right পরিবর্তন */
+        right: 10px;
         width: 50px;
         height: 50px;
         font-size: 20px;
     }
-    
     .floating-reload-btn::after {
-        right: 60px;  /* Left থেকে Right পরিবর্তন */
+        right: 60px;
         font-size: 11px;
         padding: 3px 6px;
     }
-    
-    .floating-reload-btn:hover::after {
-        right: 65px;  /* Left থেকে Right পরিবর্তন */
-    }
+    .floating-reload-btn:hover::after { right: 65px; }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-    .floating-reload-btn {
-        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    }
-}
-
-/* For PWA standalone mode */
 @media (display-mode: standalone) {
     .floating-reload-btn {
         bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-        right: 20px;  /* Left থেকে Right পরিবর্তন */
+        right: 20px;
     }
 }
 
-/* Touch optimizations */
 @media (hover: none) {
-    .floating-reload-btn:hover {
-        transform: none;
-    }
-    
-    .floating-reload-btn:active {
-        transform: scale(0.95);
-    }
-    
-    .floating-reload-btn:hover::after {
-        display: none;
-    }
+    .floating-reload-btn:hover { transform: none; }
+    .floating-reload-btn:active { transform: scale(0.95); }
+    .floating-reload-btn:hover::after { display: none; }
 }
 
-/* RTL support if needed */
 [dir="rtl"] .floating-reload-btn::after {
     right: auto;
     left: 70px;
@@ -1335,10 +1252,6 @@ body.dark-mode .video-duration i {
     color: #60a5fa;
 }
 
-body.dark-mode .content-count {
-    background: linear-gradient(135deg, #60a5fa, #c084fc);
-}
-
 body.dark-mode .progress-text {
     color: #4ade80;
 }
@@ -1369,7 +1282,6 @@ body.dark-mode .banner-container {
     border-color: #404040;
 }
 
-/* Dark mode scrollbar */
 body.dark-mode ::-webkit-scrollbar-track {
     background: #2d2d2d;
 }
@@ -1379,7 +1291,6 @@ body.dark-mode ::-webkit-scrollbar-thumb {
     border-color: #1a1a1a;
 }
 
-/* Dark mode for links */
 body.dark-mode a {
     color: #60a5fa;
 }
@@ -1388,37 +1299,32 @@ body.dark-mode a:hover {
     color: #93c5fd;
 }
 
-/* Dark mode for icons */
 body.dark-mode .fa-file-pdf { color: #f87171; }
 body.dark-mode .fa-youtube { color: #f87171; }
 body.dark-mode .fa-whatsapp { color: #25D366; }
 body.dark-mode .fa-file-alt { color: #60a5fa; }
 
-/* Dark mode for live badge */
 body.dark-mode .live-badge {
     background: rgba(220, 38, 38, 0.95);
 }
 
-/* Dark mode for new badge */
 body.dark-mode .new-badge {
     background: rgba(16, 185, 129, 0.2);
     color: #34d399;
 }
 
-/* Dark mode for tooltips */
 body.dark-mode .floating-reload-btn::after {
     background: #404040;
     color: white;
 }
 
-/* Dark mode toggle button in dark mode */
 body.dark-mode .theme-toggle-btn {
     background: #404040;
     color: #fbbf24;
     border-color: #60a5fa;
 }
 
-/* Animation for theme switch */
+/* Theme transition */
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
@@ -1427,7 +1333,6 @@ body.dark-mode .theme-toggle-btn {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Mobile responsive */
 @media (max-width: 768px) {
     .theme-toggle-btn {
         top: 15px;
@@ -1448,10 +1353,339 @@ body.dark-mode .theme-toggle-btn {
     }
 }
 
-/* PWA standalone mode */
 @media (display-mode: standalone) {
     .theme-toggle-btn {
         top: calc(20px + env(safe-area-inset-top, 0px));
         right: 20px;
     }
+}
+
+/* ============================================================
+   🎬 YouTube Overlay Player — FULLSCREEN FIX
+   ============================================================ */
+
+#yt-overlay-player {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #000;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    animation: ytFadeIn 0.25s ease;
+}
+
+#yt-overlay-player .yt-toolbar {
+    background: #1a1a1a;
+    padding: 0.6rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #2a2a2a;
+    flex-shrink: 0;
+    gap: 0.75rem;
+}
+
+#yt-overlay-player .yt-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+
+#yt-overlay-player .yt-title-wrap i.fa-youtube {
+    color: #ff0000;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+#yt-overlay-player .yt-title {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+    line-height: 1.3;
+}
+
+#yt-overlay-player .yt-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+#yt-overlay-player .yt-btn {
+    background: rgba(51, 51, 51, 0.85);
+    border: 1px solid #444;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#yt-overlay-player .yt-btn:hover,
+#yt-overlay-player .yt-btn:active {
+    background: #333;
+    transform: scale(1.05);
+}
+
+#yt-overlay-player .yt-btn.yt-yt-btn {
+    background: rgba(255, 0, 0, 0.9);
+    border-color: #cc0000;
+}
+
+#yt-overlay-player .yt-btn.yt-yt-btn:hover {
+    background: #cc0000;
+}
+
+/* ✅ Video area — YouTube iframe নিজে size handle করবে */
+#yt-overlay-player .yt-video-wrap {
+    flex: 1;
+    position: relative;
+    background: #000;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#yt-overlay-player #yt-player-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* ✅ CRITICAL: iframe-এ width/height force করা হচ্ছে না */
+#yt-overlay-player #yt-player-container iframe {
+    border: 0;
+}
+
+#yt-overlay-player .yt-progress-info {
+    background: #111;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    border-top: 1px solid #222;
+}
+
+#yt-overlay-player .yt-progress-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+#yt-overlay-player .yt-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ef4444, #10b981);
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+#yt-overlay-player .yt-progress-text {
+    color: #aaa;
+    font-size: 0.8rem;
+    font-weight: 500;
+    min-width: 45px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+#yt-overlay-player .yt-progress-text.threshold-reached {
+    color: #10b981;
+}
+
+#yt-overlay-player .yt-hint {
+    background: #111;
+    color: #888;
+    padding: 0.4rem 1rem;
+    font-size: 0.75rem;
+    text-align: center;
+    border-top: 1px solid #222;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+#yt-overlay-player .yt-hint.unlocked {
+    background: linear-gradient(90deg, #065f46, #10b981);
+    color: #fff;
+}
+
+/* ✅ Fullscreen mode — সব override */
+#yt-overlay-player:fullscreen,
+#yt-overlay-player:-webkit-full-screen,
+#yt-overlay-player:-moz-full-screen {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2147483647 !important;
+    background: #000 !important;
+}
+
+#yt-overlay-player:fullscreen .yt-video-wrap,
+#yt-overlay-player:-webkit-full-screen .yt-video-wrap,
+#yt-overlay-player:-moz-full-screen .yt-video-wrap {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ✅ Fullscreen-এ iframe-এর নিজের element — YouTube handle করে */
+#yt-overlay-player iframe {
+    border: 0;
+}
+
+/* ✅ Video element object-fit — letterbox maintain করে */
+video {
+    object-fit: contain !important;
+}
+
+/* ✅ Global iframe reset — কেউ width/height force করবে না */
+iframe {
+    max-width: 100%;
+}
+
+/* Prevent body scroll when overlay open */
+body.yt-overlay-open {
+    overflow: hidden !important;
+}
+
+body.pdf-overlay-open {
+    overflow: hidden !important;
+}
+
+/* YouTube overlay mobile */
+@media (max-width: 480px) {
+    #yt-overlay-player .yt-title { font-size: 0.85rem; }
+    #yt-overlay-player .yt-btn { width: 36px; height: 36px; font-size: 0.9rem; }
+    #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+}
+
+/* ============================================================
+   📄 PDF Overlay Viewer
+   ============================================================ */
+
+#pdf-overlay-viewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #f1f5f9;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    animation: pdfFadeIn 0.25s ease;
+}
+
+#pdf-overlay-viewer .pdf-toolbar {
+    background: #fff;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+    gap: 0.75rem;
+}
+
+#pdf-overlay-viewer .pdf-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+
+#pdf-overlay-viewer .pdf-title-wrap i {
+    color: #ef4444;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+#pdf-overlay-viewer .pdf-title {
+    color: #1e293b;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+}
+
+#pdf-overlay-viewer .pdf-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+#pdf-overlay-viewer .pdf-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    text-decoration: none;
+}
+
+#pdf-overlay-viewer .pdf-btn:hover {
+    background: #1d4ed8;
+}
+
+#pdf-overlay-viewer .pdf-btn-close {
+    background: #fff;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1rem;
+}
+
+#pdf-overlay-viewer .pdf-frame {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #e2e8f0;
+}
+
+@media (max-width: 480px) {
+    #pdf-overlay-viewer .pdf-title { font-size: 0.85rem; }
+    #pdf-overlay-viewer .pdf-btn span { display: none; }
+    #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
 }
