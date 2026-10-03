@@ -356,7 +356,7 @@ html {
     transform: scale(1.2);
 }
 
-.content-item .fa-file-pdf { color: var(--danger); }
+.content-item .fa-file-pdf { color: var(--primary); }
 .content-item .fa-youtube { color: var(--danger); }
 .content-item .fa-whatsapp { color: #25D366; }
 .content-item .fa-file-alt { color: var(--primary); }
