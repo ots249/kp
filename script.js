@@ -31,6 +31,11 @@ const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 const SHEETY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
 const COMPLETION_THRESHOLD = 0.90;
 
+// ✅ Hidden Admin Settings
+const ADMIN_CLICKS_REQUIRED = 5;   // কতবার click লাগবে
+const ADMIN_CLICK_WINDOW = 3000;   // কত ms এর মধ্যে (3 সেকেন্ড)
+const ADMIN_PAGE = 'new.html';     // admin panel file name
+
 // ============================================================
 // 📊 State Variables
 // ============================================================
@@ -794,7 +799,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         return;
     }
     
-    // পুরনো overlay সরাই
     const existing = document.getElementById('yt-overlay-player');
     if (existing) existing.remove();
     
@@ -1097,6 +1101,94 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
 };
 
 // ============================================================
+// 🔒 Hidden Admin Access — Course Title-এ 5 বার Click
+// ============================================================
+function setupHiddenAdminAccess() {
+    let clickCount = 0;
+    let resetTimer = null;
+    
+    console.log('🔒 Hidden admin access initialized');
+    
+    function attachClickCounter() {
+        const titleEl = document.getElementById('course-title');
+        
+        if (!titleEl) {
+            // DOM-এ এখনো নেই, retry
+            setTimeout(attachClickCounter, 500);
+            return;
+        }
+        
+        // আগের listener সরাই (duplicate এড়াতে)
+        if (titleEl.dataset.hiddenAdminBound === '1') {
+            console.log('✅ Hidden admin already bound');
+            return;
+        }
+        titleEl.dataset.hiddenAdminBound = '1';
+        
+        // Course title-এ pointer cursor (subtle)
+        titleEl.style.cursor = 'pointer';
+        titleEl.style.userSelect = 'none';
+        
+        titleEl.addEventListener('click', function(e) {
+            clickCount++;
+            
+            // Visual feedback — শুধু ৩য় থেকে ৪র্থ click-এ subtle scale
+            if (clickCount >= 3 && clickCount < ADMIN_CLICKS_REQUIRED) {
+                titleEl.style.transition = 'transform 0.08s ease';
+                titleEl.style.transform = 'scale(0.97)';
+                setTimeout(() => {
+                    titleEl.style.transform = 'scale(1)';
+                }, 80);
+            }
+            
+            // Timer reset
+            if (resetTimer) clearTimeout(resetTimer);
+            resetTimer = setTimeout(() => {
+                clickCount = 0;
+            }, ADMIN_CLICK_WINDOW);
+            
+            // ৫ম click-এ admin panel খুলি
+            if (clickCount >= ADMIN_CLICKS_REQUIRED) {
+                clickCount = 0;
+                if (resetTimer) clearTimeout(resetTimer);
+                
+                openHiddenAdminPanel();
+            }
+        });
+    }
+    
+    function openHiddenAdminPanel() {
+        console.log('🔓 Opening hidden admin panel...');
+        
+        // Haptic feedback (mobile only)
+        if (navigator.vibrate) {
+            navigator.vibrate([50, 30, 50]);
+        }
+        
+        // নতুন window-এ admin panel খুলি
+        const adminWindow = window.open(
+            ADMIN_PAGE,
+            'adminPanel',
+            'width=1200,height=800,scrollbars=yes,resizable=yes'
+        );
+        
+        if (!adminWindow || adminWindow.closed || typeof adminWindow.closed === 'undefined') {
+            // Popup blocked → same tab-এ redirect
+            console.warn('⚠️ Popup blocked — same tab-এ redirect করছি');
+            showNotification('Admin panel খুলছে...', 'info');
+            setTimeout(() => {
+                window.location.href = ADMIN_PAGE;
+            }, 500);
+        } else {
+            adminWindow.focus();
+        }
+    }
+    
+    // Start
+    attachClickCounter();
+}
+
+// ============================================================
 // 🚀 Load sections
 // ============================================================
 async function loadSections() {
@@ -1334,6 +1426,7 @@ window.resetAllProgress = function() {
 // 🚀 Initialize
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Notification animations
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInRight {
@@ -1354,6 +1447,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadYouTubeIframeAPI();
     
     loadSections();
+    
+    // ✅ Setup hidden admin access (5-click on title)
+    setupHiddenAdminAccess();
     
     const resetBtn = document.getElementById('reset-progress');
     if (resetBtn) resetBtn.addEventListener('click', window.resetAllProgress);
