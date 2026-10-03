@@ -24,7 +24,7 @@ const API_ENDPOINTS = [
     }
 ];
 
-// YouTube API Key
+// ⚠️ আপনার YouTube API Key এখানে বসান (console থেকে সেট করবেন)
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 
 // Complete status tracking
@@ -32,6 +32,9 @@ let completedItems = {};
 
 // Cache for video durations
 let videoDurationCache = {};
+
+// Debounce timer for cache save
+let cacheSaveTimer = null;
 
 // ============================================================
 // 💾 localStorage লোড/সেভ
@@ -64,12 +67,16 @@ function loadVideoDurationCache() {
     }
 }
 
+// ✅ Debounced save — প্রতি ভিডিওতে write হবে না
 function saveVideoDurationCache() {
-    try {
-        localStorage.setItem('videoDurationCache', JSON.stringify(videoDurationCache));
-    } catch (error) {
-        console.error('Error saving video duration cache:', error);
-    }
+    if (cacheSaveTimer) clearTimeout(cacheSaveTimer);
+    cacheSaveTimer = setTimeout(() => {
+        try {
+            localStorage.setItem('videoDurationCache', JSON.stringify(videoDurationCache));
+        } catch (error) {
+            console.error('Error saving video duration cache:', error);
+        }
+    }, 1000);
 }
 
 // ============================================================
@@ -89,27 +96,11 @@ function fetchWithTimeout(url, timeoutMs = 10000) {
 function normalizeApiResponse(data, apiName) {
     if (!data) return null;
     
-    // Format 1: { success: true, classes: [...] }
-    if (data.success && Array.isArray(data.classes)) {
-        return data.classes;
-    }
+    if (data.success && Array.isArray(data.classes)) return data.classes;
+    if (Array.isArray(data.classes)) return data.classes;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.data)) return data.data;
     
-    // Format 2: { classes: [...] }
-    if (Array.isArray(data.classes)) {
-        return data.classes;
-    }
-    
-    // Format 3: directly an array
-    if (Array.isArray(data)) {
-        return data;
-    }
-    
-    // Format 4: { data: [...] }
-    if (Array.isArray(data.data)) {
-        return data.data;
-    }
-    
-    // Format 5: any array found in top-level keys
     if (typeof data === 'object') {
         for (const key of Object.keys(data)) {
             if (Array.isArray(data[key])) {
@@ -205,7 +196,8 @@ function transformClassesToSections(classes) {
             if (chapter && lecture) title += ` - `;
             title += `Lecture ${lecture}`;
             
-            const contentId = `${subject}_${chapter}_${lecture}`.replace(/\s+/g, '_');
+            // ✅ index যোগ — duplicate এড়াতে
+            const contentId = `${subject}_${chapter}_${lecture}_${idx}`.replace(/\s+/g, '_');
             
             return {
                 id: contentId,
@@ -286,72 +278,91 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube API থেকে ডিউরেশন আনা
+// 📡 YouTube API থেকে একসাথে অনেক ভিডিওর ডিউরেশন (batch)
 // ============================================================
-async function getVideoDuration(videoId) {
-    if (videoDurationCache[videoId]) {
-        return videoDurationCache[videoId];
-    }
+async function getVideoDurationsBatch(videoIds) {
+    const result = {};
+    const uncachedIds = [];
+    
+    // Cache hit চেক
+    videoIds.forEach(id => {
+        if (!id) return;
+        if (videoDurationCache[id]) {
+            result[id] = videoDurationCache[id];
+        } else {
+            uncachedIds.push(id);
+        }
+    });
+    
+    if (uncachedIds.length === 0) return result;
     
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
         console.warn('⚠️ YouTube API Key সেট করা নেই');
-        return '--:--';
+        uncachedIds.forEach(id => result[id] = '--:--');
+        return result;
     }
     
-    try {
-        const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-        console.log('📡 YouTube API কল:', videoId);
+    // ✅ YouTube API max 50 ID per request
+    const CHUNK_SIZE = 50;
+    for (let i = 0; i < uncachedIds.length; i += CHUNK_SIZE) {
+        const chunk = uncachedIds.slice(i, i + CHUNK_SIZE);
         
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        
-        if (!response.ok || data.error) {
-            console.error('❌ YouTube API Error:', {
-                status: response.status,
-                error: data.error
+        try {
+            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${chunk.join(',')}&key=${YOUTUBE_API_KEY}`;
+            console.log(`📡 YouTube API batch call: ${chunk.length}টি ভিডিও`);
+            
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            
+            if (!response.ok || data.error) {
+                console.error('❌ YouTube API Error:', data.error);
+                chunk.forEach(id => result[id] = '--:--');
+                continue;
+            }
+            
+            const foundIds = new Set();
+            if (data.items) {
+                data.items.forEach(item => {
+                    const duration = formatDuration(item.contentDetails.duration);
+                    result[item.id] = duration;
+                    videoDurationCache[item.id] = duration;
+                    foundIds.add(item.id);
+                });
+            }
+            
+            // Not found
+            chunk.forEach(id => {
+                if (!foundIds.has(id)) {
+                    result[id] = '--:--';
+                }
             });
-            return '--:--';
+            
+        } catch (error) {
+            console.error('❌ Batch fetch error:', error);
+            chunk.forEach(id => result[id] = '--:--');
         }
-        
-        if (data.items && data.items.length > 0) {
-            const duration = data.items[0].contentDetails.duration;
-            const formattedDuration = formatDuration(duration);
-            
-            console.log(`✅ ${videoId} → ${formattedDuration}`);
-            
-            videoDurationCache[videoId] = formattedDuration;
-            saveVideoDurationCache();
-            
-            return formattedDuration;
-        }
-        
-        return '--:--';
-    } catch (error) {
-        console.error('❌ Error fetching video duration:', error);
-        return '--:--';
     }
+    
+    saveVideoDurationCache();
+    return result;
 }
 
 // ============================================================
-// 🔄 সব ভিডিওর ডিউরেশন আপডেট
+// 🔄 সব ভিডিওর ডিউরেশন আপডেট (batch + parallel)
 // ============================================================
 async function updateAllVideoDurations() {
     const videoItems = document.querySelectorAll('.content-item .fa-youtube');
     
-    for (const videoIcon of videoItems) {
+    // প্রথমে সব video ID collect করি
+    const itemsWithId = [];
+    const allIds = [];
+    
+    videoItems.forEach(videoIcon => {
         const contentItem = videoIcon.closest('.content-item');
-        const titleSpan = contentItem.querySelector('.content-title');
         const linkIcon = contentItem.querySelector('.link-icon');
         
-        const onclickAttr = titleSpan.getAttribute('onclick');
-        let videoLink = '';
-        
-        if (onclickAttr) {
-            const match = onclickAttr.match(/'([^']+)'/g);
-            if (match && match[0]) {
-                videoLink = match[0].replace(/'/g, '');
-            }
-        }
+        // ✅ data attribute থেকে লিংক নাও (inline onclick এর বদলে)
+        let videoLink = contentItem.dataset.link || '';
         
         if (videoLink) {
             const videoId = extractYouTubeVideoId(videoLink);
@@ -372,11 +383,21 @@ async function updateAllVideoDurations() {
                 
                 durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 
-                const duration = await getVideoDuration(videoId);
-                durationSpan.textContent = duration;
+                itemsWithId.push({ videoId, durationSpan });
+                allIds.push(videoId);
             }
         }
-    }
+    });
+    
+    if (allIds.length === 0) return;
+    
+    // ✅ একসাথে সব duration আনি
+    const durations = await getVideoDurationsBatch(allIds);
+    
+    // তারপর UI-তে বসাই
+    itemsWithId.forEach(({ videoId, durationSpan }) => {
+        durationSpan.textContent = durations[videoId] || '--:--';
+    });
 }
 
 // ============================================================
@@ -421,25 +442,11 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-// Add animation styles
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
-
 // ============================================================
-// ✅ Complete toggle
+// ✅ Complete toggle — fixed (event parameter)
 // ============================================================
-window.toggleComplete = function(itemId, checkbox) {
-    if (window.event) window.event.stopPropagation();
+window.toggleComplete = function(itemId, checkbox, event) {
+    if (event) event.stopPropagation();
     
     if (checkbox.checked) {
         completedItems[itemId] = true;
@@ -511,7 +518,7 @@ function updateAllProgress() {
 // ============================================================
 function getIconForContent(content, link, title) {
     const titleLower = title.toLowerCase();
-    const linkLower = link.toLowerCase();
+    const linkLower = (link || '').toLowerCase();
     
     if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
         return { iconClass: 'fas fa-file-pdf', isPDF: true, isYouTube: false };
@@ -536,16 +543,41 @@ function getIconForContent(content, link, title) {
 }
 
 // ============================================================
+// 🧰 HTML escape (XSS protection)
+// ============================================================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// HTML attribute value escape (title, data-* এর জন্য)
+function escapeAttr(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// ============================================================
 // 📄 PDF Viewer
 // ============================================================
 window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
+    const safeTitle = escapeHtml(title);
     
     const popupHTML = `
         <!DOCTYPE html>
         <html>
         <head>
-            <title>${title} - PDF ভিউয়ার</title>
+            <title>${safeTitle} - PDF ভিউয়ার</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
             <style>
@@ -572,10 +604,10 @@ window.openPDFViewer = function(pdfUrl, title) {
                 <div class="toolbar">
                     <div class="toolbar-left">
                         <i class="fas fa-file-pdf"></i>
-                        <h3 title="${title}">${title}</h3>
+                        <h3>${safeTitle}</h3>
                     </div>
                     <div class="toolbar-right">
-                        <button class="btn-download" onclick="downloadPDF('${pdfUrl}')">
+                        <button class="btn-download" id="downloadBtn">
                             <i class="fas fa-download"></i>
                             <span>ডাউনলোড</span>
                         </button>
@@ -587,15 +619,15 @@ window.openPDFViewer = function(pdfUrl, title) {
                 <iframe class="pdf-frame" src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true" allowfullscreen></iframe>
             </div>
             <script>
-                function downloadPDF(url) {
+                document.getElementById('downloadBtn').addEventListener('click', function() {
                     const a = document.createElement('a');
-                    a.href = url;
-                    a.download = url.split('/').pop() || 'document.pdf';
+                    a.href = ${JSON.stringify(pdfUrl)};
+                    a.download = ${JSON.stringify(pdfUrl.split('/').pop() || 'document.pdf')};
                     a.style.display = 'none';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                }
+                });
                 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') window.close(); });
             <\/script>
         </body>
@@ -617,6 +649,7 @@ window.openPDFViewer = function(pdfUrl, title) {
 // ============================================================
 window.openYouTubePlayer = function(videoUrl, title) {
     let videoId = extractYouTubeVideoId(videoUrl);
+    const safeTitle = escapeHtml(title);
     
     if (videoId) {
         const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1`;
@@ -625,7 +658,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>${title} - ইউটিউব প্লেয়ার</title>
+                <title>${safeTitle} - ইউটিউব প্লেয়ার</title>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
                 <style>
@@ -653,10 +686,10 @@ window.openYouTubePlayer = function(videoUrl, title) {
                     <div class="toolbar">
                         <div class="toolbar-left">
                             <i class="fab fa-youtube" style="color: #ff0000; font-size: 1.5rem;"></i>
-                            <h3 title="${title}">${title}</h3>
+                            <h3>${safeTitle}</h3>
                         </div>
                         <div class="toolbar-right">
-                            <button class="btn-watch" onclick="window.open('${videoUrl}', '_blank')">
+                            <button class="btn-watch" id="watchBtn">
                                 <i class="fab fa-youtube"></i>
                                 <span>ইউটিউবে দেখুন</span>
                             </button>
@@ -673,6 +706,9 @@ window.openYouTubePlayer = function(videoUrl, title) {
                     </div>
                 </div>
                 <script>
+                    document.getElementById('watchBtn').addEventListener('click', function() {
+                        window.open(${JSON.stringify(videoUrl)}, '_blank');
+                    });
                     function toggleFullScreen() {
                         const videoFrame = document.querySelector('.video-frame');
                         if (document.fullscreenElement) {
@@ -712,7 +748,7 @@ window.openYouTubePlayer = function(videoUrl, title) {
 };
 
 // ============================================================
-// 🚀 Main load function (with API fallback)
+// 🚀 Main load function
 // ============================================================
 async function loadSections() {
     loadCompletedItems();
@@ -726,9 +762,10 @@ async function loadSections() {
         const sections = transformClassesToSections(classes);
         displaySections(sections);
         
+        // DOM render হওয়ার পর duration load
         setTimeout(() => {
             updateAllVideoDurations();
-        }, 1000);
+        }, 500);
         
     } catch (error) {
         console.error('❌ সব API ব্যর্থ:', error);
@@ -751,7 +788,7 @@ async function loadSections() {
 }
 
 // ============================================================
-// 🖼️ Display sections
+// 🖼️ Display sections — event delegation সহ
 // ============================================================
 function displaySections(sections) {
     const container = document.getElementById('sections-container');
@@ -778,39 +815,32 @@ function displaySections(sections) {
             
             const itemId = `section_${section.id || index}_content_${content.id || contentIndex}_${contentTitle.replace(/\s+/g, '_')}`;
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
-            
-            let clickHandler = '';
-            if (isPDF) {
-                clickHandler = `openPDFViewer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')`;
-            } else if (isYouTube) {
-                clickHandler = `openYouTubePlayer('${contentLink.replace(/'/g, "\\'")}', '${contentTitle.replace(/'/g, "\\'")}')`;
-            } else {
-                clickHandler = `window.open('${contentLink.replace(/'/g, "\\'")}', '_blank')`;
-            }
-            
             const isCompleted = completedItems[itemId] || false;
             
+            // ✅ সব data attribute-এ — inline onclick নেই
             return `
-                <div class="content-item ${isCompleted ? 'completed' : ''}" data-item-id="${itemId}">
+                <div class="content-item ${isCompleted ? 'completed' : ''}" 
+                     data-item-id="${escapeAttr(itemId)}"
+                     data-link="${escapeAttr(contentLink)}"
+                     data-title="${escapeAttr(contentTitle)}"
+                     data-type="${isPDF ? 'pdf' : isYouTube ? 'video' : 'link'}">
                     <input type="checkbox" class="complete-checkbox" 
-                        onchange="toggleComplete('${itemId}', this)" 
                         ${isCompleted ? 'checked' : ''}
-                        onclick="event.stopPropagation()"
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
-                    <span class="content-title" onclick="${clickHandler}">${contentTitle}</span>
+                    <span class="content-title">${escapeHtml(contentTitle)}</span>
                     ${isYouTube ? '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>' : ''}
-                    ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" onclick="' + clickHandler + '" title="খুলুন"></i>' : ''}
+                    ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" title="খুলুন"></i>' : ''}
                 </div>
             `;
         }).join('');
         
         return `
             <div class="section-card">
-                <div class="section-header" onclick="toggleSection(this)">
+                <div class="section-header">
                     <div class="left-content">
                         <i class="fas fa-chevron-right section-icon"></i>
-                        <h3>${sectionTitle}</h3>
+                        <h3>${escapeHtml(sectionTitle)}</h3>
                     </div>
                     <div class="right-content">
                         <div class="section-progress-container">
@@ -828,6 +858,9 @@ function displaySections(sections) {
     
     container.innerHTML = sectionsHTML;
     
+    // ✅ Event delegation — সব click একসাথে handle
+    attachEventHandlers();
+    
     const firstSection = document.querySelector('.section-card .contents-list');
     if (firstSection) {
         firstSection.classList.remove('hidden');
@@ -839,35 +872,85 @@ function displaySections(sections) {
 }
 
 // ============================================================
-// 🔽 Toggle Section
+// 🎯 Event delegation setup
 // ============================================================
-window.toggleSection = function(header) {
-    if (window.event) window.event.stopPropagation();
+function attachEventHandlers() {
+    const container = document.getElementById('sections-container');
+    if (!container) return;
     
-    const contentsList = header.nextElementSibling;
-    const icon = header.querySelector('.section-icon');
+    // পুরনো listener সরাতে clone trick (বা just check flag)
+    if (container.dataset.handlersAttached === '1') return;
+    container.dataset.handlersAttached = '1';
     
-    contentsList.classList.toggle('hidden');
-    if (icon) icon.classList.toggle('rotated');
-    
-    const allSections = document.querySelectorAll('.section-card');
-    allSections.forEach(section => {
-        const otherContents = section.querySelector('.contents-list');
-        const otherIcon = section.querySelector('.section-icon');
-        if (otherContents !== contentsList && !otherContents.classList.contains('hidden')) {
-            otherContents.classList.add('hidden');
-            if (otherIcon) otherIcon.classList.remove('rotated');
+    // Click handler
+    container.addEventListener('click', (e) => {
+        const header = e.target.closest('.section-header');
+        if (header) {
+            window.toggleSection(header);
+            return;
+        }
+        
+        const contentItem = e.target.closest('.content-item');
+        if (!contentItem) return;
+        
+        // Checkbox ক্লিক হলে toggleComplete
+        if (e.target.classList.contains('complete-checkbox')) {
+            const itemId = contentItem.dataset.itemId;
+            window.toggleComplete(itemId, e.target, e);
+            return;
+        }
+        
+        // Title বা link icon ক্লিক হলে open
+        const isTitle = e.target.classList.contains('content-title');
+        const isLinkIcon = e.target.classList.contains('link-icon');
+        
+        if (isTitle || isLinkIcon) {
+            const link = contentItem.dataset.link;
+            const title = contentItem.dataset.title;
+            const type = contentItem.dataset.type;
+            
+            if (type === 'pdf') {
+                window.openPDFViewer(link, title);
+            } else if (type === 'video') {
+                window.openYouTubePlayer(link, title);
+            } else {
+                window.open(link, '_blank');
+            }
         }
     });
 }
 
 // ============================================================
-// 🔤 Unicode Decode
+// 🔽 Toggle Section
+// ============================================================
+window.toggleSection = function(header) {
+    const contentsList = header.nextElementSibling;
+    const icon = header.querySelector('.section-icon');
+    
+    if (!contentsList) return;
+    
+    contentsList.classList.toggle('hidden');
+    if (icon) icon.classList.toggle('rotated');
+    
+    // অন্য section বন্ধ করি
+    document.querySelectorAll('.section-card').forEach(section => {
+        const otherContents = section.querySelector('.contents-list');
+        const otherIcon = section.querySelector('.section-icon');
+        if (otherContents && otherContents !== contentsList && !otherContents.classList.contains('hidden')) {
+            otherContents.classList.add('hidden');
+            if (otherIcon) otherIcon.classList.remove('rotated');
+        }
+    });
+};
+
+// ============================================================
+// 🔤 Unicode Decode — নিরাপদ
 // ============================================================
 function decodeUnicode(str) {
     if (!str) return '';
     try {
-        return JSON.parse('"' + str.replace(/"/g, '\\"') + '"');
+        // ✅ backslash এবং quotes দুটোই escape
+        return JSON.parse(`"${String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`);
     } catch (e) {
         return str;
     }
@@ -890,40 +973,26 @@ window.resetAllProgress = function() {
         updateAllProgress();
         showNotification('সব প্রোগ্রেস রিসেট করা হয়েছে', 'info');
     }
-}
+};
 
 // ============================================================
-// 📱 PWA Install Button
-// ============================================================
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installButton = document.getElementById('install-button');
-    if (installButton) {
-        installButton.style.display = 'inline-flex';
-        
-        installButton.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
-            deferredPrompt = null;
-            installButton.style.display = 'none';
-        });
-    }
-});
-
-window.addEventListener('appinstalled', (evt) => {
-    console.log('App was installed.');
-    showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
-});
-
-// ============================================================
-// 🚀 Initialize (single consolidated DOMContentLoaded)
+// 🚀 Initialize
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // Notification animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
     // Load sections
     loadSections();
     
@@ -936,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => window.resetAllProgress(), 1000);
     }
     
-    // Online/offline detection
+    // Online/offline
     if (!navigator.onLine) {
         showNotification('আপনি অফলাইনে আছেন। কিছু ফিচার কাজ নাও করতে পারে।', 'info');
     }
@@ -949,9 +1018,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
     });
     
-    // ============================================================
-    // 🔄 Floating Reload Button
-    // ============================================================
+    // Floating Reload Button
     const reloadBtn = document.getElementById('floating-reload-btn');
     if (reloadBtn) {
         reloadBtn.addEventListener('click', function(e) {
@@ -962,9 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // ============================================================
-    // 🌗 Day/Night Mode Toggle
-    // ============================================================
+    // Theme Toggle
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const icon = themeToggle.querySelector('i');
@@ -1016,7 +1081,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// System theme preference detection
+// System theme preference
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     const savedTheme = localStorage.getItem('theme');
     if (!savedTheme) {
@@ -1029,4 +1094,32 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
             if (icon) icon.classList.replace('fa-moon', 'fa-sun');
         }
     }
+});
+
+// ============================================================
+// 📱 PWA Install
+// ============================================================
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installButton = document.getElementById('install-button');
+    if (installButton) {
+        installButton.style.display = 'inline-flex';
+        
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+        });
+    }
+});
+
+window.addEventListener('appinstalled', (evt) => {
+    console.log('App was installed.');
+    showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
 });
