@@ -31,10 +31,13 @@ const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 const SHEETY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
 const COMPLETION_THRESHOLD = 0.90;
 
+// ✅ Batch save concurrency (একবারে max কত request)
+const DB_SAVE_CONCURRENT = 15;
+
 // ✅ Hidden Admin Settings
-const ADMIN_CLICKS_REQUIRED = 5;   // কতবার click লাগবে
-const ADMIN_CLICK_WINDOW = 3000;   // কত ms এর মধ্যে (3 সেকেন্ড)
-const ADMIN_PAGE = 'new.html';     // admin panel file name
+const ADMIN_CLICKS_REQUIRED = 5;
+const ADMIN_CLICK_WINDOW = 3000;
+const ADMIN_PAGE = 'new.html';
 
 // ============================================================
 // 📊 State Variables
@@ -308,7 +311,7 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube Durations — DB First, API Fallback, Save to DB
+// 📡 YouTube Durations — DB First, API Fallback
 // ============================================================
 async function getVideoDurationsBatch(videoIds, dbRows) {
     const result = {};
@@ -396,45 +399,109 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
 }
 
 // ============================================================
-// 💾 Save new durations to DB (Sheety — No Token)
+// 💾 Save ALL durations to DB — Parallel Batch + Chunked
 // ============================================================
 async function saveDurationsToDB(items) {
     if (!items || items.length === 0) return;
     
-    console.log(`💾 ${items.length}টি duration DB-তে save করছি...`);
+    // ✅ Invalid items ফিল্টার
+    const validItems = items.filter(({ rowId, duration }) => 
+        rowId && duration && duration !== '--:--'
+    );
+    
+    if (validItems.length === 0) return;
+    
+    console.log(`💾 ${validItems.length}টি duration একসাথে DB-তে save করছি...`);
+    
+    const startTime = Date.now();
+    const failedItems = [];
+    let successCount = 0;
+    
+    // ✅ Chunk-এ ভাগ করি (concurrent limit এড়াতে)
+    const chunks = [];
+    for (let i = 0; i < validItems.length; i += DB_SAVE_CONCURRENT) {
+        chunks.push(validItems.slice(i, i + DB_SAVE_CONCURRENT));
+    }
+    
+    console.log(`📦 ${chunks.length}টি chunk-এ ভাগ করলাম (প্রতি chunk-এ ${DB_SAVE_CONCURRENT}টি)`);
+    
+    // ✅ প্রতিটি chunk parallel-এ পাঠাই
+    for (const chunk of chunks) {
+        const promises = chunk.map(async ({ rowId, duration }) => {
+            try {
+                const url = `${SHEETY_API}/${rowId}`;
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sheet1: { duration } })
+                });
+                
+                if (response.ok) {
+                    successCount++;
+                    console.log(`✅ DB Save: row ${rowId} → ${duration}`);
+                    return { success: true };
+                } else {
+                    const errText = await response.text();
+                    console.warn(`❌ DB Save failed row ${rowId}: ${response.status}`, errText);
+                    failedItems.push({ rowId, duration });
+                    return { success: false };
+                }
+            } catch (error) {
+                console.error(`❌ DB Save error row ${rowId}:`, error);
+                failedItems.push({ rowId, duration });
+                return { success: false };
+            }
+        });
+        
+        await Promise.allSettled(promises);
+        
+        // ✅ Chunk-এর মাঝে ৩০০ms delay (Sheety rate limit এড়াতে)
+        if (chunks.indexOf(chunk) < chunks.length - 1) {
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ Batch complete: ${successCount}/${validItems.length} সফল (${elapsed}ms)`);
+    
+    // ✅ Failed হলে sequential retry
+    if (failedItems.length > 0) {
+        console.log(`🔄 ${failedItems.length}টি retry করছি (sequential)...`);
+        await retryFailedDurations(failedItems);
+    }
+}
+
+// ============================================================
+// 🔄 Retry failed durations (sequential with delay)
+// ============================================================
+async function retryFailedDurations(items) {
+    let retrySuccess = 0;
     
     for (const { rowId, duration } of items) {
-        if (!rowId || !duration || duration === '--:--') continue;
-        
         try {
             const url = `${SHEETY_API}/${rowId}`;
-            const payload = {
-                sheet1: {
-                    duration: duration
-                }
-            };
-            
             const response = await fetch(url, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sheet1: { duration } })
             });
             
             if (response.ok) {
-                console.log(`✅ DB Save: row ${rowId} → ${duration}`);
+                retrySuccess++;
+                console.log(`✅ Retry OK: row ${rowId} → ${duration}`);
             } else {
-                const errText = await response.text();
-                console.warn(`❌ DB Save failed row ${rowId}:`, errText);
+                console.warn(`❌ Retry failed: row ${rowId}`);
             }
             
-            await new Promise(r => setTimeout(r, 400));
+            // Retry-তে 500ms delay
+            await new Promise(r => setTimeout(r, 500));
             
         } catch (error) {
-            console.error(`❌ DB Save error row ${rowId}:`, error);
+            console.error(`❌ Retry error: row ${rowId}`, error);
         }
     }
+    
+    console.log(`🔄 Retry complete: ${retrySuccess}/${items.length}`);
 }
 
 // ============================================================
@@ -1113,26 +1180,22 @@ function setupHiddenAdminAccess() {
         const titleEl = document.getElementById('course-title');
         
         if (!titleEl) {
-            // DOM-এ এখনো নেই, retry
             setTimeout(attachClickCounter, 500);
             return;
         }
         
-        // আগের listener সরাই (duplicate এড়াতে)
         if (titleEl.dataset.hiddenAdminBound === '1') {
             console.log('✅ Hidden admin already bound');
             return;
         }
         titleEl.dataset.hiddenAdminBound = '1';
         
-        // Course title-এ pointer cursor (subtle)
         titleEl.style.cursor = 'pointer';
         titleEl.style.userSelect = 'none';
         
         titleEl.addEventListener('click', function(e) {
             clickCount++;
             
-            // Visual feedback — শুধু ৩য় থেকে ৪র্থ click-এ subtle scale
             if (clickCount >= 3 && clickCount < ADMIN_CLICKS_REQUIRED) {
                 titleEl.style.transition = 'transform 0.08s ease';
                 titleEl.style.transform = 'scale(0.97)';
@@ -1141,13 +1204,11 @@ function setupHiddenAdminAccess() {
                 }, 80);
             }
             
-            // Timer reset
             if (resetTimer) clearTimeout(resetTimer);
             resetTimer = setTimeout(() => {
                 clickCount = 0;
             }, ADMIN_CLICK_WINDOW);
             
-            // ৫ম click-এ admin panel খুলি
             if (clickCount >= ADMIN_CLICKS_REQUIRED) {
                 clickCount = 0;
                 if (resetTimer) clearTimeout(resetTimer);
@@ -1160,12 +1221,10 @@ function setupHiddenAdminAccess() {
     function openHiddenAdminPanel() {
         console.log('🔓 Opening hidden admin panel...');
         
-        // Haptic feedback (mobile only)
         if (navigator.vibrate) {
             navigator.vibrate([50, 30, 50]);
         }
         
-        // নতুন window-এ admin panel খুলি
         const adminWindow = window.open(
             ADMIN_PAGE,
             'adminPanel',
@@ -1173,7 +1232,6 @@ function setupHiddenAdminAccess() {
         );
         
         if (!adminWindow || adminWindow.closed || typeof adminWindow.closed === 'undefined') {
-            // Popup blocked → same tab-এ redirect
             console.warn('⚠️ Popup blocked — same tab-এ redirect করছি');
             showNotification('Admin panel খুলছে...', 'info');
             setTimeout(() => {
@@ -1184,7 +1242,6 @@ function setupHiddenAdminAccess() {
         }
     }
     
-    // Start
     attachClickCounter();
 }
 
@@ -1426,7 +1483,6 @@ window.resetAllProgress = function() {
 // 🚀 Initialize
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Notification animations
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInRight {
@@ -1448,7 +1504,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     loadSections();
     
-    // ✅ Setup hidden admin access (5-click on title)
     setupHiddenAdminAccess();
     
     const resetBtn = document.getElementById('reset-progress');
