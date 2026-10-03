@@ -97,10 +97,42 @@
             font-weight: 700;
             color: #ffffff;
             line-height: 1.3;
+            flex: 1;
         }
 
         .header-top h1 span {
             font-weight: 300;
+        }
+
+        /* ক্লোজ বাটন */
+        .close-btn {
+            width: 38px;
+            height: 38px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: all 0.25s ease;
+            position: relative;
+            z-index: 2;
+            line-height: 1;
+            padding-bottom: 2px;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.32);
+            transform: rotate(90deg) scale(1.08);
+        }
+
+        .close-btn:active {
+            transform: rotate(90deg) scale(0.95);
         }
 
         .badge-live {
@@ -239,6 +271,8 @@
 
             .icon-badge { width: 44px; height: 44px; font-size: 22px; }
 
+            .close-btn { width: 34px; height: 34px; font-size: 16px; }
+
             .notice-body { padding: 18px 18px 6px; }
 
             .main-message { padding: 16px; }
@@ -263,6 +297,8 @@
             <div class="header-top">
                 <div class="icon-badge">📢</div>
                 <h1>নোটিশ <span>বোর্ড</span></h1>
+                <!-- ক্লোজ বাটন -->
+                <button class="close-btn" id="closeBtn" aria-label="বন্ধ করুন" title="ফিরে যান">✕</button>
             </div>
             <div class="badge-live">
                 <span class="dot"></span>
@@ -299,6 +335,7 @@
     </div>
 
     <script>
+        // তারিখ দেখানো
         (function() {
             const dateEl = document.getElementById('currentDate');
             if (dateEl) {
@@ -312,6 +349,18 @@
                 dateEl.textContent = now.toLocaleDateString('bn-BD', options);
             }
         })();
+
+        // ক্লোজ বাটন - আগের পেজে ফিরে যাওয়া
+        document.getElementById('closeBtn').addEventListener('click', function() {
+            if (document.referrer && document.referrer !== '') {
+                // যদি কোনো আগের পেজ থেকে আসা হয়
+                window.history.back();
+            } else {
+                // সরাসরি লিংকে ঢুকলে fallback
+                window.location.href = '/';
+                // অথবা আপনার হোম পেজ: window.location.href = 'index.html';
+            }
+        });
     </script>
 
 </body>
