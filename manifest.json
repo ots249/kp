@@ -1,12 +1,12 @@
 {
   "name": "Civil 4th Semester",
   "short_name": "Civil 4th",
-  "description": "",
+  "description": "Civil 4th Semester Diploma Course - অ্যাকাউন্টিং, এস্টিমেটিং, জিওটেকনিক্যাল, সার্ভেয়িং লেকচার ও নোট"
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#2563eb",
   "theme_color": "#2563eb",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "lang": "bn-BD",
   "dir": "ltr",
