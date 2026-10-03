@@ -69,7 +69,6 @@ function loadVideoDurationCache() {
     }
 }
 
-// Debounced save — প্রতি ভিডিওতে write হবে না
 function saveVideoDurationCache() {
     if (cacheSaveTimer) clearTimeout(cacheSaveTimer);
     cacheSaveTimer = setTimeout(() => {
@@ -93,7 +92,7 @@ function fetchWithTimeout(url, timeoutMs = 10000) {
 }
 
 // ============================================================
-// 🔍 Normalize different API response formats
+// 🔍 Normalize API response
 // ============================================================
 function normalizeApiResponse(data, apiName) {
     if (!data) return null;
@@ -117,7 +116,7 @@ function normalizeApiResponse(data, apiName) {
 }
 
 // ============================================================
-// 🚀 Try each API in order until one works
+// 🚀 Fetch classes with fallback
 // ============================================================
 async function fetchClassesWithFallback() {
     let lastError = null;
@@ -161,10 +160,6 @@ async function fetchClassesWithFallback() {
                 console.warn(`❌ ${api.name} ব্যর্থ (${elapsed}ms):`, error.message);
                 lastError = error;
             }
-            
-            if (i < API_ENDPOINTS.length - 1) {
-                console.log(`➡️ পরবর্তী API চেষ্টা করা হচ্ছে...`);
-            }
         }
     }
     
@@ -172,7 +167,7 @@ async function fetchClassesWithFallback() {
 }
 
 // ============================================================
-// 🔄 API classes → sections রূপান্তর
+// 🔄 Transform classes → sections
 // ============================================================
 function transformClassesToSections(classes) {
     if (!Array.isArray(classes)) return [];
@@ -224,7 +219,7 @@ function transformClassesToSections(classes) {
 }
 
 // ============================================================
-// 🎬 YouTube Video ID বের করা
+// 🎬 YouTube Video ID
 // ============================================================
 function extractYouTubeVideoId(url) {
     let videoId = '';
@@ -250,7 +245,7 @@ function extractYouTubeVideoId(url) {
 }
 
 // ============================================================
-// ⏱️ Duration ফরম্যাট (ISO 8601 → MM:SS / HH:MM:SS)
+// ⏱️ Format duration
 // ============================================================
 function formatDuration(duration) {
     if (!duration) return '--:--';
@@ -279,7 +274,7 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube API থেকে batch ডিউরেশন
+// 📡 YouTube API batch durations
 // ============================================================
 async function getVideoDurationsBatch(videoIds) {
     const result = {};
@@ -346,7 +341,7 @@ async function getVideoDurationsBatch(videoIds) {
 }
 
 // ============================================================
-// 🔄 সব ভিডিওর ডিউরেশন আপডেট
+// 🔄 Update all video durations
 // ============================================================
 async function updateAllVideoDurations() {
     const videoItems = document.querySelectorAll('.content-item .fa-youtube');
@@ -462,7 +457,7 @@ window.toggleComplete = function(itemId, checkbox, event) {
 };
 
 // ============================================================
-// 📊 Progress আপডেট
+// 📊 Progress
 // ============================================================
 function updateSectionProgress(sectionCard) {
     if (!sectionCard) return;
@@ -537,7 +532,7 @@ function getIconForContent(content, link, title) {
 }
 
 // ============================================================
-// 🧰 HTML escape (XSS protection)
+// 🧰 Escape helpers
 // ============================================================
 function escapeHtml(str) {
     if (str == null) return '';
@@ -560,85 +555,165 @@ function escapeAttr(str) {
 }
 
 // ============================================================
-// 📄 PDF Viewer
+// 📄 PDF Viewer (same-page overlay)
 // ============================================================
 window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
     const safeTitle = escapeHtml(title);
     
-    const popupHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${safeTitle} - PDF ভিউয়ার</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; position: fixed; width: 100%; }
-                .pdf-container { display: flex; flex-direction: column; height: 100vh; }
-                .toolbar { background: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-bottom: 1px solid #e2e8f0; }
-                .toolbar-left { display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0; }
-                .toolbar-left i { color: #ef4444; font-size: 1.5rem; flex-shrink: 0; }
-                .toolbar-left h3 { color: #1e293b; font-size: 1.2rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 1rem; }
-                .toolbar-right { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
-                .btn-download { background: #2563eb; color: white; padding: 0.6rem 1.5rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; border: none; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; }
-                .close-btn { background: white; border: 1px solid #e2e8f0; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; font-size: 1.2rem; }
-                .pdf-frame { flex: 1; width: 100%; border: none; background: #e2e8f0; }
-                @media (max-width: 480px) {
-                    .toolbar-left h3 { max-width: 150px; font-size: 0.9rem; }
-                    .btn-download span { display: none; }
-                }
-            </style>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        </head>
-        <body>
-            <div class="pdf-container">
-                <div class="toolbar">
-                    <div class="toolbar-left">
-                        <i class="fas fa-file-pdf"></i>
-                        <h3>${safeTitle}</h3>
-                    </div>
-                    <div class="toolbar-right">
-                        <button class="btn-download" id="downloadBtn">
-                            <i class="fas fa-download"></i>
-                            <span>ডাউনলোড</span>
-                        </button>
-                        <div class="close-btn" onclick="window.close()" title="বন্ধ করুন">
-                            <i class="fas fa-times"></i>
-                        </div>
-                    </div>
-                </div>
-                <iframe class="pdf-frame" src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true" allowfullscreen></iframe>
+    // পুরনো overlay সরাই
+    const existing = document.getElementById('pdf-overlay-viewer');
+    if (existing) existing.remove();
+    
+    // Style inject একবার
+    if (!document.getElementById('pdf-overlay-style')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'pdf-overlay-style';
+        styleEl.textContent = `
+            @keyframes pdfFadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            body.pdf-overlay-open { overflow: hidden !important; }
+            
+            #pdf-overlay-viewer {
+                position: fixed;
+                inset: 0;
+                background: #f1f5f9;
+                z-index: 999999;
+                display: flex;
+                flex-direction: column;
+                animation: pdfFadeIn 0.25s ease;
+            }
+            #pdf-overlay-viewer .pdf-toolbar {
+                background: #fff;
+                padding: 0.75rem 1.25rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+                border-bottom: 1px solid #e2e8f0;
+                flex-shrink: 0;
+                gap: 0.75rem;
+            }
+            #pdf-overlay-viewer .pdf-title-wrap {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                flex: 1;
+                min-width: 0;
+            }
+            #pdf-overlay-viewer .pdf-title-wrap i {
+                color: #ef4444;
+                font-size: 1.4rem;
+                flex-shrink: 0;
+            }
+            #pdf-overlay-viewer .pdf-title {
+                color: #1e293b;
+                font-size: 1rem;
+                font-weight: 600;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                margin: 0;
+            }
+            #pdf-overlay-viewer .pdf-actions {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex-shrink: 0;
+            }
+            #pdf-overlay-viewer .pdf-btn {
+                background: #2563eb;
+                color: #fff;
+                border: none;
+                border-radius: 0.5rem;
+                padding: 0.55rem 1rem;
+                font-size: 0.9rem;
+                font-weight: 500;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                text-decoration: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            #pdf-overlay-viewer .pdf-btn:hover { background: #1d4ed8; }
+            #pdf-overlay-viewer .pdf-btn-close {
+                background: #fff;
+                color: #64748b;
+                border: 1px solid #e2e8f0;
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                justify-content: center;
+                border-radius: 50%;
+                font-size: 1rem;
+            }
+            #pdf-overlay-viewer .pdf-btn-close:hover { background: #f1f5f9; color: #334155; }
+            #pdf-overlay-viewer .pdf-frame {
+                flex: 1;
+                width: 100%;
+                border: none;
+                background: #e2e8f0;
+            }
+            @media (max-width: 480px) {
+                #pdf-overlay-viewer .pdf-title { font-size: 0.85rem; }
+                #pdf-overlay-viewer .pdf-btn span { display: none; }
+                #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
+                #pdf-overlay-viewer .pdf-toolbar { padding: 0.5rem 0.75rem; }
+            }
+        `;
+        document.head.appendChild(styleEl);
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'pdf-overlay-viewer';
+    overlay.innerHTML = `
+        <div class="pdf-toolbar">
+            <div class="pdf-title-wrap">
+                <i class="fas fa-file-pdf"></i>
+                <h3 class="pdf-title">${safeTitle}</h3>
             </div>
-            <script>
-                document.getElementById('downloadBtn').addEventListener('click', function() {
-                    const a = document.createElement('a');
-                    a.href = ${JSON.stringify(pdfUrl)};
-                    a.download = ${JSON.stringify(pdfUrl.split('/').pop() || 'document.pdf')};
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                });
-                document.addEventListener('keydown', function(e) { if (e.key === 'Escape') window.close(); });
-            <\/script>
-        </body>
-        </html>
+            <div class="pdf-actions">
+                <a class="pdf-btn" href="${escapeAttr(pdfUrl)}" download target="_blank" rel="noopener" title="ডাউনলোড">
+                    <i class="fas fa-download"></i>
+                    <span>ডাউনলোড</span>
+                </a>
+                <button class="pdf-btn pdf-btn-close" id="pdf-overlay-close" title="বন্ধ করুন (ESC)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <iframe class="pdf-frame" src="https://docs.google.com/viewer?url=${encodedUrl}&embedded=true"></iframe>
     `;
     
-    const pdfWindow = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-    if (pdfWindow) {
-        pdfWindow.document.write(popupHTML);
-        pdfWindow.document.close();
-    } else {
-        showNotification('পপ-আপ ব্লকার সক্রিয়। সরাসরি খুলছি...', 'info');
-        setTimeout(() => window.open(pdfUrl, '_blank'), 1000);
+    document.body.appendChild(overlay);
+    document.body.classList.add('pdf-overlay-open');
+    
+    const closeBtn = document.getElementById('pdf-overlay-close');
+    closeBtn.addEventListener('click', closeOverlay);
+    
+    function onKeydown(e) {
+        if (e.key === 'Escape') closeOverlay();
+    }
+    document.addEventListener('keydown', onKeydown);
+    
+    function closeOverlay() {
+        const el = document.getElementById('pdf-overlay-viewer');
+        if (el) {
+            el.style.animation = 'pdfFadeIn 0.15s ease reverse';
+            setTimeout(() => {
+                el.remove();
+                document.body.classList.remove('pdf-overlay-open');
+                document.removeEventListener('keydown', onKeydown);
+            }, 140);
+        }
     }
 };
 
 // ============================================================
-// ▶️ YouTube Player (custom fullscreen button removed)
+// ▶️ YouTube Player — Same-Page Full-Screen Overlay
 // ============================================================
 window.openYouTubePlayer = function(videoUrl, title) {
     const videoId = extractYouTubeVideoId(videoUrl);
@@ -649,150 +724,201 @@ window.openYouTubePlayer = function(videoUrl, title) {
         return;
     }
     
+    // পুরনো overlay সরাই
+    const existing = document.getElementById('yt-overlay-player');
+    if (existing) existing.remove();
+    
     // ✅ fs=1 → YouTube fullscreen enable
-    // ✅ playsinline=1 → mobile-এ iframe-এর ভেতরে play
+    // ✅ playsinline=1 → mobile-এ কাজ করে
     const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1&fs=1&playsinline=1`;
     
-    const playerHTML = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>${safeTitle} - ইউটিউব প্লেয়ার</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                html, body { 
-                    width: 100%; height: 100%; 
-                    background: #000; overflow: hidden; 
-                    font-family: 'Inter', sans-serif;
-                }
-                .player-container { 
-                    display: flex; flex-direction: column; 
-                    height: 100vh; width: 100vw;
-                    background: #0f0f0f;
-                }
-                .toolbar { 
-                    background: #1f1f1f; 
-                    padding: 0.75rem 1.5rem; 
-                    display: flex; 
-                    justify-content: space-between; 
-                    align-items: center; 
-                    flex-shrink: 0;
-                    border-bottom: 1px solid #333;
-                }
-                .toolbar-left { 
-                    display: flex; align-items: center; gap: 0.75rem; 
-                    flex: 1; min-width: 0;
-                }
-                .toolbar-left i { 
-                    color: #ff0000; font-size: 1.3rem; flex-shrink: 0;
-                }
-                .toolbar-left h3 { 
-                    color: #fff; font-size: 1rem; font-weight: 500; 
-                    overflow: hidden; text-overflow: ellipsis; 
-                    white-space: nowrap;
-                }
-                .toolbar-right { 
-                    display: flex; align-items: center; gap: 0.75rem; 
-                    flex-shrink: 0;
-                }
-                .btn-watch { 
-                    background: #ff0000; color: white; 
-                    padding: 0.5rem 1.25rem; border-radius: 2rem; 
-                    font-weight: 500; cursor: pointer; border: none; 
-                    font-size: 0.9rem; display: flex; 
-                    align-items: center; gap: 0.4rem;
-                    text-decoration: none;
-                }
-                .btn-watch:hover { background: #cc0000; }
-                .close-btn { 
-                    background: rgba(51,51,51,0.9); 
-                    border: 1px solid #444; 
-                    border-radius: 50%; 
-                    width: 36px; height: 36px; 
-                    display: flex; align-items: center; 
-                    justify-content: center; cursor: pointer; 
-                    color: white; font-size: 1rem;
-                }
-                .close-btn:hover { background: #333; }
-                .video-wrapper { 
-                    flex: 1; 
-                    position: relative; 
-                    background: #000; 
-                    overflow: hidden;
-                    min-height: 0;
-                }
-                .video-frame { 
-                    position: absolute; 
-                    top: 0; left: 0; 
-                    width: 100%; height: 100%; 
-                    border: 0; 
-                    background: #000;
-                }
-                @media (max-width: 480px) {
-                    .toolbar-left h3 { max-width: 140px; font-size: 0.85rem; }
-                    .btn-watch span { display: none; }
-                    .btn-watch { padding: 0.5rem 0.75rem; }
-                }
-            </style>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-        </head>
-        <body>
-            <div class="player-container">
-                <div class="toolbar">
-                    <div class="toolbar-left">
-                        <i class="fab fa-youtube"></i>
-                        <h3>${safeTitle}</h3>
-                    </div>
-                    <div class="toolbar-right">
-                        <a class="btn-watch" id="watchBtn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener">
-                            <i class="fab fa-youtube"></i>
-                            <span>ইউটিউবে</span>
-                        </a>
-                        <div class="close-btn" onclick="window.close()" title="বন্ধ করুন">
-                            <i class="fas fa-times"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="video-wrapper">
-                    <iframe 
-                        class="video-frame" 
-                        src="${embedUrl}" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" 
-                        allowfullscreen="true"
-                        webkitallowfullscreen="true"
-                        mozallowfullscreen="true"
-                        frameborder="0"
-                        referrerpolicy="strict-origin-when-cross-origin">
-                    </iframe>
-                </div>
+    // Style inject একবার
+    if (!document.getElementById('yt-overlay-style')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'yt-overlay-style';
+        styleEl.textContent = `
+            @keyframes ytFadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            body.yt-overlay-open { overflow: hidden !important; }
+            
+            #yt-overlay-player {
+                position: fixed;
+                inset: 0;
+                background: #000;
+                z-index: 999999;
+                display: flex;
+                flex-direction: column;
+                animation: ytFadeIn 0.25s ease;
+            }
+            #yt-overlay-player .yt-toolbar {
+                background: #1a1a1a;
+                padding: 0.6rem 1rem;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #2a2a2a;
+                flex-shrink: 0;
+                gap: 0.75rem;
+            }
+            #yt-overlay-player .yt-title-wrap {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                flex: 1;
+                min-width: 0;
+            }
+            #yt-overlay-player .yt-title-wrap i.fa-youtube {
+                color: #ff0000;
+                font-size: 1.4rem;
+                flex-shrink: 0;
+            }
+            #yt-overlay-player .yt-title {
+                color: #fff;
+                font-size: 0.95rem;
+                font-weight: 500;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                margin: 0;
+                line-height: 1.3;
+            }
+            #yt-overlay-player .yt-actions {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex-shrink: 0;
+            }
+            #yt-overlay-player .yt-btn {
+                background: rgba(51,51,51,0.85);
+                border: 1px solid #444;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                color: #fff;
+                font-size: 1rem;
+                transition: all 0.2s ease;
+                text-decoration: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            #yt-overlay-player .yt-btn:hover,
+            #yt-overlay-player .yt-btn:active {
+                background: #333;
+                transform: scale(1.05);
+            }
+            #yt-overlay-player .yt-btn.yt-yt-btn {
+                background: rgba(255,0,0,0.9);
+                border-color: #cc0000;
+            }
+            #yt-overlay-player .yt-btn.yt-yt-btn:hover {
+                background: #cc0000;
+            }
+            #yt-overlay-player .yt-video-wrap {
+                flex: 1;
+                position: relative;
+                background: #000;
+                min-height: 0;
+                overflow: hidden;
+            }
+            #yt-overlay-player .yt-video-frame {
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                border: 0;
+                background: #000;
+            }
+            #yt-overlay-player .yt-hint {
+                background: #111;
+                color: #888;
+                padding: 0.4rem 1rem;
+                font-size: 0.75rem;
+                text-align: center;
+                border-top: 1px solid #222;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.4rem;
+            }
+            @media (max-width: 480px) {
+                #yt-overlay-player .yt-title { font-size: 0.85rem; }
+                #yt-overlay-player .yt-btn { width: 36px; height: 36px; font-size: 0.9rem; }
+                #yt-overlay-player .yt-toolbar { padding: 0.5rem 0.75rem; }
+                #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+            }
+        `;
+        document.head.appendChild(styleEl);
+    }
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'yt-overlay-player';
+    overlay.innerHTML = `
+        <div class="yt-toolbar">
+            <div class="yt-title-wrap">
+                <i class="fab fa-youtube"></i>
+                <h3 class="yt-title">${safeTitle}</h3>
             </div>
-            <script>
-                document.addEventListener('keydown', function(e) { 
-                    if (e.key === 'Escape') window.close(); 
-                });
-            <\/script>
-        </body>
-        </html>
+            <div class="yt-actions">
+                <a class="yt-btn yt-yt-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                <button class="yt-btn" id="yt-overlay-close" title="বন্ধ করুন (ESC)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="yt-video-wrap">
+            <iframe 
+                class="yt-video-frame"
+                src="${embedUrl}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowfullscreen="true"
+                webkitallowfullscreen="true"
+                mozallowfullscreen="true"
+                frameborder="0"
+                referrerpolicy="strict-origin-when-cross-origin">
+            </iframe>
+        </div>
+        <div class="yt-hint">
+            <i class="fas fa-info-circle"></i>
+            <span>Fullscreen-এর জন্য player-এর নিচে ডানদিকের 🖵 icon চাপুন</span>
+        </div>
     `;
     
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const features = isMobile 
-        ? `width=${screen.availWidth},height=${screen.availHeight},scrollbars=no,resizable=yes`
-        : 'width=1200,height=800,scrollbars=no,resizable=yes';
+    document.body.appendChild(overlay);
+    document.body.classList.add('yt-overlay-open');
     
-    const videoWindow = window.open('', '_blank', features);
-    if (videoWindow) {
-        videoWindow.document.write(playerHTML);
-        videoWindow.document.close();
-    } else {
-        window.open(videoUrl, '_blank');
+    const closeBtn = document.getElementById('yt-overlay-close');
+    closeBtn.addEventListener('click', closeOverlay);
+    
+    function onKeydown(e) {
+        if (e.key === 'Escape') closeOverlay();
     }
+    document.addEventListener('keydown', onKeydown);
+    
+    function closeOverlay() {
+        const el = document.getElementById('yt-overlay-player');
+        if (el) {
+            el.style.animation = 'ytFadeIn 0.15s ease reverse';
+            setTimeout(() => {
+                el.remove();
+                document.body.classList.remove('yt-overlay-open');
+                document.removeEventListener('keydown', onKeydown);
+            }, 140);
+        }
+    }
+    
+    setTimeout(() => closeBtn.focus(), 100);
 };
 
 // ============================================================
-// 🚀 Main load function
+// 🚀 Load sections
 // ============================================================
 async function loadSections() {
     loadCompletedItems();
@@ -1109,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// System theme preference
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     const savedTheme = localStorage.getItem('theme');
     if (!savedTheme) {
