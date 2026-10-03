@@ -70,7 +70,6 @@ function loadYouTubeIframeAPI() {
     });
 }
 
-// YouTube API global callback
 window.onYouTubeIframeAPIReady = function() {
     ytApiReady = true;
     ytApiReadyCallbacks.forEach(cb => cb());
@@ -85,7 +84,6 @@ function loadCompletedItems() {
         const saved = localStorage.getItem('completedCourseItems');
         if (saved) completedItems = JSON.parse(saved);
     } catch (error) {
-        console.error('Error loading completed items:', error);
         completedItems = {};
     }
 }
@@ -133,76 +131,6 @@ function saveVideoDurationCache() {
             console.error('Error saving video duration cache:', error);
         }
     }, 1000);
-}
-
-// ============================================================
-// 🔓 Lecture Lock/Unlock System
-// ============================================================
-// Rule: Lecture N unlock হবে যদি Lecture N-1 সম্পন্ন হয়
-//       প্রথম lecture সবসময় unlocked
-
-let lectureUnlockState = {};
-
-function loadUnlockState() {
-    try {
-        const saved = localStorage.getItem('lectureUnlockState');
-        if (saved) lectureUnlockState = JSON.parse(saved);
-    } catch (error) {
-        lectureUnlockState = {};
-    }
-}
-
-function saveUnlockState() {
-    try {
-        localStorage.setItem('lectureUnlockState', JSON.stringify(lectureUnlockState));
-    } catch (error) {
-        console.error('Error saving unlock state:', error);
-    }
-}
-
-// সব lecture-এর ordered list তৈরি করি
-function getAllLecturesOrdered(sections) {
-    const ordered = [];
-    sections.forEach(section => {
-        (section.contents || []).forEach(content => {
-            ordered.push({
-                sectionId: section.id,
-                sectionTitle: section.title,
-                contentId: content.id,
-                title: content.title,
-                link: content.link || (content.resource && content.resource.resourceable && content.resource.resourceable.link) || '#'
-            });
-        });
-    });
-    return ordered;
-}
-
-// কোনো lecture unlocked কিনা চেক
-function isLectureUnlocked(itemId, allLectures) {
-    const index = allLectures.findIndex(l => getContentItemId(l, allLectures) === itemId);
-    if (index <= 0) return true; // প্রথম lecture unlocked
-    
-    // আগের lecture completed কিনা চেক
-    const prev = allLectures[index - 1];
-    const prevId = getContentItemId(prev, allLectures);
-    return completedItems[prevId] === true;
-}
-
-// Content item ID generator (displaySections এর সাথে consistent)
-function getContentItemId(lecture, allLectures) {
-    const idx = allLectures.indexOf(lecture);
-    return `section_${lecture.sectionId}_content_${lecture.contentId}_${lecture.title.replace(/\s+/g, '_')}`;
-}
-
-// সব unlock state refresh করি
-function refreshUnlockStates(sections) {
-    const allLectures = getAllLecturesOrdered(sections);
-    allLectures.forEach(lecture => {
-        const id = getContentItemId(lecture, allLectures);
-        lectureUnlockState[id] = isLectureUnlocked(id, allLectures);
-    });
-    saveUnlockState();
-    return allLectures;
 }
 
 // ============================================================
@@ -539,7 +467,7 @@ function showNotification(message, type = 'success') {
 }
 
 // ============================================================
-// ✅ Complete toggle (manual)
+// ✅ Complete toggle (manual checkbox)
 // ============================================================
 window.toggleComplete = function(itemId, checkbox, event) {
     if (event) event.stopPropagation();
@@ -559,36 +487,22 @@ window.toggleComplete = function(itemId, checkbox, event) {
     
     updateSectionProgress(checkbox.closest('.section-card'));
     updateOverallProgress();
-    
-    // ✅ Unlock state refresh
-    if (window._currentSections) {
-        refreshUnlockStates(window._currentSections);
-        updateLockStatesInUI();
-    }
 };
 
-// Mark completed automatically (from video watch)
+// Auto-mark completed (from video watch 90%)
 function markCompletedAuto(itemId) {
-    if (completedItems[itemId]) return false; // already completed
+    if (completedItems[itemId]) return false;
     
     completedItems[itemId] = true;
     saveCompletedItems();
     
-    // Update UI
     const contentItem = document.querySelector(`.content-item[data-item-id="${CSS.escape(itemId)}"]`);
     if (contentItem) {
         const checkbox = contentItem.querySelector('.complete-checkbox');
         if (checkbox) checkbox.checked = true;
         contentItem.classList.add('completed');
         
-        // Show check animation
         showCompletionBurst(contentItem);
-    }
-    
-    // Refresh unlock
-    if (window._currentSections) {
-        refreshUnlockStates(window._currentSections);
-        updateLockStatesInUI();
     }
     
     updateAllProgress();
@@ -661,35 +575,6 @@ function updateAllProgress() {
         updateSectionProgress(section);
     });
     updateOverallProgress();
-}
-
-// ============================================================
-// 🔒 Update lock icons in UI
-// ============================================================
-function updateLockStatesInUI() {
-    document.querySelectorAll('.content-item').forEach(item => {
-        const itemId = item.dataset.itemId;
-        const isVideo = item.dataset.type === 'video';
-        
-        if (!isVideo) return;
-        
-        const unlocked = lectureUnlockState[itemId] !== false;
-        const isCompleted = completedItems[itemId] === true;
-        
-        if (unlocked) {
-            item.classList.remove('locked');
-            const lockIcon = item.querySelector('.lock-icon');
-            if (lockIcon) lockIcon.remove();
-        } else {
-            item.classList.add('locked');
-            if (!item.querySelector('.lock-icon')) {
-                const lockIcon = document.createElement('i');
-                lockIcon.className = 'fas fa-lock lock-icon';
-                lockIcon.title = 'আগের লেকচার সম্পন্ন করুন';
-                item.appendChild(lockIcon);
-            }
-        }
-    });
 }
 
 // ============================================================
@@ -845,7 +730,7 @@ window.openPDFViewer = function(pdfUrl, title) {
 };
 
 // ============================================================
-// ▶️ YouTube Player — IFrame API Version
+// ▶️ YouTube Player — IFrame API (with 90% auto-complete)
 // ============================================================
 window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     const videoId = extractYouTubeVideoId(videoUrl);
@@ -856,17 +741,9 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         return;
     }
     
-    // ✅ Lock check
-    if (itemId && lectureUnlockState[itemId] === false) {
-        showNotification('🔒 আগের লেকচার আগে সম্পন্ন করুন', 'error');
-        return;
-    }
-    
-    // পুরনো overlay সরাই
     const existing = document.getElementById('yt-overlay-player');
     if (existing) existing.remove();
     
-    // Style inject
     if (!document.getElementById('yt-overlay-style')) {
         const styleEl = document.createElement('style');
         styleEl.id = 'yt-overlay-style';
@@ -927,7 +804,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
                 width: 100% !important; height: 100% !important;
             }
             
-            /* Progress bar at bottom */
             #yt-overlay-player .yt-progress-info {
                 background: #111; padding: 0.5rem 1rem;
                 display: flex; align-items: center; gap: 0.75rem;
@@ -1001,21 +877,17 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     document.body.appendChild(overlay);
     document.body.classList.add('yt-overlay-open');
     
-    // Close button
     const closeBtn = document.getElementById('yt-overlay-close');
     
-    // ======================================================
-    // 📺 YouTube IFrame API initialization
-    // ======================================================
     await loadYouTubeIframeAPI();
     
     let player = null;
     let progressCheckInterval = null;
     let completedFlag = false;
     
-    // Restore previous watch progress if any
+    // Resume from last position if 90% দেখা হয়নি
     const savedProgress = videoWatchProgress[itemId] || 0;
-    const startSeconds = savedProgress > 0 && savedProgress < COMPLETION_THRESHOLD 
+    const startSeconds = (savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) 
         ? Math.floor(savedProgress * 60 * 60) 
         : 0;
     
@@ -1044,13 +916,11 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     }
     
     function onPlayerStateChange(event) {
-        // YT.PlayerState.PLAYING = 1, PAUSED = 2, ENDED = 0
         if (event.data === YT.PlayerState.PLAYING) {
             startProgressTracking();
         } else if (event.data === YT.PlayerState.PAUSED) {
             stopProgressTracking();
         } else if (event.data === YT.PlayerState.ENDED) {
-            // Video শেষ হলে চেক করি 90% দেখা হয়েছে কিনা
             checkAndMarkCompletion(true);
             stopProgressTracking();
         }
@@ -1065,7 +935,7 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         if (progressCheckInterval) return;
         progressCheckInterval = setInterval(() => {
             checkAndMarkCompletion(false);
-        }, 1000); // প্রতি সেকেন্ডে চেক
+        }, 1000);
     }
     
     function stopProgressTracking() {
@@ -1085,16 +955,14 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         
         const percentage = Math.min(current / duration, 1);
         
-        // Update UI
         updateProgressUI(percentage);
         
-        // Save progress
         if (itemId && percentage > (videoWatchProgress[itemId] || 0)) {
             videoWatchProgress[itemId] = percentage;
             saveVideoProgress();
         }
         
-        // ✅ 90% হলে mark completed
+        // ✅ 90% হলে auto-complete
         if ((percentage >= COMPLETION_THRESHOLD || forceComplete) && !completedFlag) {
             completedFlag = true;
             
@@ -1103,10 +971,7 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
                 
                 if (wasNewlyCompleted) {
                     updateHintUI(true);
-                    showNotification('🎉 লেকচার সম্পন্ন! পরের লেকচার unlocked হয়েছে', 'success');
-                    
-                    // Auto-unlock next lecture
-                    unlockNextLecture(itemId);
+                    showNotification('🎉 লেকচার সম্পন্ন হিসেবে চিহ্নিত হয়েছে', 'success');
                 }
             }
         }
@@ -1132,24 +997,8 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             hint.classList.add('unlocked');
             hint.innerHTML = `
                 <i class="fas fa-check-circle"></i>
-                <span><strong>সম্পন্ন ✓</strong> — পরের লেকচার unlocked!</span>
+                <span><strong>সম্পন্ন ✓</strong> — চমৎকার!</span>
             `;
-        }
-    }
-    
-    function unlockNextLecture(currentItemId) {
-        if (!window._currentSections) return;
-        
-        const allLectures = getAllLecturesOrdered(window._currentSections);
-        const currentIndex = allLectures.findIndex(l => getContentItemId(l, allLectures) === currentItemId);
-        
-        if (currentIndex >= 0 && currentIndex < allLectures.length - 1) {
-            const nextLecture = allLectures[currentIndex + 1];
-            const nextId = getContentItemId(nextLecture, allLectures);
-            lectureUnlockState[nextId] = true;
-            saveUnlockState();
-            
-            console.log(`🔓 Unlocked: ${nextLecture.title}`);
         }
     }
     
@@ -1203,7 +1052,6 @@ async function loadSections() {
     loadCompletedItems();
     loadVideoProgress();
     loadVideoDurationCache();
-    loadUnlockState();
     
     try {
         const classes = await fetchClassesWithFallback();
@@ -1212,17 +1060,12 @@ async function loadSections() {
         
         const sections = transformClassesToSections(classes);
         
-        // ✅ Store globally for unlock logic
         window._currentSections = sections;
-        
-        // ✅ Refresh unlock states
-        refreshUnlockStates(sections);
         
         displaySections(sections);
         
         setTimeout(() => {
             updateAllVideoDurations();
-            updateLockStatesInUI();
         }, 500);
         
     } catch (error) {
@@ -1408,26 +1251,18 @@ function decodeUnicode(str) {
 // 🔄 Reset All Progress
 // ============================================================
 window.resetAllProgress = function() {
-    if (confirm('সব সম্পন্ন চিহ্নিত করা এবং unlock status মুছে ফেলতে চান?')) {
+    if (confirm('সব সম্পন্ন চিহ্নিত করা মুছে ফেলতে চান?')) {
         completedItems = {};
         videoWatchProgress = {};
-        lectureUnlockState = {};
         
         saveCompletedItems();
         saveVideoProgress();
-        saveUnlockState();
         
         document.querySelectorAll('.complete-checkbox').forEach(checkbox => {
             checkbox.checked = false;
             const contentItem = checkbox.closest('.content-item');
             if (contentItem) contentItem.classList.remove('completed');
         });
-        
-        // Refresh unlocks
-        if (window._currentSections) {
-            refreshUnlockStates(window._currentSections);
-            updateLockStatesInUI();
-        }
         
         updateAllProgress();
         showNotification('সব প্রোগ্রেস রিসেট করা হয়েছে', 'info');
@@ -1448,29 +1283,9 @@ document.addEventListener('DOMContentLoaded', () => {
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
-        
-        /* Locked lecture style */
-        .content-item.locked {
-            opacity: 0.55;
-            cursor: not-allowed;
-            position: relative;
-        }
-        .content-item.locked .content-title {
-            cursor: not-allowed !important;
-            text-decoration: line-through;
-            text-decoration-color: #94a3b8;
-        }
-        .content-item.locked::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            cursor: not-allowed;
-        }
-        .content-item .lock-icon {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            margin-left: auto;
-            padding-left: 0.5rem;
+        @keyframes completeBurst {
+            0% { transform: scale(1) translateY(0); opacity: 1; }
+            100% { transform: scale(2.5) translateY(-50px); opacity: 0; }
         }
     `;
     document.head.appendChild(style);
