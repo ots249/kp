@@ -4,114 +4,103 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>নোটিশ | ক্লাস আপডেট</title>
-    <!-- Google Fonts for Bengali -->
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             font-family: 'Hind Siliguri', sans-serif;
             min-height: 100vh;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: #0f172a;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 24px;
+            padding: 20px;
         }
 
         /* মেইন কার্ড */
         .notice-card {
-            max-width: 750px;
             width: 100%;
+            max-width: 420px;
             background: #ffffff;
-            border-radius: 28px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                        0 0 0 1px rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
             overflow: hidden;
-            position: relative;
-            animation: cardFade 0.7s ease-out;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            animation: fadeUp 0.6s ease-out;
         }
 
-        @keyframes cardFade {
-            from {
-                opacity: 0;
-                transform: translateY(20px) scale(0.98);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* টপ হেডার / রিবন */
+        /* হেডার */
         .notice-header {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #2563eb 100%);
-            padding: 28px 32px 24px;
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+            padding: 22px 20px 20px;
             position: relative;
             overflow: hidden;
         }
 
+        /* বড় বৃত্ত (ডান দিকে) */
         .notice-header::before {
             content: '';
             position: absolute;
-            top: -60%;
-            right: -10%;
-            width: 250px;
-            height: 250px;
+            top: -40px;
+            right: -40px;
+            width: 180px;
+            height: 180px;
             background: rgba(255, 255, 255, 0.08);
             border-radius: 50%;
-            pointer-events: none;
         }
 
+        /* ছোট বৃত্ত (বাম দিকে) */
         .notice-header::after {
             content: '';
             position: absolute;
-            bottom: -40%;
-            left: -5%;
-            width: 180px;
-            height: 180px;
+            bottom: -50px;
+            left: -30px;
+            width: 140px;
+            height: 140px;
             background: rgba(255, 255, 255, 0.06);
             border-radius: 50%;
-            pointer-events: none;
         }
 
         .header-top {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
             position: relative;
             z-index: 1;
         }
 
         .icon-badge {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-            width: 50px;
-            height: 50px;
-            border-radius: 16px;
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            border: 1px solid rgba(255, 255, 255, 0.25);
+            font-size: 24px;
             flex-shrink: 0;
         }
 
         .header-top h1 {
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 700;
             color: #ffffff;
-            letter-spacing: -0.3px;
             line-height: 1.3;
         }
 
         .header-top h1 span {
             font-weight: 300;
-            opacity: 0.9;
         }
 
         .badge-live {
@@ -119,97 +108,84 @@
             align-items: center;
             gap: 7px;
             background: rgba(255, 255, 255, 0.18);
-            backdrop-filter: blur(4px);
-            padding: 6px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 14px;
             border-radius: 30px;
-            color: #fff;
-            font-size: 13px;
+            color: #ffffff;
+            font-size: 12.5px;
             font-weight: 500;
-            margin-top: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            margin-top: 14px;
             position: relative;
             z-index: 1;
         }
 
         .dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             background: #4ade80;
             border-radius: 50%;
-            display: inline-block;
             animation: pulse 1.8s infinite;
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.85); }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
-        /* কনটেন্ট বডি */
+        /* বডি */
         .notice-body {
-            padding: 32px 32px 28px;
-            background: #f8fafc;
+            padding: 20px 20px 8px;
+            background: #ffffff;
         }
 
-        /* মেইন মেসেজ বক্স */
+        /* মেইন মেসেজ */
         .main-message {
             background: #ffffff;
-            border-left: 5px solid #3b82f6;
-            border-radius: 14px;
-            padding: 22px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-            position: relative;
-        }
-
-        .main-message:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.12);
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3b82f6;
+            border-radius: 16px;
+            padding: 18px 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.06);
         }
 
         .main-message p {
-            font-size: 19px;
+            font-size: 16.5px;
             font-weight: 500;
             color: #1e293b;
-            line-height: 1.8;
-            letter-spacing: -0.2px;
+            line-height: 1.75;
         }
 
-        .main-message p .highlight {
+        .main-message .highlight {
             color: #2563eb;
             font-weight: 700;
-            background: linear-gradient(to right, #dbeafe, #eff6ff);
-            padding: 1px 8px;
+            background: #eff6ff;
+            padding: 2px 8px;
             border-radius: 6px;
             display: inline-block;
+            line-height: 1.4;
         }
 
         /* সেকেন্ডারি মেসেজ */
         .secondary-message {
             background: #fefce8;
             border: 1px solid #fde68a;
-            border-radius: 14px;
-            padding: 18px 24px;
+            border-radius: 16px;
+            padding: 18px 18px;
             display: flex;
             align-items: flex-start;
-            gap: 14px;
-            transition: background 0.25s ease;
-        }
-
-        .secondary-message:hover {
-            background: #fef9c3;
+            gap: 12px;
         }
 
         .secondary-message .icon {
-            font-size: 24px;
+            font-size: 26px;
             line-height: 1;
             flex-shrink: 0;
             margin-top: 2px;
         }
 
         .secondary-message p {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 400;
             color: #854d0e;
             line-height: 1.7;
@@ -222,91 +198,60 @@
 
         /* ফুটার */
         .notice-footer {
-            padding: 18px 32px 24px;
-            background: #f8fafc;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
+            padding: 18px 20px 22px;
+            background: #ffffff;
+            border-top: 1px solid #f1f5f9;
+            margin-top: 12px;
         }
 
         .date-badge {
             display: flex;
             align-items: center;
             gap: 8px;
-            color: #64748b;
-            font-size: 14px;
+            color: #475569;
+            font-size: 15px;
             font-weight: 500;
+            margin-bottom: 14px;
         }
 
         .date-badge .cal-icon {
-            font-size: 16px;
+            font-size: 18px;
         }
 
         .footer-tag {
+            display: inline-block;
             background: #e2e8f0;
-            padding: 6px 16px;
+            padding: 8px 20px;
             border-radius: 20px;
-            font-size: 12.5px;
+            font-size: 13px;
             font-weight: 600;
-            color: #475569;
+            color: #334155;
             letter-spacing: 0.3px;
-            text-transform: uppercase;
         }
 
         /* রেস্পন্সিভ */
-        @media (max-width: 600px) {
-            body {
-                padding: 14px;
-            }
+        @media (max-width: 420px) {
+            body { padding: 12px; }
 
-            .notice-header {
-                padding: 22px 20px 20px;
-            }
+            .notice-header { padding: 20px 18px 18px; }
 
-            .header-top h1 {
-                font-size: 20px;
-            }
+            .header-top h1 { font-size: 20px; }
 
-            .icon-badge {
-                width: 44px;
-                height: 44px;
-                font-size: 22px;
-            }
+            .icon-badge { width: 44px; height: 44px; font-size: 22px; }
 
-            .notice-body {
-                padding: 22px 20px;
-            }
+            .notice-body { padding: 18px 18px 6px; }
 
-            .main-message {
-                padding: 18px 18px;
-            }
+            .main-message { padding: 16px; }
 
-            .main-message p {
-                font-size: 16.5px;
-            }
+            .main-message p { font-size: 15.5px; }
 
-            .secondary-message {
-                padding: 16px 18px;
-                gap: 10px;
-            }
+            .secondary-message { padding: 16px; }
 
-            .secondary-message p {
-                font-size: 15px;
-            }
+            .secondary-message p { font-size: 15px; }
 
-            .notice-footer {
-                padding: 16px 20px 20px;
-                flex-direction: column;
-                align-items: flex-start;
-            }
+            .notice-footer { padding: 16px 18px 20px; }
 
-            .badge-live {
-                font-size: 12px;
-                padding: 5px 14px;
-            }
+            .date-badge { font-size: 14px; }
         }
     </style>
 </head>
@@ -330,7 +275,7 @@
             <!-- মেইন মেসেজ -->
             <div class="main-message">
                 <p>
-                    সকল বিষয়ের <span class="highlight">Chapter ও Lecture</span> এর সব ক্লাস সময়মতো দেওয়া হচ্ছে...
+                    সকল বিষয়ের <span class="highlight">Chapter ও Lecture</span> এর সব ক্লাস সময়মতো দেওয়া হচ্ছে...
                 </p>
             </div>
 
@@ -338,7 +283,7 @@
             <div class="secondary-message">
                 <span class="icon">📚</span>
                 <p>
-                    সাথে নিচে কিছু বিষয়ের <strong>পুরাতন ক্লাসও</strong> দেওয়া আছে।
+                    সাথে নিচে কিছু বিষয়ের <strong>পুরাতন ক্লাসও</strong> দেওয়া আছে।
                 </p>
             </div>
         </div>
@@ -354,18 +299,16 @@
     </div>
 
     <script>
-        // বর্তমান তারিখ দেখানোর জন্য
         (function() {
             const dateEl = document.getElementById('currentDate');
             if (dateEl) {
                 const now = new Date();
-                const options = { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric',
-                    weekday: 'long'
+                const options = {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 };
-                // বাংলা লোকেল ব্যবহার করে তারিখ
                 dateEl.textContent = now.toLocaleDateString('bn-BD', options);
             }
         })();
