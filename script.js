@@ -24,7 +24,9 @@ const API_ENDPOINTS = [
     }
 ];
 
-// ⚠️ আপনার YouTube API Key এখানে বসান (console থেকে সেট করবেন)
+// ============================================================
+// 🔑 YouTube API Key
+// ============================================================
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 
 // Complete status tracking
@@ -67,7 +69,7 @@ function loadVideoDurationCache() {
     }
 }
 
-// ✅ Debounced save — প্রতি ভিডিওতে write হবে না
+// Debounced save — প্রতি ভিডিওতে write হবে না
 function saveVideoDurationCache() {
     if (cacheSaveTimer) clearTimeout(cacheSaveTimer);
     cacheSaveTimer = setTimeout(() => {
@@ -196,7 +198,6 @@ function transformClassesToSections(classes) {
             if (chapter && lecture) title += ` - `;
             title += `Lecture ${lecture}`;
             
-            // ✅ index যোগ — duplicate এড়াতে
             const contentId = `${subject}_${chapter}_${lecture}_${idx}`.replace(/\s+/g, '_');
             
             return {
@@ -278,13 +279,12 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube API থেকে একসাথে অনেক ভিডিওর ডিউরেশন (batch)
+// 📡 YouTube API থেকে batch ডিউরেশন
 // ============================================================
 async function getVideoDurationsBatch(videoIds) {
     const result = {};
     const uncachedIds = [];
     
-    // Cache hit চেক
     videoIds.forEach(id => {
         if (!id) return;
         if (videoDurationCache[id]) {
@@ -302,7 +302,6 @@ async function getVideoDurationsBatch(videoIds) {
         return result;
     }
     
-    // ✅ YouTube API max 50 ID per request
     const CHUNK_SIZE = 50;
     for (let i = 0; i < uncachedIds.length; i += CHUNK_SIZE) {
         const chunk = uncachedIds.slice(i, i + CHUNK_SIZE);
@@ -330,7 +329,6 @@ async function getVideoDurationsBatch(videoIds) {
                 });
             }
             
-            // Not found
             chunk.forEach(id => {
                 if (!foundIds.has(id)) {
                     result[id] = '--:--';
@@ -348,12 +346,11 @@ async function getVideoDurationsBatch(videoIds) {
 }
 
 // ============================================================
-// 🔄 সব ভিডিওর ডিউরেশন আপডেট (batch + parallel)
+// 🔄 সব ভিডিওর ডিউরেশন আপডেট
 // ============================================================
 async function updateAllVideoDurations() {
     const videoItems = document.querySelectorAll('.content-item .fa-youtube');
     
-    // প্রথমে সব video ID collect করি
     const itemsWithId = [];
     const allIds = [];
     
@@ -361,7 +358,6 @@ async function updateAllVideoDurations() {
         const contentItem = videoIcon.closest('.content-item');
         const linkIcon = contentItem.querySelector('.link-icon');
         
-        // ✅ data attribute থেকে লিংক নাও (inline onclick এর বদলে)
         let videoLink = contentItem.dataset.link || '';
         
         if (videoLink) {
@@ -391,10 +387,8 @@ async function updateAllVideoDurations() {
     
     if (allIds.length === 0) return;
     
-    // ✅ একসাথে সব duration আনি
     const durations = await getVideoDurationsBatch(allIds);
     
-    // তারপর UI-তে বসাই
     itemsWithId.forEach(({ videoId, durationSpan }) => {
         durationSpan.textContent = durations[videoId] || '--:--';
     });
@@ -443,7 +437,7 @@ function showNotification(message, type = 'success') {
 }
 
 // ============================================================
-// ✅ Complete toggle — fixed (event parameter)
+// ✅ Complete toggle
 // ============================================================
 window.toggleComplete = function(itemId, checkbox, event) {
     if (event) event.stopPropagation();
@@ -465,7 +459,7 @@ window.toggleComplete = function(itemId, checkbox, event) {
     
     updateSectionProgress(checkbox.closest('.section-card'));
     updateOverallProgress();
-}
+};
 
 // ============================================================
 // 📊 Progress আপডেট
@@ -555,7 +549,6 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-// HTML attribute value escape (title, data-* এর জন্য)
 function escapeAttr(str) {
     if (str == null) return '';
     return String(str)
@@ -645,103 +638,154 @@ window.openPDFViewer = function(pdfUrl, title) {
 };
 
 // ============================================================
-// ▶️ YouTube Player
+// ▶️ YouTube Player (custom fullscreen button removed)
 // ============================================================
 window.openYouTubePlayer = function(videoUrl, title) {
-    let videoId = extractYouTubeVideoId(videoUrl);
+    const videoId = extractYouTubeVideoId(videoUrl);
     const safeTitle = escapeHtml(title);
     
-    if (videoId) {
-        const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1`;
-        
-        const playerHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>${safeTitle} - ইউটিউব প্লেয়ার</title>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { font-family: 'Inter', sans-serif; background: #0f0f0f; height: 100vh; overflow: hidden; position: fixed; width: 100%; }
-                    .player-container { display: flex; flex-direction: column; height: 100vh; background: #0f0f0f; }
-                    .toolbar { background: #1f1f1f; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-                    .toolbar-left { display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0; }
-                    .toolbar-left h3 { color: #fff; font-size: 1.2rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-                    .toolbar-right { display: flex; align-items: center; gap: 1rem; }
-                    .btn-watch { background: #ff0000; color: white; padding: 0.6rem 1.5rem; border-radius: 2rem; font-weight: 500; cursor: pointer; border: none; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem; }
-                    .close-btn { background: rgba(51,51,51,0.9); border: 1px solid #444; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; font-size: 1.2rem; }
-                    .video-wrapper { flex: 1; position: relative; background: #000; overflow: hidden; }
-                    .video-frame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; background: #000; }
-                    .fullscreen-btn { position: fixed; bottom: 2rem; right: 2rem; background: rgba(0,0,0,0.7); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; border: 2px solid rgba(255,255,255,0.2); }
-                    @media (max-width: 480px) {
-                        .toolbar-left h3 { max-width: 120px; font-size: 0.9rem; }
-                        .btn-watch span { display: none; }
-                    }
-                </style>
-                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-            </head>
-            <body>
-                <div class="player-container">
-                    <div class="toolbar">
-                        <div class="toolbar-left">
-                            <i class="fab fa-youtube" style="color: #ff0000; font-size: 1.5rem;"></i>
-                            <h3>${safeTitle}</h3>
-                        </div>
-                        <div class="toolbar-right">
-                            <button class="btn-watch" id="watchBtn">
-                                <i class="fab fa-youtube"></i>
-                                <span>ইউটিউবে দেখুন</span>
-                            </button>
-                            <div class="close-btn" onclick="window.close()" title="বন্ধ করুন">
-                                <i class="fas fa-times"></i>
-                            </div>
-                        </div>
+    if (!videoId) {
+        window.open(videoUrl, '_blank');
+        return;
+    }
+    
+    // ✅ fs=1 → YouTube fullscreen enable
+    // ✅ playsinline=1 → mobile-এ iframe-এর ভেতরে play
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&autoplay=1&fs=1&playsinline=1`;
+    
+    const playerHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <title>${safeTitle} - ইউটিউব প্লেয়ার</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                html, body { 
+                    width: 100%; height: 100%; 
+                    background: #000; overflow: hidden; 
+                    font-family: 'Inter', sans-serif;
+                }
+                .player-container { 
+                    display: flex; flex-direction: column; 
+                    height: 100vh; width: 100vw;
+                    background: #0f0f0f;
+                }
+                .toolbar { 
+                    background: #1f1f1f; 
+                    padding: 0.75rem 1.5rem; 
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    flex-shrink: 0;
+                    border-bottom: 1px solid #333;
+                }
+                .toolbar-left { 
+                    display: flex; align-items: center; gap: 0.75rem; 
+                    flex: 1; min-width: 0;
+                }
+                .toolbar-left i { 
+                    color: #ff0000; font-size: 1.3rem; flex-shrink: 0;
+                }
+                .toolbar-left h3 { 
+                    color: #fff; font-size: 1rem; font-weight: 500; 
+                    overflow: hidden; text-overflow: ellipsis; 
+                    white-space: nowrap;
+                }
+                .toolbar-right { 
+                    display: flex; align-items: center; gap: 0.75rem; 
+                    flex-shrink: 0;
+                }
+                .btn-watch { 
+                    background: #ff0000; color: white; 
+                    padding: 0.5rem 1.25rem; border-radius: 2rem; 
+                    font-weight: 500; cursor: pointer; border: none; 
+                    font-size: 0.9rem; display: flex; 
+                    align-items: center; gap: 0.4rem;
+                    text-decoration: none;
+                }
+                .btn-watch:hover { background: #cc0000; }
+                .close-btn { 
+                    background: rgba(51,51,51,0.9); 
+                    border: 1px solid #444; 
+                    border-radius: 50%; 
+                    width: 36px; height: 36px; 
+                    display: flex; align-items: center; 
+                    justify-content: center; cursor: pointer; 
+                    color: white; font-size: 1rem;
+                }
+                .close-btn:hover { background: #333; }
+                .video-wrapper { 
+                    flex: 1; 
+                    position: relative; 
+                    background: #000; 
+                    overflow: hidden;
+                    min-height: 0;
+                }
+                .video-frame { 
+                    position: absolute; 
+                    top: 0; left: 0; 
+                    width: 100%; height: 100%; 
+                    border: 0; 
+                    background: #000;
+                }
+                @media (max-width: 480px) {
+                    .toolbar-left h3 { max-width: 140px; font-size: 0.85rem; }
+                    .btn-watch span { display: none; }
+                    .btn-watch { padding: 0.5rem 0.75rem; }
+                }
+            </style>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        </head>
+        <body>
+            <div class="player-container">
+                <div class="toolbar">
+                    <div class="toolbar-left">
+                        <i class="fab fa-youtube"></i>
+                        <h3>${safeTitle}</h3>
                     </div>
-                    <div class="video-wrapper">
-                        <iframe class="video-frame" src="${embedUrl}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen frameborder="0"></iframe>
-                    </div>
-                    <div class="fullscreen-btn" onclick="toggleFullScreen()" title="ফুলস্ক্রিন">
-                        <i class="fas fa-expand"></i>
+                    <div class="toolbar-right">
+                        <a class="btn-watch" id="watchBtn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener">
+                            <i class="fab fa-youtube"></i>
+                            <span>ইউটিউবে</span>
+                        </a>
+                        <div class="close-btn" onclick="window.close()" title="বন্ধ করুন">
+                            <i class="fas fa-times"></i>
+                        </div>
                     </div>
                 </div>
-                <script>
-                    document.getElementById('watchBtn').addEventListener('click', function() {
-                        window.open(${JSON.stringify(videoUrl)}, '_blank');
-                    });
-                    function toggleFullScreen() {
-                        const videoFrame = document.querySelector('.video-frame');
-                        if (document.fullscreenElement) {
-                            document.exitFullscreen();
-                        } else {
-                            videoFrame.requestFullscreen();
-                        }
-                    }
-                    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') window.close(); });
-                    document.addEventListener('fullscreenchange', function() {
-                        const btn = document.querySelector('.fullscreen-btn i');
-                        if (btn) {
-                            btn.className = document.fullscreenElement ? 'fas fa-compress' : 'fas fa-expand';
-                        }
-                    });
-                <\/script>
-            </body>
-            </html>
-        `;
-        
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        let windowFeatures = 'width=1200,height=800,scrollbars=yes,resizable=yes';
-        if (isMobile) {
-            windowFeatures = 'width=' + window.screen.availWidth + ',height=' + window.screen.availHeight + ',scrollbars=yes,resizable=yes';
-        }
-        
-        const videoWindow = window.open('', '_blank', windowFeatures);
-        if (videoWindow) {
-            videoWindow.document.write(playerHTML);
-            videoWindow.document.close();
-        } else {
-            window.open(videoUrl, '_blank');
-        }
+                <div class="video-wrapper">
+                    <iframe 
+                        class="video-frame" 
+                        src="${embedUrl}" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" 
+                        allowfullscreen="true"
+                        webkitallowfullscreen="true"
+                        mozallowfullscreen="true"
+                        frameborder="0"
+                        referrerpolicy="strict-origin-when-cross-origin">
+                    </iframe>
+                </div>
+            </div>
+            <script>
+                document.addEventListener('keydown', function(e) { 
+                    if (e.key === 'Escape') window.close(); 
+                });
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const features = isMobile 
+        ? `width=${screen.availWidth},height=${screen.availHeight},scrollbars=no,resizable=yes`
+        : 'width=1200,height=800,scrollbars=no,resizable=yes';
+    
+    const videoWindow = window.open('', '_blank', features);
+    if (videoWindow) {
+        videoWindow.document.write(playerHTML);
+        videoWindow.document.close();
     } else {
         window.open(videoUrl, '_blank');
     }
@@ -762,7 +806,6 @@ async function loadSections() {
         const sections = transformClassesToSections(classes);
         displaySections(sections);
         
-        // DOM render হওয়ার পর duration load
         setTimeout(() => {
             updateAllVideoDurations();
         }, 500);
@@ -788,7 +831,7 @@ async function loadSections() {
 }
 
 // ============================================================
-// 🖼️ Display sections — event delegation সহ
+// 🖼️ Display sections
 // ============================================================
 function displaySections(sections) {
     const container = document.getElementById('sections-container');
@@ -817,7 +860,6 @@ function displaySections(sections) {
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             const isCompleted = completedItems[itemId] || false;
             
-            // ✅ সব data attribute-এ — inline onclick নেই
             return `
                 <div class="content-item ${isCompleted ? 'completed' : ''}" 
                      data-item-id="${escapeAttr(itemId)}"
@@ -858,7 +900,6 @@ function displaySections(sections) {
     
     container.innerHTML = sectionsHTML;
     
-    // ✅ Event delegation — সব click একসাথে handle
     attachEventHandlers();
     
     const firstSection = document.querySelector('.section-card .contents-list');
@@ -872,17 +913,15 @@ function displaySections(sections) {
 }
 
 // ============================================================
-// 🎯 Event delegation setup
+// 🎯 Event delegation
 // ============================================================
 function attachEventHandlers() {
     const container = document.getElementById('sections-container');
     if (!container) return;
     
-    // পুরনো listener সরাতে clone trick (বা just check flag)
     if (container.dataset.handlersAttached === '1') return;
     container.dataset.handlersAttached = '1';
     
-    // Click handler
     container.addEventListener('click', (e) => {
         const header = e.target.closest('.section-header');
         if (header) {
@@ -893,14 +932,12 @@ function attachEventHandlers() {
         const contentItem = e.target.closest('.content-item');
         if (!contentItem) return;
         
-        // Checkbox ক্লিক হলে toggleComplete
         if (e.target.classList.contains('complete-checkbox')) {
             const itemId = contentItem.dataset.itemId;
             window.toggleComplete(itemId, e.target, e);
             return;
         }
         
-        // Title বা link icon ক্লিক হলে open
         const isTitle = e.target.classList.contains('content-title');
         const isLinkIcon = e.target.classList.contains('link-icon');
         
@@ -932,7 +969,6 @@ window.toggleSection = function(header) {
     contentsList.classList.toggle('hidden');
     if (icon) icon.classList.toggle('rotated');
     
-    // অন্য section বন্ধ করি
     document.querySelectorAll('.section-card').forEach(section => {
         const otherContents = section.querySelector('.contents-list');
         const otherIcon = section.querySelector('.section-icon');
@@ -944,12 +980,11 @@ window.toggleSection = function(header) {
 };
 
 // ============================================================
-// 🔤 Unicode Decode — নিরাপদ
+// 🔤 Unicode Decode
 // ============================================================
 function decodeUnicode(str) {
     if (!str) return '';
     try {
-        // ✅ backslash এবং quotes দুটোই escape
         return JSON.parse(`"${String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`);
     } catch (e) {
         return str;
@@ -979,7 +1014,6 @@ window.resetAllProgress = function() {
 // 🚀 Initialize
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Notification animation styles
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInRight {
@@ -993,19 +1027,15 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
     
-    // Load sections
     loadSections();
     
-    // Reset button
     const resetBtn = document.getElementById('reset-progress');
     if (resetBtn) resetBtn.addEventListener('click', window.resetAllProgress);
     
-    // URL-based reset
     if (window.location.search.includes('reset=true')) {
         setTimeout(() => window.resetAllProgress(), 1000);
     }
     
-    // Online/offline
     if (!navigator.onLine) {
         showNotification('আপনি অফলাইনে আছেন। কিছু ফিচার কাজ নাও করতে পারে।', 'info');
     }
@@ -1018,7 +1048,6 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
     });
     
-    // Floating Reload Button
     const reloadBtn = document.getElementById('floating-reload-btn');
     if (reloadBtn) {
         reloadBtn.addEventListener('click', function(e) {
@@ -1029,7 +1058,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Theme Toggle
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const icon = themeToggle.querySelector('i');
@@ -1081,7 +1109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// System theme preference
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     const savedTheme = localStorage.getItem('theme');
     if (!savedTheme) {
