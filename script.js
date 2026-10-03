@@ -28,11 +28,7 @@ const API_ENDPOINTS = [
 // 🔑 API Config
 // ============================================================
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
-
-// ✅ Sheety write endpoint (token ছাড়াই কাজ করে)
 const SHEETY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
-
-// ✅ Video completion threshold (90%)
 const COMPLETION_THRESHOLD = 0.90;
 
 // ============================================================
@@ -313,7 +309,6 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
     const result = {};
     const uncachedIds = [];
     
-    // ✅ STEP 1: DB থেকে duration পড়ি
     if (dbRows && Array.isArray(dbRows)) {
         videoIds.forEach(id => {
             const row = dbRows.find(r => extractYouTubeVideoId(r.link) === id);
@@ -337,7 +332,6 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
     
     console.log(`📡 ${uncachedIds.length}টি duration API থেকে আনতে হবে`);
     
-    // ✅ STEP 2: YouTube API
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
         uncachedIds.forEach(({ id }) => result[id] = '--:--');
         return result;
@@ -382,7 +376,6 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
                 if (!foundIds.has(id)) result[id] = '--:--';
             });
             
-            // ✅ STEP 3: DB-তে save
             if (toSaveToDb.length > 0) {
                 await saveDurationsToDB(toSaveToDb);
             }
@@ -425,14 +418,12 @@ async function saveDurationsToDB(items) {
             });
             
             if (response.ok) {
-                const result = await response.json();
                 console.log(`✅ DB Save: row ${rowId} → ${duration}`);
             } else {
                 const errText = await response.text();
                 console.warn(`❌ DB Save failed row ${rowId}:`, errText);
             }
             
-            // ✅ Rate limit এড়াতে delay
             await new Promise(r => setTimeout(r, 400));
             
         } catch (error) {
@@ -468,7 +459,6 @@ async function updateAllVideoDurations() {
                     else contentItem.appendChild(durationSpan);
                 }
                 
-                // ✅ DB duration থাকলে instant, না থাকলে spinner
                 if (!durationSpan.textContent.trim() || durationSpan.querySelector('.fa-spinner')) {
                     durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
                 }
@@ -793,7 +783,7 @@ window.openPDFViewer = function(pdfUrl, title) {
 };
 
 // ============================================================
-// ▶️ YouTube Player — Mobile: App | Desktop: Overlay
+// ▶️ YouTube Player — Same-Page Overlay (Mobile + Desktop)
 // ============================================================
 window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     const videoId = extractYouTubeVideoId(videoUrl);
@@ -804,30 +794,7 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         return;
     }
     
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    // ✅ Mobile → YouTube app (perfect fullscreen)
-    if (isMobile) {
-        const webUrl = `https://m.youtube.com/watch?v=${videoId}`;
-        const appUrl = `vnd.youtube:${videoId}`;
-        
-        const startTime = Date.now();
-        try {
-            window.location.href = appUrl;
-        } catch (e) {
-            window.open(webUrl, '_blank');
-            return;
-        }
-        
-        setTimeout(() => {
-            if (Date.now() - startTime < 2000 && !document.hidden) {
-                window.open(webUrl, '_blank');
-            }
-        }, 1500);
-        return;
-    }
-    
-    // ✅ Desktop → overlay player
+    // পুরনো overlay সরাই
     const existing = document.getElementById('yt-overlay-player');
     if (existing) existing.remove();
     
@@ -919,6 +886,12 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             #yt-overlay-player:fullscreen,
             #yt-overlay-player:-webkit-full-screen {
                 width: 100vw !important; height: 100vh !important;
+            }
+            
+            @media (max-width: 480px) {
+                #yt-overlay-player .yt-title { font-size: 0.85rem; }
+                #yt-overlay-player .yt-btn { width: 36px; height: 36px; font-size: 0.9rem; }
+                #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
             }
         `;
         document.head.appendChild(styleEl);
@@ -1134,7 +1107,6 @@ async function loadSections() {
     try {
         const classes = await fetchClassesWithFallback();
         
-        // ✅ Global db rows save (duration column সহ)
         _currentDbRows = classes;
         
         document.getElementById('course-title').textContent = 'Civil 4th Semester';
@@ -1144,7 +1116,6 @@ async function loadSections() {
         
         displaySections(sections);
         
-        // ✅ Video duration load
         setTimeout(() => {
             updateAllVideoDurations();
         }, 500);
@@ -1196,7 +1167,6 @@ function displaySections(sections) {
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             const isCompleted = completedItems[itemId] || false;
             
-            // ✅ DB duration থাকলে instant দেখাই
             let durationHTML = '';
             if (isYouTube) {
                 if (content.duration && String(content.duration).trim() !== '' && content.duration !== '--:--') {
