@@ -25,9 +25,16 @@ const API_ENDPOINTS = [
 ];
 
 // ============================================================
-// 🔑 YouTube API Key
+// 🔑 API Keys & Config
 // ============================================================
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
+
+// ⚠️ Sheety token — DB-তে duration save করতে দরকার
+// Admin panel থেকে আলাদা রাখুন, বা empty রাখুন (save হবে না)
+const SHEETY_TOKEN = ''; // এখানে আপনার Sheety token বসান
+
+// Sheety write endpoint
+const SHEETY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
 
 // ✅ Video completion threshold (90%)
 const COMPLETION_THRESHOLD = 0.90;
@@ -43,6 +50,9 @@ let videoDurationCache = {};
 
 // Debounce timer for cache save
 let cacheSaveTimer = null;
+
+// ✅ Global db rows (with duration column)
+let _currentDbRows = [];
 
 // ============================================================
 // 📺 YouTube IFrame API Loader
@@ -250,6 +260,8 @@ function transformClassesToSections(classes) {
                 title: title,
                 type: 'video',
                 link: item.link || '#',
+                rowId: item.id || null,        // ✅ DB row id save
+                duration: item.duration || '', // ✅ DB duration save
                 resource: {
                     resourceable: {
                         link: item.link || '#'
@@ -321,64 +333,142 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube API batch durations
+// 📡 YouTube Durations — DB First, API Fallback, Save to DB
 // ============================================================
-async function getVideoDurationsBatch(videoIds) {
+async function getVideoDurationsBatch(videoIds, dbRows) {
     const result = {};
-    const uncachedIds = [];
+    const uncachedIds = []; // [{id, rowId}]
     
-    videoIds.forEach(id => {
-        if (!id) return;
-        if (videoDurationCache[id]) {
-            result[id] = videoDurationCache[id];
-        } else {
-            uncachedIds.push(id);
-        }
-    });
+    // ✅ STEP 1: DB থেকে duration পড়ি
+    if (dbRows && Array.isArray(dbRows)) {
+        videoIds.forEach(id => {
+            const row = dbRows.find(r => extractYouTubeVideoId(r.link) === id);
+            
+            if (row && row.duration && String(row.duration).trim() !== '' && row.duration !== '--:--') {
+                // ✅ DB-তে duration আছে → instant
+                result[id] = String(row.duration).trim();
+                videoDurationCache[id] = result[id];
+                console.log(`📦 DB → ${id} : ${result[id]}`);
+            } else {
+                // ❌ DB-তে নেই
+                uncachedIds.push({ id, rowId: row ? row.id : null });
+            }
+        });
+    } else {
+        videoIds.forEach(id => uncachedIds.push({ id, rowId: null }));
+    }
     
-    if (uncachedIds.length === 0) return result;
+    if (uncachedIds.length === 0) {
+        console.log('✅ সব duration DB থেকে পাওয়া গেছে');
+        return result;
+    }
     
+    console.log(`📡 ${uncachedIds.length}টি duration API থেকে আনতে হবে`);
+    
+    // ✅ STEP 2: YouTube API থেকে আনো
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-        uncachedIds.forEach(id => result[id] = '--:--');
+        uncachedIds.forEach(({ id }) => result[id] = '--:--');
         return result;
     }
     
     const CHUNK_SIZE = 50;
     for (let i = 0; i < uncachedIds.length; i += CHUNK_SIZE) {
         const chunk = uncachedIds.slice(i, i + CHUNK_SIZE);
+        const idsOnly = chunk.map(c => c.id);
         
         try {
-            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${chunk.join(',')}&key=${YOUTUBE_API_KEY}`;
+            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${idsOnly.join(',')}&key=${YOUTUBE_API_KEY}`;
+            console.log(`📡 YouTube API batch call: ${idsOnly.length}টি`);
+            
             const response = await fetch(apiUrl);
             const data = await response.json();
             
             if (!response.ok || data.error) {
-                chunk.forEach(id => result[id] = '--:--');
+                console.error('❌ YouTube API Error:', data.error);
+                chunk.forEach(({ id }) => result[id] = '--:--');
                 continue;
             }
             
             const foundIds = new Set();
+            const toSaveToDb = [];
+            
             if (data.items) {
                 data.items.forEach(item => {
                     const duration = formatDuration(item.contentDetails.duration);
                     result[item.id] = duration;
                     videoDurationCache[item.id] = duration;
                     foundIds.add(item.id);
+                    
+                    // ✅ DB-তে save করার list বানাই
+                    const match = chunk.find(c => c.id === item.id);
+                    if (match && match.rowId && duration !== '--:--') {
+                        toSaveToDb.push({ rowId: match.rowId, duration });
+                    }
                 });
             }
             
-            chunk.forEach(id => {
+            chunk.forEach(({ id }) => {
                 if (!foundIds.has(id)) result[id] = '--:--';
             });
             
+            // ✅ STEP 3: নতুন duration DB-তে save
+            if (toSaveToDb.length > 0) {
+                await saveDurationsToDB(toSaveToDb);
+            }
+            
         } catch (error) {
             console.error('❌ Batch fetch error:', error);
-            chunk.forEach(id => result[id] = '--:--');
+            chunk.forEach(({ id }) => result[id] = '--:--');
         }
     }
     
     saveVideoDurationCache();
     return result;
+}
+
+// ============================================================
+// 💾 Save new durations to DB (Sheety)
+// ============================================================
+async function saveDurationsToDB(items) {
+    // Token না থাকলে skip
+    if (!SHEETY_TOKEN || SHEETY_TOKEN.trim() === '') {
+        console.warn('⚠️ Sheety token নেই — DB-তে duration save হবে না');
+        return;
+    }
+    
+    console.log(`💾 ${items.length}টি duration DB-তে save করছি...`);
+    
+    for (const { rowId, duration } of items) {
+        try {
+            const url = `${SHEETY_API}/${rowId}`;
+            const payload = {
+                sheet1: {
+                    duration: duration
+                }
+            };
+            
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + SHEETY_TOKEN
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                console.log(`✅ DB Save: row ${rowId} → ${duration}`);
+            } else {
+                console.warn(`❌ DB Save failed row ${rowId}:`, await response.text());
+            }
+            
+            // Rate limit এড়াতে delay
+            await new Promise(r => setTimeout(r, 250));
+            
+        } catch (error) {
+            console.error(`❌ DB Save error row ${rowId}:`, error);
+        }
+    }
 }
 
 // ============================================================
@@ -417,7 +507,8 @@ async function updateAllVideoDurations() {
     
     if (allIds.length === 0) return;
     
-    const durations = await getVideoDurationsBatch(allIds);
+    // ✅ Global db rows pass করি
+    const durations = await getVideoDurationsBatch(allIds, _currentDbRows);
     
     itemsWithId.forEach(({ videoId, durationSpan }) => {
         durationSpan.textContent = durations[videoId] || '--:--';
@@ -467,7 +558,7 @@ function showNotification(message, type = 'success') {
 }
 
 // ============================================================
-// ✅ Complete toggle (manual checkbox)
+// ✅ Complete toggle (manual)
 // ============================================================
 window.toggleComplete = function(itemId, checkbox, event) {
     if (event) event.stopPropagation();
@@ -628,7 +719,7 @@ function escapeAttr(str) {
 }
 
 // ============================================================
-// 📄 PDF Viewer (same-page overlay)
+// 📄 PDF Viewer
 // ============================================================
 window.openPDFViewer = function(pdfUrl, title) {
     const encodedUrl = encodeURIComponent(pdfUrl);
@@ -657,7 +748,7 @@ window.openPDFViewer = function(pdfUrl, title) {
             #pdf-overlay-viewer .pdf-title-wrap {
                 display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0;
             }
-            #pdf-overlay-viewer .pdf-title-wrap i { color: #ef4444; font-size: 1.4rem; flex-shrink: 0; }
+            #pdf-overlay-viewer .pdf-title-wrap i { color: #2563eb; font-size: 1.4rem; flex-shrink: 0; }
             #pdf-overlay-viewer .pdf-title {
                 color: #1e293b; font-size: 1rem; font-weight: 600;
                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0;
@@ -729,7 +820,7 @@ window.openPDFViewer = function(pdfUrl, title) {
 };
 
 // ============================================================
-// ▶️ YouTube Player — IFrame API (FULLSCREEN FIXED)
+// ▶️ YouTube Player — Mobile: App | Desktop: Overlay
 // ============================================================
 window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     const videoId = extractYouTubeVideoId(videoUrl);
@@ -740,6 +831,30 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         return;
     }
     
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    
+    // ✅ Mobile-এ সরাসরি YouTube app-এ পাঠাই (perfect fullscreen)
+    if (isMobile) {
+        const webUrl = `https://m.youtube.com/watch?v=${videoId}`;
+        const appUrl = `vnd.youtube:${videoId}`;
+        
+        const startTime = Date.now();
+        try {
+            window.location.href = appUrl;
+        } catch (e) {
+            window.open(webUrl, '_blank');
+            return;
+        }
+        
+        setTimeout(() => {
+            if (Date.now() - startTime < 2000 && !document.hidden) {
+                window.open(webUrl, '_blank');
+            }
+        }, 1500);
+        return;
+    }
+    
+    // ✅ Desktop-এ overlay player
     const existing = document.getElementById('yt-overlay-player');
     if (existing) existing.remove();
     
@@ -755,12 +870,9 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             body.yt-overlay-open { overflow: hidden !important; }
             
             #yt-overlay-player {
-                position: fixed;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: #000;
-                z-index: 999999;
-                display: flex;
-                flex-direction: column;
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: #000; z-index: 999999;
+                display: flex; flex-direction: column;
                 animation: ytFadeIn 0.25s ease;
             }
             #yt-overlay-player .yt-toolbar {
@@ -788,29 +900,21 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
                 display: flex; align-items: center; justify-content: center;
                 cursor: pointer; color: #fff; font-size: 1rem;
                 transition: all 0.2s ease; text-decoration: none;
-                -webkit-tap-highlight-color: transparent;
             }
-            #yt-overlay-player .yt-btn:hover,
-            #yt-overlay-player .yt-btn:active { background: #333; transform: scale(1.05); }
+            #yt-overlay-player .yt-btn:hover { background: #333; }
             #yt-overlay-player .yt-btn.yt-yt-btn {
                 background: rgba(255,0,0,0.9); border-color: #cc0000;
             }
             #yt-overlay-player .yt-btn.yt-yt-btn:hover { background: #cc0000; }
             
             #yt-overlay-player .yt-video-wrap {
-                flex: 1;
-                position: relative;
-                background: #000;
-                min-height: 0;
-                overflow: hidden;
+                flex: 1; position: relative; background: #000;
+                min-height: 0; overflow: hidden;
             }
             #yt-overlay-player #yt-player-container {
-                position: absolute;
-                top: 0; left: 0;
-                width: 100%;
-                height: 100%;
+                position: absolute; top: 0; left: 0;
+                width: 100%; height: 100%;
             }
-            /* ⚠️ iframe-এ width/height force করা হচ্ছে না — YouTube নিজে manage করবে */
             
             #yt-overlay-player .yt-progress-info {
                 background: #111; padding: 0.5rem 1rem;
@@ -839,11 +943,9 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
                 background: linear-gradient(90deg, #065f46, #10b981);
                 color: #fff;
             }
-            
-            @media (max-width: 480px) {
-                #yt-overlay-player .yt-title { font-size: 0.85rem; }
-                #yt-overlay-player .yt-btn { width: 36px; height: 36px; font-size: 0.9rem; }
-                #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+            #yt-overlay-player:fullscreen,
+            #yt-overlay-player:-webkit-full-screen {
+                width: 100vw !important; height: 100vh !important;
             }
         `;
         document.head.appendChild(styleEl);
@@ -898,19 +1000,17 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         ? Math.floor(savedProgress * 60 * 60) 
         : 0;
     
-    // ✅ width/height '100%' — YouTube নিজে size handle করবে
     player = new YT.Player('yt-player-container', {
         videoId: videoId,
         width: '100%',
         height: '100%',
         playerVars: {
-            'autoplay': 1,
+            'autoplay': 0,
             'rel': 0,
             'modestbranding': 1,
             'playsinline': 1,
             'fs': 1,
-            'start': startSeconds,
-            'origin': window.location.origin
+            'start': startSeconds
         },
         events: {
             'onReady': onPlayerReady,
@@ -920,7 +1020,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
     });
     
     function onPlayerReady(event) {
-        console.log('✅ Player ready');
         event.target.playVideo();
         startProgressTracking();
     }
@@ -964,7 +1063,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
         if (!duration || duration === 0) return;
         
         const percentage = Math.min(current / duration, 1);
-        
         updateProgressUI(percentage);
         
         if (itemId && percentage > (videoWatchProgress[itemId] || 0)) {
@@ -977,7 +1075,6 @@ window.openYouTubePlayer = async function(videoUrl, title, itemId) {
             
             if (itemId) {
                 const wasNewlyCompleted = markCompletedAuto(itemId);
-                
                 if (wasNewlyCompleted) {
                     updateHintUI(true);
                     showNotification('🎉 লেকচার সম্পন্ন হিসেবে চিহ্নিত হয়েছে', 'success');
@@ -1064,14 +1161,17 @@ async function loadSections() {
     try {
         const classes = await fetchClassesWithFallback();
         
+        // ✅ Global db rows save করি (duration column সহ)
+        _currentDbRows = classes;
+        
         document.getElementById('course-title').textContent = 'Civil 4th Semester';
         
         const sections = transformClassesToSections(classes);
-        
         window._currentSections = sections;
         
         displaySections(sections);
         
+        // ✅ Video duration load
         setTimeout(() => {
             updateAllVideoDurations();
         }, 500);
@@ -1123,6 +1223,16 @@ function displaySections(sections) {
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             const isCompleted = completedItems[itemId] || false;
             
+            // ✅ DB duration থাকলে সাথে সাথে দেখাই
+            let durationHTML = '';
+            if (isYouTube) {
+                if (content.duration && content.duration.trim() !== '' && content.duration !== '--:--') {
+                    durationHTML = `<span class="video-duration">${escapeHtml(content.duration)}</span>`;
+                } else {
+                    durationHTML = '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>';
+                }
+            }
+            
             return `
                 <div class="content-item ${isCompleted ? 'completed' : ''}" 
                      data-item-id="${escapeAttr(itemId)}"
@@ -1134,7 +1244,7 @@ function displaySections(sections) {
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
                     <span class="content-title">${escapeHtml(contentTitle)}</span>
-                    ${isYouTube ? '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>' : ''}
+                    ${durationHTML}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" title="খুলুন"></i>' : ''}
                 </div>
             `;
