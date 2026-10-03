@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://civil4th.vercel.app/sitemap.xml
