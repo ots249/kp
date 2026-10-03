@@ -1,5 +1,5 @@
 // ============================================================
-// 🌐 API Endpoints (with fallback)
+// 🌐 Read API Endpoints (with fallback)
 // ============================================================
 const API_ENDPOINTS = [
     {
@@ -25,13 +25,53 @@ const API_ENDPOINTS = [
 ];
 
 // ============================================================
+// 💾 Write API Endpoints (for duration save) — with fallback
+// ============================================================
+const WRITE_API_ENDPOINTS = [
+    {
+        name: 'Sheety',
+        baseUrl: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        buildPayload: (rowId, duration) => ({ sheet1: { duration: duration } }),
+        buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
+    },
+    {
+        name: 'SheetDB',
+        baseUrl: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj',
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        buildPayload: (rowId, duration) => ({ duration: duration }),
+        buildUrl: (baseUrl, rowId) => `${baseUrl}/id/${rowId}`
+    },
+    {
+        name: 'Sheet2API',
+        baseUrl: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        buildPayload: (rowId, duration) => ({ duration: duration }),
+        buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
+    },
+    {
+        name: 'Google Apps Script',
+        baseUrl: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        buildPayload: (rowId, duration) => ({
+            action: 'updateDuration',
+            rowId: rowId,
+            duration: duration
+        }),
+        buildUrl: (baseUrl) => baseUrl
+    }
+];
+
+// ============================================================
 // 🔑 API Config
 // ============================================================
 const YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
 const SHEETY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
 const COMPLETION_THRESHOLD = 0.90;
-
-// ✅ Batch save concurrency (একবারে max কত request)
 const DB_SAVE_CONCURRENT = 15;
 
 // ✅ Hidden Admin Settings
@@ -399,63 +439,48 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
 }
 
 // ============================================================
-// 💾 Save ALL durations to DB — Parallel Batch + Chunked
+// 💾 Save durations to DB — MULTI-API FALLBACK + PARALLEL
 // ============================================================
 async function saveDurationsToDB(items) {
     if (!items || items.length === 0) return;
     
-    // ✅ Invalid items ফিল্টার
     const validItems = items.filter(({ rowId, duration }) => 
         rowId && duration && duration !== '--:--'
     );
     
     if (validItems.length === 0) return;
     
-    console.log(`💾 ${validItems.length}টি duration একসাথে DB-তে save করছি...`);
+    console.log(`💾 ${validItems.length}টি duration save করছি (multi-API fallback)...`);
     
     const startTime = Date.now();
     const failedItems = [];
     let successCount = 0;
     
-    // ✅ Chunk-এ ভাগ করি (concurrent limit এড়াতে)
+    // Chunk-এ ভাগ
     const chunks = [];
     for (let i = 0; i < validItems.length; i += DB_SAVE_CONCURRENT) {
         chunks.push(validItems.slice(i, i + DB_SAVE_CONCURRENT));
     }
     
-    console.log(`📦 ${chunks.length}টি chunk-এ ভাগ করলাম (প্রতি chunk-এ ${DB_SAVE_CONCURRENT}টি)`);
+    console.log(`📦 ${chunks.length}টি chunk-এ ভাগ করলাম`);
     
-    // ✅ প্রতিটি chunk parallel-এ পাঠাই
     for (const chunk of chunks) {
         const promises = chunk.map(async ({ rowId, duration }) => {
-            try {
-                const url = `${SHEETY_API}/${rowId}`;
-                const response = await fetch(url, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sheet1: { duration } })
-                });
-                
-                if (response.ok) {
-                    successCount++;
-                    console.log(`✅ DB Save: row ${rowId} → ${duration}`);
-                    return { success: true };
-                } else {
-                    const errText = await response.text();
-                    console.warn(`❌ DB Save failed row ${rowId}: ${response.status}`, errText);
-                    failedItems.push({ rowId, duration });
-                    return { success: false };
-                }
-            } catch (error) {
-                console.error(`❌ DB Save error row ${rowId}:`, error);
+            const result = await saveSingleDurationWithFallback(rowId, duration);
+            
+            if (result.success) {
+                successCount++;
+                console.log(`✅ Saved: row ${rowId} → ${duration} (via ${result.apiName})`);
+                return { success: true };
+            } else {
                 failedItems.push({ rowId, duration });
+                console.warn(`❌ All APIs failed for row ${rowId}`);
                 return { success: false };
             }
         });
         
         await Promise.allSettled(promises);
         
-        // ✅ Chunk-এর মাঝে ৩০০ms delay (Sheety rate limit এড়াতে)
         if (chunks.indexOf(chunk) < chunks.length - 1) {
             await new Promise(r => setTimeout(r, 300));
         }
@@ -464,41 +489,61 @@ async function saveDurationsToDB(items) {
     const elapsed = Date.now() - startTime;
     console.log(`✅ Batch complete: ${successCount}/${validItems.length} সফল (${elapsed}ms)`);
     
-    // ✅ Failed হলে sequential retry
-    if (failedItems.length > 0) {
-        console.log(`🔄 ${failedItems.length}টি retry করছি (sequential)...`);
+    if (failedItems.length > 0 && failedItems.length <= 30) {
+        console.log(`🔄 ${failedItems.length}টি retry করছি...`);
         await retryFailedDurations(failedItems);
     }
 }
 
 // ============================================================
-// 🔄 Retry failed durations (sequential with delay)
+// 🔄 Save single duration with multi-API fallback
+// ============================================================
+async function saveSingleDurationWithFallback(rowId, duration) {
+    for (let i = 0; i < WRITE_API_ENDPOINTS.length; i++) {
+        const api = WRITE_API_ENDPOINTS[i];
+        
+        try {
+            const url = api.buildUrl(api.baseUrl, rowId);
+            const payload = api.buildPayload(rowId, duration);
+            
+            const response = await fetch(url, {
+                method: api.method,
+                headers: api.headers,
+                body: JSON.stringify(payload)
+            });
+            
+            if (response.ok) {
+                return { success: true, apiName: api.name };
+            } else {
+                const errText = await response.text();
+                console.warn(`⚠️ ${api.name} failed (${response.status}):`, errText.substring(0, 100));
+            }
+            
+        } catch (error) {
+            console.warn(`⚠️ ${api.name} error:`, error.message);
+        }
+    }
+    
+    return { success: false };
+}
+
+// ============================================================
+// 🔄 Retry failed durations (sequential)
 // ============================================================
 async function retryFailedDurations(items) {
     let retrySuccess = 0;
     
     for (const { rowId, duration } of items) {
-        try {
-            const url = `${SHEETY_API}/${rowId}`;
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sheet1: { duration } })
-            });
-            
-            if (response.ok) {
-                retrySuccess++;
-                console.log(`✅ Retry OK: row ${rowId} → ${duration}`);
-            } else {
-                console.warn(`❌ Retry failed: row ${rowId}`);
-            }
-            
-            // Retry-তে 500ms delay
-            await new Promise(r => setTimeout(r, 500));
-            
-        } catch (error) {
-            console.error(`❌ Retry error: row ${rowId}`, error);
+        const result = await saveSingleDurationWithFallback(rowId, duration);
+        
+        if (result.success) {
+            retrySuccess++;
+            console.log(`✅ Retry OK: row ${rowId} → ${duration} (via ${result.apiName})`);
+        } else {
+            console.warn(`❌ Retry failed: row ${rowId}`);
         }
+        
+        await new Promise(r => setTimeout(r, 500));
     }
     
     console.log(`🔄 Retry complete: ${retrySuccess}/${items.length}`);
