@@ -705,12 +705,21 @@
   /* =====================================================
      CONFIG
      ===================================================== */
-  const BASE  = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
-  const TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
-  const HEADERS = {
+  // Primary API (Sheety)
+  const PRIMARY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+  const PRIMARY_TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
+  const PRIMARY_HEADERS = {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + TOKEN
+    'Authorization': 'Bearer ' + PRIMARY_TOKEN
   };
+
+  // Fallback API (Sheet2API)
+  const FALLBACK_API = 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor/Sheet1';
+  const FALLBACK_HEADERS = {
+    'Content-Type': 'application/json'
+  };
+
+  // PDF base for auto-fill
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
   const $ = (id) => document.getElementById(id);
@@ -820,15 +829,6 @@
   /* =====================================================
      SHARE MODAL
      ===================================================== */
-  /**
-   * Build the WhatsApp caption:
-   *
-   * New class added ✅
-   *
-   * Geotechnical Engineering
-   * Chapter 2 - Lecture 3
-   * https://youtu.be/Qb7rN5uRoQM?si=...
-   */
   function buildCaption(row) {
     return [
       'New class added ✅',
@@ -868,11 +868,7 @@
     if (!lastSharedRow) return;
     const text = buildCaption(lastSharedRow);
     const url  = 'https://wa.me/?text=' + encodeURIComponent(text);
-
-    // Open in new tab (works on desktop + mobile)
     const win = window.open(url, '_blank', 'noopener,noreferrer');
-
-    // Fallback if popup blocked
     if (!win) window.location.href = url;
   }
 
@@ -1084,6 +1080,29 @@
   }
 
   /* =====================================================
+     API FALLBACK LOGIC
+     ===================================================== */
+
+  // Tries primary, then fallback. `operation` is a function that receives baseURL and headers.
+  async function fetchWithFallback(operation) {
+    // Try primary
+    try {
+      const result = await operation(PRIMARY_API, PRIMARY_HEADERS);
+      return { data: result, api: 'primary' };
+    } catch (primaryErr) {
+      console.warn('Primary API failed, trying fallback…', primaryErr);
+      // Try fallback
+      try {
+        const result = await operation(FALLBACK_API, FALLBACK_HEADERS);
+        return { data: result, api: 'fallback' };
+      } catch (fallbackErr) {
+        // Both failed, throw combined error
+        throw new Error(`Primary & fallback APIs failed. Primary: ${primaryErr.message}. Fallback: ${fallbackErr.message}`);
+      }
+    }
+  }
+
+  /* =====================================================
      READ
      ===================================================== */
   async function loadRows({ showSpinner = false } = {}) {
@@ -1093,10 +1112,32 @@
     else showSkeleton();
 
     try {
-      const res = await fetch(BASE, { headers: HEADERS });
-      const json = await res.json();
-      cachedRows = json.sheet1 || [];
+      const { data: json, api } = await fetchWithFallback(async (url, headers) => {
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      });
+
+      // Handle both Sheety and Sheet2API response shapes
+      // Sheety: { sheet1: [...] }
+      // Sheet2API: [...] (direct array) or { data: [...] }
+      let rows = [];
+      if (Array.isArray(json)) {
+        rows = json;
+      } else if (json && Array.isArray(json.sheet1)) {
+        rows = json.sheet1;
+      } else if (json && Array.isArray(json.data)) {
+        rows = json.data;
+      } else {
+        rows = [];
+      }
+
+      cachedRows = rows;
       applyFilters();
+
+      if (api === 'fallback') {
+        console.info('Loaded via fallback (Sheet2API)');
+      }
     } catch (err) {
       listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
       toast('Failed to load resources', 'err');
@@ -1128,14 +1169,36 @@
       }
     };
 
-    try {
-      const url    = isEdit ? `${BASE}/${editingId}` : BASE;
-      const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: HEADERS, body: JSON.stringify(payload) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    // For fallback, Sheet2API expects a flat object (no sheet1 wrapper)
+    const fallbackPayload = {
+      subject: form.subject.value,
+      chapter: form.chapter.value.trim(),
+      lecture: form.lecture.value.trim(),
+      type:    form.type.value,
+      link:    form.link.value.trim()
+    };
 
-      const saved = json.sheet1;
+    try {
+      const { data: json, api } = await fetchWithFallback(async (baseURL, headers) => {
+        const url    = isEdit ? `${baseURL}/${editingId}` : baseURL;
+        const method = isEdit ? 'PUT' : 'POST';
+        const body   = baseURL.includes('sheet2api') ? fallbackPayload : payload;
+        const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
+        const jsonRes = await res.json();
+        if (!res.ok) throw new Error(jsonRes.error || `HTTP ${res.status}`);
+        return jsonRes;
+      });
+
+      // Normalize saved row
+      let saved;
+      if (json.sheet1) {
+        saved = json.sheet1;
+      } else if (json.id) {
+        saved = json;
+      } else {
+        // Fallback may return the flat object
+        saved = { ...fallbackPayload, id: json.id || Date.now() };
+      }
 
       if (isEdit) {
         const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
@@ -1155,7 +1218,6 @@
 
       toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
 
-      // Only show the share modal for NEW rows, not edits
       if (!isEdit) {
         const shareRow = { ...payload.sheet1, id: saved.id };
         setTimeout(() => openShareModal(shareRow), 250);
@@ -1245,11 +1307,14 @@
     }, 250);
 
     try {
-      const res = await fetch(`${BASE}/${id}`, { method: 'DELETE', headers: HEADERS });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
-      }
+      await fetchWithFallback(async (baseURL, headers) => {
+        const res = await fetch(`${baseURL}/${id}`, { method: 'DELETE', headers });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || `HTTP ${res.status}`);
+        }
+        return true;
+      });
       toast('Deleted successfully', 'ok');
     } catch (err) {
       console.error(err);
