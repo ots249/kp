@@ -85,7 +85,6 @@
   }
   p.sub { color: var(--muted); margin: 0 0 20px; font-size: .875rem; }
 
-  /* ---------- Form ---------- */
   label {
     display: block; font-size: .72rem; font-weight: 700; color: var(--text-2);
     margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em;
@@ -136,7 +135,6 @@
   .form-row .field { min-width: 0; }
   .form-row .field > label { margin-top: 16px; }
 
-  /* ---------- Buttons ---------- */
   button {
     font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
     font-weight: 600; letter-spacing: .01em;
@@ -165,7 +163,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ---------- Editing banner ---------- */
   .editing {
     background: linear-gradient(180deg, #fffbf0 0%, #fff8e6 100%);
     border: 1px solid #f0d999; color: #7a5a00;
@@ -185,7 +182,6 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  /* ---------- Toolbar ---------- */
   .toolbar {
     display: flex; justify-content: space-between; align-items: center;
     gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
@@ -209,7 +205,6 @@
   .refresh:hover { background: var(--bg-2); border-color: var(--border); }
   .refresh.spinning svg { animation: spin .7s linear; }
 
-  /* ---------- Filter bar ---------- */
   .filter-bar {
     display: grid;
     grid-template-columns: 1.4fr 1fr 1fr auto;
@@ -262,7 +257,6 @@
   }
   .result-info .chip button:hover { opacity: 1; }
 
-  /* ---------- List ---------- */
   #listWrap { transition: opacity .2s; }
   #listWrap.loading { opacity: .5; }
 
@@ -282,7 +276,6 @@
     100% { background-position: -200% 0; }
   }
 
-  /* ---------- Row cards (mobile) ---------- */
   .row-cards { display: none; }
   .row-card {
     position: relative;
@@ -330,7 +323,6 @@
   .row-card .actions { gap: 8px; }
   .row-card .actions button { flex: 1; padding: 10px; font-size: .85rem; min-height: 42px; }
 
-  /* ---------- Desktop table ---------- */
   table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .9rem; }
   thead th {
     text-align: left; padding: 10px 12px;
@@ -360,7 +352,6 @@
   }
   td a:hover { border-bottom-color: var(--primary); }
 
-  /* ---------- Type badge ---------- */
   .badge {
     display: inline-flex; align-items: center; gap: 5px;
     padding: 4px 10px; border-radius: 999px;
@@ -376,7 +367,6 @@
   .badge.video { background: var(--video-bg); color: var(--video); border-color: var(--video-bd); }
   .badge.other { background: var(--bg-2); color: var(--muted); border-color: var(--border-soft); }
 
-  /* ---------- Action buttons ---------- */
   .actions { display: flex; gap: 8px; white-space: nowrap; }
   .actions button {
     padding: 8px 14px; font-size: .8rem; border-radius: 8px;
@@ -397,7 +387,6 @@
   .empty { color: var(--muted); padding: 40px 16px; text-align: center; font-size: .9rem; }
   .empty .ico { display: block; font-size: 2rem; margin-bottom: 8px; opacity: .5; }
 
-  /* ---------- Toasts ---------- */
   #toasts {
     position: fixed; top: calc(16px + env(safe-area-inset-top));
     right: 16px; left: 16px;
@@ -425,7 +414,6 @@
   }
   @keyframes toastOut { to { opacity: 0; transform: translateX(30px) scale(.95); } }
 
-  /* ---------- Modal (shared) ---------- */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 10000;
     background: rgba(15,29,51,.45);
@@ -472,7 +460,6 @@
   }
   .modal .btn-confirm:hover { background: var(--danger-dark); border-color: var(--danger-dark); }
 
-  /* ---------- Success + Share modal ---------- */
   .success-modal .icon {
     background: var(--ok-tint);
     color: var(--ok);
@@ -527,7 +514,6 @@
   }
   .btn-close-modal:hover { background: var(--bg-2); border-color: #c2ccd9; }
 
-  /* ---------- Responsive ---------- */
   @media (max-width: 640px) {
     body { padding: 14px 12px; padding-bottom: calc(28px + env(safe-area-inset-bottom)); gap: 14px; }
     .card { padding: 18px 16px; border-radius: 14px; }
@@ -713,13 +699,12 @@
     'Authorization': 'Bearer ' + PRIMARY_TOKEN
   };
 
-  // Fallback API (Sheet2API)
-  const FALLBACK_API = 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor/Sheet1';
+  // Fallback API (SheetBest) — flat object, no wrapper
+  const FALLBACK_API = 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2';
   const FALLBACK_HEADERS = {
     'Content-Type': 'application/json'
   };
 
-  // PDF base for auto-fill
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
   const $ = (id) => document.getElementById(id);
@@ -1082,22 +1067,23 @@
   /* =====================================================
      API FALLBACK LOGIC
      ===================================================== */
-
-  // Tries primary, then fallback. `operation` is a function that receives baseURL and headers.
+  // Tries primary (Sheety), falls back to SheetBest.
+  // `operation` receives (baseURL, headers, isFallback)
   async function fetchWithFallback(operation) {
     // Try primary
     try {
-      const result = await operation(PRIMARY_API, PRIMARY_HEADERS);
+      const result = await operation(PRIMARY_API, PRIMARY_HEADERS, false);
       return { data: result, api: 'primary' };
     } catch (primaryErr) {
       console.warn('Primary API failed, trying fallback…', primaryErr);
       // Try fallback
       try {
-        const result = await operation(FALLBACK_API, FALLBACK_HEADERS);
+        const result = await operation(FALLBACK_API, FALLBACK_HEADERS, true);
         return { data: result, api: 'fallback' };
       } catch (fallbackErr) {
-        // Both failed, throw combined error
-        throw new Error(`Primary & fallback APIs failed. Primary: ${primaryErr.message}. Fallback: ${fallbackErr.message}`);
+        throw new Error(
+          `Primary & fallback APIs failed. Primary: ${primaryErr.message}. Fallback: ${fallbackErr.message}`
+        );
       }
     }
   }
@@ -1118,9 +1104,9 @@
         return res.json();
       });
 
-      // Handle both Sheety and Sheet2API response shapes
-      // Sheety: { sheet1: [...] }
-      // Sheet2API: [...] (direct array) or { data: [...] }
+      // Normalize response shapes:
+      //   Sheety:        { sheet1: [...] }
+      //   SheetBest:     [ ... ] or { data: [...] } or { records: [...] }
       let rows = [];
       if (Array.isArray(json)) {
         rows = json;
@@ -1128,6 +1114,8 @@
         rows = json.sheet1;
       } else if (json && Array.isArray(json.data)) {
         rows = json.data;
+      } else if (json && Array.isArray(json.records)) {
+        rows = json.records;
       } else {
         rows = [];
       }
@@ -1136,7 +1124,7 @@
       applyFilters();
 
       if (api === 'fallback') {
-        console.info('Loaded via fallback (Sheet2API)');
+        console.info('Loaded via fallback (SheetBest)');
       }
     } catch (err) {
       listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
@@ -1159,7 +1147,8 @@
     submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
     setFormDisabled(true);
 
-    const payload = {
+    // Sheety payload (nested under sheet1)
+    const primaryPayload = {
       sheet1: {
         subject: form.subject.value,
         chapter: form.chapter.value.trim(),
@@ -1169,7 +1158,7 @@
       }
     };
 
-    // For fallback, Sheet2API expects a flat object (no sheet1 wrapper)
+    // SheetBest payload (flat object)
     const fallbackPayload = {
       subject: form.subject.value,
       chapter: form.chapter.value.trim(),
@@ -1179,30 +1168,36 @@
     };
 
     try {
-      const { data: json, api } = await fetchWithFallback(async (baseURL, headers) => {
+      const { data: json, api } = await fetchWithFallback(async (baseURL, headers, isFallback) => {
         const url    = isEdit ? `${baseURL}/${editingId}` : baseURL;
         const method = isEdit ? 'PUT' : 'POST';
-        const body   = baseURL.includes('sheet2api') ? fallbackPayload : payload;
-        const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
-        const jsonRes = await res.json();
-        if (!res.ok) throw new Error(jsonRes.error || `HTTP ${res.status}`);
+        const body   = isFallback ? fallbackPayload : primaryPayload;
+
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: JSON.stringify(body)
+        });
+        const jsonRes = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(jsonRes.error || jsonRes.message || `HTTP ${res.status}`);
         return jsonRes;
       });
 
       // Normalize saved row
       let saved;
-      if (json.sheet1) {
+      if (json && json.sheet1) {
         saved = json.sheet1;
-      } else if (json.id) {
+      } else if (json && json.id) {
         saved = json;
+      } else if (json && json.record) {
+        saved = json.record;
       } else {
-        // Fallback may return the flat object
-        saved = { ...fallbackPayload, id: json.id || Date.now() };
+        saved = { ...fallbackPayload, id: (json && json.id) || Date.now() };
       }
 
       if (isEdit) {
         const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
-        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...payload.sheet1 };
+        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...fallbackPayload, id: editingId };
       } else {
         cachedRows.push(saved);
       }
@@ -1219,7 +1214,7 @@
       toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
 
       if (!isEdit) {
-        const shareRow = { ...payload.sheet1, id: saved.id };
+        const shareRow = { ...fallbackPayload, id: saved.id };
         setTimeout(() => openShareModal(shareRow), 250);
       }
 
@@ -1311,7 +1306,7 @@
         const res = await fetch(`${baseURL}/${id}`, { method: 'DELETE', headers });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || `HTTP ${res.status}`);
+          throw new Error(j.error || j.message || `HTTP ${res.status}`);
         }
         return true;
       });
