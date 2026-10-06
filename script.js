@@ -52,6 +52,15 @@ const WRITE_API_ENDPOINTS = [
         buildPayload: (rowId, duration) => ({ duration: duration }),
         buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
     },
+    // ✅ SheetBest — নতুন যোগ করা হয়েছে
+    {
+        name: 'SheetBest',
+        baseUrl: 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2',
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        buildPayload: (rowId, duration) => ({ duration: duration }),
+        buildUrl: (baseUrl, rowId) => `${baseUrl}/id/${rowId}`
+    },
     {
         name: 'Google Apps Script',
         baseUrl: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
