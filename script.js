@@ -52,7 +52,6 @@ const WRITE_API_ENDPOINTS = [
         buildPayload: (rowId, duration) => ({ duration: duration }),
         buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
     },
-    // ✅ SheetBest — নতুন যোগ করা হয়েছে
     {
         name: 'SheetBest',
         baseUrl: 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2',
@@ -333,7 +332,7 @@ function extractYouTubeVideoId(url) {
 }
 
 // ============================================================
-// ⏱️ Format duration
+// ⏱️ Format duration (ISO 8601 → MM:SS or HH:MM:SS)
 // ============================================================
 function formatDuration(duration) {
     if (!duration) return '--:--';
@@ -344,6 +343,11 @@ function formatDuration(duration) {
     const hours = (match[1] || '').replace('H', '');
     const minutes = (match[2] || '').replace('M', '');
     const seconds = (match[3] || '').replace('S', '');
+    
+    // ✅ Safety check — suspicious duration warning
+    if (hours && parseInt(minutes || '0', 10) >= 60) {
+        console.warn('⚠️ Suspicious duration:', duration);
+    }
     
     let result = '';
     if (hours) {
@@ -360,7 +364,67 @@ function formatDuration(duration) {
 }
 
 // ============================================================
-// 📡 YouTube Durations — DB First, API Fallback
+// 🔍 Duration Validator — DB থেকে পড়ার সময় চেক
+// ============================================================
+function isValidDurationFormat(duration) {
+    if (!duration) return false;
+    const str = String(duration).trim();
+    if (str === '--:--') return false;
+    
+    // ✅ সঠিক format: "MM:SS" অথবা "HH:MM:SS"
+    // ❌ ভুল format: "MM:SS:00" (৩টি অংশ কিন্তু শেষটা :00 এবং MM >= 60)
+    const parts = str.split(':');
+    
+    if (parts.length === 2) {
+        // MM:SS — minutes 0-59 হতে হবে
+        const [mm, ss] = parts;
+        if (!/^\d+$/.test(mm) || !/^\d+$/.test(ss)) return false;
+        const min = parseInt(mm, 10);
+        const sec = parseInt(ss, 10);
+        return min >= 0 && min < 60 && sec >= 0 && sec < 60;
+    }
+    
+    if (parts.length === 3) {
+        const [hh, mm, ss] = parts;
+        if (!/^\d+$/.test(hh) || !/^\d+$/.test(mm) || !/^\d+$/.test(ss)) return false;
+        const h = parseInt(hh, 10);
+        const m = parseInt(mm, 10);
+        const s = parseInt(ss, 10);
+        
+        // ❌ "MM:SS:00" bug detect — শেষটা 0 এবং মাঝেরটা >= 60
+        if (s === 0 && m >= 60) return false;
+        
+        // ✅ সঠিক HH:MM:SS
+        return h >= 0 && m >= 0 && m < 60 && s >= 0 && s < 60;
+    }
+    
+    return false;
+}
+
+// 🩹 ভুল format কে ঠিক করা (যেমন "15:30:00" → "15:30")
+function normalizeDurationString(duration) {
+    if (!duration) return null;
+    const str = String(duration).trim();
+    const parts = str.split(':');
+    
+    if (parts.length === 3) {
+        const [hh, mm, ss] = parts;
+        if (!/^\d+$/.test(hh) || !/^\d+$/.test(mm) || !/^\d+$/.test(ss)) return str;
+        const h = parseInt(hh, 10);
+        const m = parseInt(mm, 10);
+        const s = parseInt(ss, 10);
+        
+        // যদি MM:SS:00 bug হয় → MM:SS এ convert করি
+        if (s === 0 && m >= 60) {
+            return `${hh.padStart(2, '0')}:${mm.padStart(2, '0')}`;
+        }
+    }
+    
+    return str;
+}
+
+// ============================================================
+// 📡 YouTube Durations — DB First (with validation), API Fallback
 // ============================================================
 async function getVideoDurationsBatch(videoIds, dbRows) {
     const result = {};
@@ -371,9 +435,19 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
             const row = dbRows.find(r => extractYouTubeVideoId(r.link) === id);
             
             if (row && row.duration && String(row.duration).trim() !== '' && row.duration !== '--:--') {
-                result[id] = String(row.duration).trim();
-                videoDurationCache[id] = result[id];
-                console.log(`📦 DB → ${id} : ${result[id]}`);
+                const rawDuration = String(row.duration).trim();
+                
+                // ✅ FIX: DB থেকে পড়ার সময় format validate করি
+                if (isValidDurationFormat(rawDuration)) {
+                    result[id] = rawDuration;
+                    videoDurationCache[id] = rawDuration;
+                    console.log(`📦 DB → ${id} : ${rawDuration}`);
+                } else {
+                    // ❌ ভুল format → YouTube API থেকে আবার আনব
+                    const normalized = normalizeDurationString(rawDuration);
+                    console.warn(`⚠️ Invalid duration in DB for ${id}: "${rawDuration}" (would be "${normalized}") → refetching from YouTube API...`);
+                    uncachedIds.push({ id, rowId: row ? row.id : null });
+                }
             } else {
                 uncachedIds.push({ id, rowId: row ? row.id : null });
             }
@@ -383,11 +457,11 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
     }
     
     if (uncachedIds.length === 0) {
-        console.log('✅ সব duration DB থেকে পাওয়া গেছে');
+        console.log('✅ সব duration DB থেকে পাওয়া গেছে (validated)');
         return result;
     }
     
-    console.log(`📡 ${uncachedIds.length}টি duration API থেকে আনতে হবে`);
+    console.log(`📡 ${uncachedIds.length}টি duration YouTube API থেকে আনতে হবে`);
     
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
         uncachedIds.forEach(({ id }) => result[id] = '--:--');
@@ -453,9 +527,15 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
 async function saveDurationsToDB(items) {
     if (!items || items.length === 0) return;
     
-    const validItems = items.filter(({ rowId, duration }) => 
-        rowId && duration && duration !== '--:--'
-    );
+    // ✅ Validation: শুধু সঠিক format-এর duration save করব
+    const validItems = items.filter(({ rowId, duration }) => {
+        if (!rowId || !duration || duration === '--:--') return false;
+        if (!isValidDurationFormat(duration)) {
+            console.warn(`⚠️ Skipping invalid duration for row ${rowId}: "${duration}"`);
+            return false;
+        }
+        return true;
+    });
     
     if (validItems.length === 0) return;
     
@@ -465,7 +545,6 @@ async function saveDurationsToDB(items) {
     const failedItems = [];
     let successCount = 0;
     
-    // Chunk-এ ভাগ
     const chunks = [];
     for (let i = 0; i < validItems.length; i += DB_SAVE_CONCURRENT) {
         chunks.push(validItems.slice(i, i + DB_SAVE_CONCURRENT));
@@ -1372,8 +1451,10 @@ function displaySections(sections) {
             
             let durationHTML = '';
             if (isYouTube) {
-                if (content.duration && String(content.duration).trim() !== '' && content.duration !== '--:--') {
-                    durationHTML = `<span class="video-duration">${escapeHtml(content.duration)}</span>`;
+                // ✅ FIX: DB-তে ভুল format থাকলে সেটা skip করে spinner দেখাই
+                const dbDuration = content.duration && String(content.duration).trim();
+                if (dbDuration && isValidDurationFormat(dbDuration)) {
+                    durationHTML = `<span class="video-duration">${escapeHtml(dbDuration)}</span>`;
                 } else {
                     durationHTML = '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>';
                 }
@@ -1530,6 +1611,79 @@ window.resetAllProgress = function() {
         
         updateAllProgress();
         showNotification('সব প্রোগ্রেস রিসেট করা হয়েছে', 'info');
+    }
+};
+
+// ============================================================
+// 🧹 ONE-TIME CLEANUP — DB-তে ভুল duration fix
+// Console-এ paste করে চালান (একবার): fixBadDurations()
+// ============================================================
+window.fixBadDurations = async function() {
+    console.log('🧹 Starting cleanup of bad durations in DB...');
+    
+    try {
+        const response = await fetch('https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1');
+        const data = await response.json();
+        const rows = data.sheet1 || [];
+        
+        const badRows = [];
+        
+        rows.forEach(row => {
+            const dur = String(row.duration || '').trim();
+            if (!dur) return;
+            
+            if (!isValidDurationFormat(dur)) {
+                const fixed = normalizeDurationString(dur);
+                if (fixed && fixed !== dur) {
+                    badRows.push({ rowId: row.id, old: dur, new: fixed, link: row.link });
+                }
+            }
+        });
+        
+        console.log(`🔍 Found ${badRows.length} bad durations`);
+        console.table(badRows);
+        
+        if (badRows.length === 0) {
+            console.log('✅ No bad durations found!');
+            alert('✅ সব duration ঠিক আছে!');
+            return;
+        }
+        
+        if (!confirm(`${badRows.length}টি ভুল duration fix করতে চান?`)) return;
+        
+        let fixed = 0;
+        for (const { rowId, old: oldDur, new: newDur } of badRows) {
+            try {
+                const res = await fetch(
+                    `https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1/${rowId}`,
+                    {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sheet1: { duration: newDur } })
+                    }
+                );
+                
+                if (res.ok) {
+                    fixed++;
+                    console.log(`✅ Row ${rowId}: "${oldDur}" → "${newDur}"`);
+                } else {
+                    console.warn(`❌ Row ${rowId} failed`);
+                }
+            } catch (e) {
+                console.warn(`❌ Row ${rowId} error:`, e.message);
+            }
+        }
+        
+        console.log(`🎉 Fixed ${fixed}/${badRows.length} rows`);
+        alert(`✅ ${fixed}/${badRows.length}টি duration fix হয়েছে!\n\nএখন page reload করুন।`);
+        
+        // Cache clear — যাতে নতুন data আসে
+        localStorage.removeItem('videoDurationCache');
+        videoDurationCache = {};
+        
+    } catch (e) {
+        console.error('❌ Cleanup failed:', e);
+        alert('Cleanup failed: ' + e.message);
     }
 };
 
