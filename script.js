@@ -2,7 +2,7 @@
 // Read API Endpoints (with fallback)
 // ============================================================
 const API_ENDPOINTS = [
-    { name: 'API 1 (Primary)', url: 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1', timeout: 8000 },
+    { name: 'API 1 (Primary)', url: 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1', timeout: 15000 },
     { name: 'API 2 (Fallback)', url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor', timeout: 10000 },
     { name: 'API 3 (Fallback)', url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj', timeout: 10000 },
     { name: 'API 4 (Fallback)', url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1', timeout: 10000 }
@@ -164,14 +164,19 @@ function fetchWithTimeout(url, timeoutMs = 10000) {
 }
 
 function normalizeApiResponse(data) {
-    if (!data) return null;
+    if (!data || typeof data !== 'object') return null;
+
+    // API 1: { success: true, data: [...] }
+    if (data.success === false) {
+        throw new Error(data.message || data.error || 'API success=false রিটার্ন করেছে');
+    }
+    if (Array.isArray(data.data)) return data.data;
     if (Array.isArray(data.classes)) return data.classes;
     if (Array.isArray(data)) return data;
-    if (Array.isArray(data.data)) return data.data;
-    if (typeof data === 'object') {
-        for (const key of Object.keys(data)) {
-            if (Array.isArray(data[key])) return data[key];
-        }
+
+    // Compatibility with other sheet API response formats.
+    for (const key of Object.keys(data)) {
+        if (Array.isArray(data[key])) return data[key];
     }
     return null;
 }
@@ -181,19 +186,45 @@ async function fetchClassesWithFallback() {
 
     for (let i = 0; i < API_ENDPOINTS.length; i++) {
         const api = API_ENDPOINTS[i];
+        const startedAt = Date.now();
+
         try {
             const response = await fetchWithTimeout(api.url, api.timeout);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
+            }
 
             const data = await response.json();
             const classes = normalizeApiResponse(data);
-            if (!classes || classes.length === 0) throw new Error('কোনো ক্লাস ডাটা পাওয়া যায়নি');
+            if (!Array.isArray(classes) || classes.length === 0) {
+                throw new Error('JSON পাওয়া গেছে, কিন্তু data/classes Array খালি বা অনুপস্থিত');
+            }
+
+            console.info(`[Course API] ${api.name} সফল | ${classes.length} rows | ${Date.now() - startedAt}ms`, {
+                success: data.success,
+                project: data.project,
+                sheet: data.sheet,
+                total: data.total,
+                cached: data.cached,
+                stale: data.stale
+            });
 
             if (i > 0) showNotification(`⚠️ Primary API কাজ করেনি, ${api.name} ব্যবহার করা হয়েছে`, 'info');
             return classes;
         } catch (error) {
-            console.warn(`${api.name} ব্যর্থ:`, error.message);
-            lastError = error;
+            const reason = error.name === 'AbortError'
+                ? `Timeout (${api.timeout}ms)`
+                : error.message || 'Unknown fetch error';
+
+            console.error(`[Course API] ${api.name} ব্যর্থ: ${reason}`, {
+                url: api.url,
+                elapsed: Date.now() - startedAt,
+                hint: reason === 'Failed to fetch'
+                    ? 'সম্ভাব্য CORS, DNS, SSL অথবা network সমস্যা'
+                    : undefined
+            });
+
+            lastError = new Error(`${api.name}: ${reason}`);
         }
     }
     throw lastError || new Error('সব API ব্যর্থ হয়েছে');
@@ -234,7 +265,7 @@ function transformClassesToSections(classes) {
             return {
                 id: contentId,
                 title: title,
-                type: 'video',
+                type: String(item.type || (String(item.link || '').toLowerCase().includes('.pdf') ? 'pdf' : 'video')).toLowerCase(),
                 link: item.link || '#',
                 rowId: rowId,
                 duration: item.duration || '',
