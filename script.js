@@ -219,53 +219,131 @@ function normalizeApiResponse(responseData) {
 
 async function fetchClassesWithFallback() {
     let lastError = null;
+    const apiDiagnostics = [];
 
     for (let i = 0; i < API_ENDPOINTS.length; i++) {
         const api = API_ENDPOINTS[i];
         const startedAt = Date.now();
+        let stage = 'request';
+        let response = null;
+
+        console.groupCollapsed(`[Course API] ${api.name} — চেষ্টা শুরু`);
+        console.info('URL:', api.url);
+        console.info('Timeout:', `${api.timeout}ms`);
 
         try {
-            const response = await fetchWithTimeout(api.url, api.timeout);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim());
-            }
+            response = await fetchWithTimeout(api.url, api.timeout);
 
-            const data = await response.json();
-            const classes = normalizeApiResponse(data);
-            if (!Array.isArray(classes) || classes.length === 0) {
-                throw new Error('JSON পাওয়া গেছে, কিন্তু data/classes Array খালি বা অনুপস্থিত');
-            }
-
-            console.info(`[Course API] ${api.name} সফল | ${classes.length} rows | ${Date.now() - startedAt}ms`, {
-                success: data.success,
-                project: data.project,
-                sheet: data.sheet,
-                total: data.total,
-                cached: data.cached,
-                stale: data.stale
+            console.info('HTTP response:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                contentType: response.headers.get('content-type'),
+                elapsedMs: Date.now() - startedAt
             });
 
-            if (i > 0) showNotification(`⚠️ Primary API কাজ করেনি, ${api.name} ব্যবহার করা হয়েছে`, 'info');
+            if (!response.ok) {
+                stage = 'http';
+                let errorBody = '';
+                try { errorBody = (await response.text()).slice(0, 1000); } catch (_) {}
+                throw new Error(`HTTP ${response.status} ${response.statusText || ''}`.trim() +
+                    (errorBody ? ` | Response: ${errorBody}` : ''));
+            }
+
+            stage = 'json';
+            const data = await response.json();
+
+            console.info('Response structure:', {
+                rootType: Array.isArray(data) ? 'Array' : typeof data,
+                rootKeys: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : [],
+                success: data && data.success,
+                project: data && data.project,
+                sheet: data && data.sheet,
+                total: data && data.total,
+                cached: data && data.cached,
+                stale: data && data.stale,
+                dataIsArray: !!(data && Array.isArray(data.data)),
+                dataLength: data && Array.isArray(data.data) ? data.data.length : undefined
+            });
+
+            stage = 'normalize';
+            const classes = normalizeApiResponse(data);
+
+            if (!Array.isArray(classes) || classes.length === 0) {
+                throw new Error('JSON পাওয়া গেছে, কিন্তু usable rows Array খালি বা অনুপস্থিত');
+            }
+
+            const invalidRows = classes.filter(row =>
+                !row || typeof row !== 'object' || Array.isArray(row)
+            ).length;
+
+            console.info('Normalized data:', {
+                rowCount: classes.length,
+                invalidRows,
+                firstRowKeys: classes[0] ? Object.keys(classes[0]) : [],
+                firstRowPreview: classes[0] || null,
+                elapsedMs: Date.now() - startedAt
+            });
+
+            apiDiagnostics.push({
+                api: api.name,
+                result: 'SUCCESS',
+                status: response.status,
+                rows: classes.length,
+                elapsedMs: Date.now() - startedAt
+            });
+            console.info(`✅ ${api.name} সফল — ${classes.length} rows`);
+            console.groupEnd();
+
+            if (i > 0) {
+                console.warn('[Course API] Primary API ব্যর্থ হওয়ায় fallback ব্যবহার হয়েছে। বিস্তারিত উপরের error log-এ দেখুন।');
+                showNotification(`⚠️ Primary API কাজ করেনি, ${api.name} ব্যবহার করা হয়েছে`, 'info');
+            }
+
+            console.table(apiDiagnostics);
             return classes;
         } catch (error) {
-            const reason = error.name === 'AbortError'
+            const reason = error && error.name === 'AbortError'
                 ? `Timeout (${api.timeout}ms)`
-                : error.message || 'Unknown fetch error';
+                : (error && error.message) || 'Unknown fetch error';
 
-            console.error(`[Course API] ${api.name} ব্যর্থ: ${reason}`, {
-                url: api.url,
-                elapsed: Date.now() - startedAt,
-                hint: reason === 'Failed to fetch'
-                    ? 'সম্ভাব্য CORS, DNS, SSL অথবা network সমস্যা'
-                    : undefined
-            });
+            let hint = '';
+            if (error && error.name === 'AbortError') {
+                hint = 'API নির্ধারিত সময়ের মধ্যে response দেয়নি। Timeout বাড়ানো বা server latency পরীক্ষা করুন।';
+            } else if (/Failed to fetch|NetworkError|Load failed/i.test(reason)) {
+                hint = 'সম্ভাব্য CORS, DNS, SSL, internet/network বা server connectivity সমস্যা। Browser response পড়তে পারেনি।';
+            } else if (stage === 'json') {
+                hint = 'HTTP response এসেছে, কিন্তু body valid JSON নয় অথবা JSON parse করা যায়নি।';
+            } else if (stage === 'normalize') {
+                hint = 'JSON এসেছে, কিন্তু response-এর ভেতরে প্রত্যাশিত rows Array পাওয়া যায়নি।';
+            } else if (stage === 'http') {
+                hint = 'Server non-2xx HTTP status দিয়েছে। Response body উপরে দেখুন।';
+            }
 
-            lastError = new Error(`${api.name}: ${reason}`);
+            const diagnostic = {
+                api: api.name,
+                result: 'FAILED',
+                stage,
+                status: response ? response.status : 'NO_RESPONSE',
+                elapsedMs: Date.now() - startedAt,
+                errorName: error && error.name,
+                error: reason,
+                hint
+            };
+            apiDiagnostics.push(diagnostic);
+
+            console.error(`❌ ${api.name} ব্যর্থ`, diagnostic);
+            if (error && error.stack) console.error('Error stack:', error.stack);
+            console.groupEnd();
+
+            lastError = new Error(`${api.name} [${stage}]: ${reason}`);
         }
     }
+
+    console.error('[Course API] সব API ব্যর্থ — সারাংশ:');
+    console.table(apiDiagnostics);
     throw lastError || new Error('সব API ব্যর্থ হয়েছে');
 }
-
 // ============================================================
 // Transform classes -> sections
 // ============================================================
