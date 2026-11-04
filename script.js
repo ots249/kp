@@ -163,21 +163,57 @@ function fetchWithTimeout(url, timeoutMs = 10000) {
     return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-function normalizeApiResponse(data) {
-    if (!data || typeof data !== 'object') return null;
+function normalizeApiResponse(responseData) {
+    // API 1 wrapper: { success, project, sheet, total, data: [...] }
+    // Other sheet APIs: direct [...] or { data: [...] } / { sheet1: [...] }
+    let data = responseData;
 
-    // API 1: { success: true, data: [...] }
-    if (data.success === false) {
+    // Some proxies return JSON encoded as a string.
+    if (typeof data === 'string') {
+        try { data = JSON.parse(data); }
+        catch { throw new Error('API response valid JSON string নয়'); }
+    }
+
+    if (data && typeof data === 'object' && !Array.isArray(data) && data.success === false) {
         throw new Error(data.message || data.error || 'API success=false রিটার্ন করেছে');
     }
-    if (Array.isArray(data.data)) return data.data;
-    if (Array.isArray(data.classes)) return data.classes;
-    if (Array.isArray(data)) return data;
 
-    // Compatibility with other sheet API response formats.
-    for (const key of Object.keys(data)) {
-        if (Array.isArray(data[key])) return data[key];
+    // Unwrap common API response envelopes, including nested data/result/payload.
+    for (let depth = 0; depth < 5; depth++) {
+        if (Array.isArray(data)) {
+            const rows = data.filter(row => row && typeof row === 'object' && !Array.isArray(row));
+            if (rows.length !== data.length) {
+                throw new Error('API data Array-তে invalid row পাওয়া গেছে');
+            }
+            return rows;
+        }
+
+        if (!data || typeof data !== 'object') return null;
+
+        const preferredKeys = ['data', 'classes', 'rows', 'results', 'result', 'payload', 'sheet1'];
+        let next = null;
+        for (const key of preferredKeys) {
+            if (data[key] !== undefined && data[key] !== null) {
+                next = data[key];
+                break;
+            }
+        }
+
+        // Support provider-specific response keys when no known key exists.
+        if (next === null) {
+            const arrayValue = Object.values(data).find(Array.isArray);
+            if (arrayValue) next = arrayValue;
+        }
+
+        if (next === null) return null;
+        data = next;
+
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); }
+            catch { return null; }
+        }
     }
+
     return null;
 }
 
