@@ -3,7 +3,9 @@
 // ============================================================
 const API_ENDPOINTS = [
     { name: 'API 1 (Primary)', url: 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1', timeout: 8000 },
-    
+    { name: 'API 2 (Fallback)', url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor', timeout: 10000 },
+    { name: 'API 3 (Fallback)', url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj', timeout: 10000 },
+    { name: 'API 4 (Fallback)', url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1', timeout: 10000 }
 ];
 
 // ============================================================
