@@ -536,31 +536,6 @@
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
   }
-
-  /* SheetAPI249 key controls */
-  .api-key-panel { margin: 0 0 20px; padding: 16px; border: 1px solid var(--border-soft); border-radius: 12px; background: linear-gradient(180deg,#f8fbff,#fff); }
-  .api-key-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-  .api-key-heading h2 { font-size:.98rem; margin:0 0 4px; }
-  .api-key-note { margin:0; color:var(--muted); font-size:.78rem; line-height:1.45; }
-  .api-key-status { flex:none; padding:4px 8px; border-radius:999px; background:#f1f5f9; color:#64748b; font-size:.68rem; font-weight:700; }
-  .api-key-status.saved { background:var(--ok-tint); color:var(--ok); }
-  .api-key-controls { display:flex; gap:8px; margin-top:12px; }
-  .api-key-controls input { min-width:0; flex:1; }
-  .api-key-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
-  .api-key-btn { min-height:40px; padding:9px 13px; font-size:.8rem; border-radius:8px; }
-  .api-key-btn.primary { background:var(--primary); color:white; }
-  .api-key-btn.secondary { background:#fff; color:var(--text-2); border:1px solid var(--border); }
-  .api-key-btn.danger { background:#fff; color:var(--danger); border:1px solid #f3c5c1; }
-  @media(max-width:480px) {
-    .api-key-panel { padding:13px; }
-    .api-key-heading { flex-direction:column; gap:8px; }
-    .api-key-controls { flex-wrap:wrap; }
-    .api-key-controls input { flex-basis:100%; }
-    .api-key-controls button { width:100%; }
-    .api-key-actions { display:grid; grid-template-columns:1fr 1fr; }
-    .api-key-actions .danger { grid-column:1/-1; }
-  }
-
 </style>
 </head>
 <body>
@@ -603,25 +578,6 @@
   <div class="card">
     <h1>Civil 4th Diploma Tutor</h1>
     <p class="sub" id="formSubtitle">Add a new lecture resource.</p>
-
-    <section class="api-key-panel" aria-labelledby="apiKeyTitle">
-      <div class="api-key-heading">
-        <div>
-          <h2 id="apiKeyTitle">SheetAPI249 Project Key</h2>
-          <p class="api-key-note">Write permission থাকা Project API Key এখানে paste করে Save করুন। পরে Copy দিয়ে দ্রুত কপি করতে পারবেন।</p>
-        </div>
-        <span class="api-key-status" id="apiKeyStatus">Not saved</span>
-      </div>
-      <div class="api-key-controls">
-        <input id="apiProjectKey" type="password" placeholder="Paste Project API Key" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="SheetAPI249 Project API Key">
-        <button type="button" id="toggleApiKey" class="api-key-btn secondary">Show</button>
-      </div>
-      <div class="api-key-actions">
-        <button type="button" id="saveApiKey" class="api-key-btn primary">Save Key</button>
-        <button type="button" id="copyApiKey" class="api-key-btn secondary">Copy Key</button>
-        <button type="button" id="clearApiKey" class="api-key-btn danger">Clear</button>
-      </div>
-    </section>
 
     <div class="editing" id="editBanner">
       <span>✏️ Editing row <strong id="editIdLabel"></strong></span>
@@ -735,65 +691,19 @@
   /* =====================================================
      CONFIG
      ===================================================== */
-  // SheetAPI249 — single source of truth
-  const API_URL = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
-  const API_KEY_STORAGE = 'civil4th_sheetapi_write_key';
-  const API_HEADERS = () => ({
+  // Primary API (Sheety)
+  const PRIMARY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
+  const PRIMARY_TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
+  const PRIMARY_HEADERS = {
     'Content-Type': 'application/json',
-    'X-API-Key': sessionStorage.getItem(API_KEY_STORAGE) || ''
-  });
-  function requireApiKey() {
-    const key = sessionStorage.getItem(API_KEY_STORAGE) || $('apiProjectKey')?.value || '';
-    if (!key.trim()) throw new Error('আগে SheetAPI249 Project Key Save করুন।');
-    return key.trim();
-  }
+    'Authorization': 'Bearer ' + PRIMARY_TOKEN
+  };
 
-  const apiKeyInput = $('apiProjectKey');
-  const apiKeyStatus = $('apiKeyStatus');
-  function refreshApiKeyUI() {
-    const saved = sessionStorage.getItem(API_KEY_STORAGE) || '';
-    if (apiKeyInput && saved && !apiKeyInput.value) apiKeyInput.value = saved;
-    if (apiKeyStatus) {
-      apiKeyStatus.textContent = saved ? 'Saved in this tab' : 'Not saved';
-      apiKeyStatus.classList.toggle('saved', !!saved);
-    }
-  }
-  $('saveApiKey')?.addEventListener('click', () => {
-    const key = apiKeyInput.value.trim();
-    if (!key) return toast('Project Key paste করুন', 'err');
-    sessionStorage.setItem(API_KEY_STORAGE, key);
-    apiKeyInput.value = key;
-    toast('Project Key saved for this tab', 'ok');
-    refreshApiKeyUI();
-  });
-  $('copyApiKey')?.addEventListener('click', async () => {
-    const key = apiKeyInput.value.trim() || sessionStorage.getItem(API_KEY_STORAGE) || '';
-    if (!key) return toast('Copy করার মতো Project Key নেই', 'err');
-    try {
-      await navigator.clipboard.writeText(key);
-    } catch (_) {
-      apiKeyInput.type = 'text';
-      apiKeyInput.focus();
-      apiKeyInput.select();
-      document.execCommand('copy');
-      apiKeyInput.setSelectionRange(0, 0);
-    }
-    toast('Project Key copied', 'ok');
-  });
-  $('toggleApiKey')?.addEventListener('click', () => {
-    const visible = apiKeyInput.type === 'text';
-    apiKeyInput.type = visible ? 'password' : 'text';
-    $('toggleApiKey').textContent = visible ? 'Show' : 'Hide';
-  });
-  $('clearApiKey')?.addEventListener('click', () => {
-    sessionStorage.removeItem(API_KEY_STORAGE);
-    apiKeyInput.value = '';
-    apiKeyInput.type = 'password';
-    $('toggleApiKey').textContent = 'Show';
-    refreshApiKeyUI();
-    toast('Project Key cleared from this tab', 'ok');
-  });
-  refreshApiKeyUI();
+  // Fallback API (SheetBest) — flat object, no wrapper
+  const FALLBACK_API = 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2';
+  const FALLBACK_HEADERS = {
+    'Content-Type': 'application/json'
+  };
 
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
@@ -1188,14 +1098,34 @@
     else showSkeleton();
 
     try {
-      const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-      if (!Array.isArray(json.data)) throw new Error('Unexpected SheetAPI249 response: data[] not found');
+      const { data: json, api } = await fetchWithFallback(async (url, headers) => {
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      });
 
-      // SheetAPI249 returns id as a 1-based data-row index; actual sheet row = id + 1 (header is row 1).
-      cachedRows = json.data.map(row => ({ ...row, id: String(row.id) }));
+      // Normalize response shapes:
+      //   Sheety:        { sheet1: [...] }
+      //   SheetBest:     [ ... ] or { data: [...] } or { records: [...] }
+      let rows = [];
+      if (Array.isArray(json)) {
+        rows = json;
+      } else if (json && Array.isArray(json.sheet1)) {
+        rows = json.sheet1;
+      } else if (json && Array.isArray(json.data)) {
+        rows = json.data;
+      } else if (json && Array.isArray(json.records)) {
+        rows = json.records;
+      } else {
+        rows = [];
+      }
+
+      cachedRows = rows;
       applyFilters();
+
+      if (api === 'fallback') {
+        console.info('Loaded via fallback (SheetBest)');
+      }
     } catch (err) {
       listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
       toast('Failed to load resources', 'err');
@@ -1217,32 +1147,64 @@
     submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
     setFormDisabled(true);
 
-    const payload = {
+    // Sheety payload (nested under sheet1)
+    const primaryPayload = {
+      sheet1: {
+        subject: form.subject.value,
+        chapter: form.chapter.value.trim(),
+        lecture: form.lecture.value.trim(),
+        type:    form.type.value,
+        link:    form.link.value.trim()
+      }
+    };
+
+    // SheetBest payload (flat object)
+    const fallbackPayload = {
       subject: form.subject.value,
       chapter: form.chapter.value.trim(),
       lecture: form.lecture.value.trim(),
-      type: form.type.value,
-      link: form.link.value.trim()
+      type:    form.type.value,
+      link:    form.link.value.trim()
     };
 
     try {
-      const key = requireApiKey();
-      const actualSheetRow = isEdit ? Number(editingId) + 1 : null;
-      const url = isEdit ? `${API_URL}?row=${actualSheetRow}` : API_URL;
-      const res = await fetch(url, {
-        method: isEdit ? 'PATCH' : 'POST',
-        headers: { ...API_HEADERS(), 'X-API-Key': key },
-        body: JSON.stringify({ data: payload })
+      const { data: json, api } = await fetchWithFallback(async (baseURL, headers, isFallback) => {
+        const url    = isEdit ? `${baseURL}/${editingId}` : baseURL;
+        const method = isEdit ? 'PUT' : 'POST';
+        const body   = isFallback ? fallbackPayload : primaryPayload;
+
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: JSON.stringify(body)
+        });
+        const jsonRes = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(jsonRes.error || jsonRes.message || `HTTP ${res.status}`);
+        return jsonRes;
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
-      await loadRows();
-      const saved = isEdit
-        ? cachedRows.find(row => String(row.id) === String(editingId))
-        : cachedRows[cachedRows.length - 1];
+
+      // Normalize saved row
+      let saved;
+      if (json && json.sheet1) {
+        saved = json.sheet1;
+      } else if (json && json.id) {
+        saved = json;
+      } else if (json && json.record) {
+        saved = json.record;
+      } else {
+        saved = { ...fallbackPayload, id: (json && json.id) || Date.now() };
+      }
+
+      if (isEdit) {
+        const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
+        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...fallbackPayload, id: editingId };
+      } else {
+        cachedRows.push(saved);
+      }
+      applyFilters();
 
       requestAnimationFrame(() => {
-        const el = listWrap.querySelector(`[data-row-id="${isEdit ? editingId : saved?.id}"]`);
+        const el = listWrap.querySelector(`[data-row-id="${saved.id}"]`);
         if (el) {
           el.classList.add('flash');
           setTimeout(() => el.classList.remove('flash'), 900);
@@ -1252,7 +1214,7 @@
       toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
 
       if (!isEdit) {
-        const shareRow = { ...payload, id: saved?.id };
+        const shareRow = { ...fallbackPayload, id: saved.id };
         setTimeout(() => openShareModal(shareRow), 250);
       }
 
@@ -1340,15 +1302,14 @@
     }, 250);
 
     try {
-      const key = requireApiKey();
-      const actualSheetRow = Number(id) + 1;
-      const res = await fetch(`${API_URL}?row=${actualSheetRow}`, {
-        method: 'DELETE',
-        headers: { 'X-API-Key': key }
+      await fetchWithFallback(async (baseURL, headers) => {
+        const res = await fetch(`${baseURL}/${id}`, { method: 'DELETE', headers });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || j.message || `HTTP ${res.status}`);
+        }
+        return true;
       });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error || j.message || `HTTP ${res.status}`);
-      await loadRows();
       toast('Deleted successfully', 'ok');
     } catch (err) {
       console.error(err);
