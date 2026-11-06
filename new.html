@@ -706,10 +706,10 @@
   const $ = (id) => document.getElementById(id);
   const form        = $('entryForm');
   const apiKeyInput = $('apiKey');
-  apiKeyInput.value = sessionStorage.getItem(API_KEY_STORAGE) || '';
+  apiKeyInput.value = localStorage.getItem(API_KEY_STORAGE) || '';
   apiKeyInput.addEventListener('input', () => {
-    if (apiKeyInput.value.trim()) sessionStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
-    else sessionStorage.removeItem(API_KEY_STORAGE);
+    if (apiKeyInput.value.trim()) localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
+    else localStorage.removeItem(API_KEY_STORAGE);
   });
   const submitBtn   = $('submitBtn');
   const listWrap    = $('listWrap');
