@@ -27,7 +27,7 @@
 ## প্রকল্পের বৈশিষ্ট্য
 
 - API থেকে কোর্সের section ও lecture data লোড করা।
-- একাধিক API endpoint দিয়ে sequential fallback; প্রতিটি API-এর HTTP, JSON ও normalization failure console-এ আলাদা করে দেখানো।
+- Course data-এর জন্য একটিমাত্র SheetAPI249 endpoint; GET request দিয়ে data load করা হয়।
 - PDF resource in-app viewer-এ খোলা এবং YouTube ভিডিও in-app player-এ চালানো।
 - YouTube ভিডিওর duration পাওয়া: database value প্রথমে, প্রয়োজন হলে YouTube Data API fallback।
 - ভিডিওর watch progress সংরক্ষণ এবং ৯০% দেখা হলে lecture complete করা।
@@ -70,14 +70,15 @@ kp/
 
 ## ডেটা ও API
 
-অ্যাপটি `script.js`-এ নির্ধারিত endpoint-গুলো ক্রমানুসারে চেষ্টা করে। প্রথম usable response পাওয়া গেলে পরবর্তী fallback endpoint-গুলো আর call করা হয় না।
+Main page ও Admin page—দুটিই একই endpoint ব্যবহার করে:
 
-বর্তমান read priority:
+`https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1`
 
-1. **Primary:** SheetAPI249 — `/api/v1/diploma-tutor/Sheet1`
-2. **Fallback:** Sheet2API
-3. **Fallback:** SheetDB
-4. **Fallback:** Sheety
+- Main page: GET
+- Admin page: GET, POST, PUT, DELETE
+- PUT ও DELETE-এর জন্য `?row=<sheet-row-number>` ব্যবহার হয় (প্রথম data row = 2; row 1 header)।
+- Write request-এ `X-API-Key` header বাধ্যতামূলক। Admin page-এ key input দিয়ে দিলে সেটি শুধু browser sessionStorage-এ রাখা হয়; repository code-এ key hardcode করা হয় না।
+- Write permission SheetAPI249 project settings-এ enable থাকতে হবে।
 
 Response normalizer সরাসরি array এবং প্রচলিত wrapper key যেমন `data`, `classes`, `rows`, `results`, `result`, `payload`, `sheet1` থেকে row array বের করার চেষ্টা করে। Primary API-এর response shape বদলালে browser DevTools-এর Console-এ `[Course API]` group ও diagnostic table দেখুন।
 
@@ -111,7 +112,7 @@ cd kp
 - `manifest.json` app name, icons, theme color, standalone display ও reset shortcut নির্ধারণ করে।
 - `sw.js` install-এর সময় static assets cache করে।
 - Static resource-এর strategy হলো cache-first, cache miss হলে network fallback।
-- Service Worker বর্তমানে Sheet2API, SheetDB, Sheety, Apps Script এবং YouTube API request cache করার চেষ্টা করে। **Primary SheetAPI249 endpoint cache allowlist-এ নেই**, তাই সেটির offline API fallback কাজ করবে না যতক্ষণ না `sw.js`-এ endpoint যোগ করা হয়।
+- Service Worker SheetAPI249 course API এবং YouTube Data API request cache করার চেষ্টা করে। SheetAPI249 response আগে cache না থাকলে offline API fallback পাওয়া যাবে না।
 - YouTube player/embed network-dependent; offline অবস্থায় ভিডিও playback নিশ্চিত নয়।
 - Push event handler আছে, তবে push subscription, permission flow এবং server-side push sender আলাদাভাবে configure না করলে notification নিজে থেকে পাঠানো হবে না।
 
@@ -129,15 +130,16 @@ Service Worker cache পরিবর্তন করলে `CACHE_NAME` এব�
 
 `new.html` হলো course content manage করার আলাদা page। Main page-এর course title-এ একাধিকবার click করলে page-টি খোলার hidden navigation রয়েছে।
 
-**গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। `new.html`-এ কার্যকর server-side authentication/authorization নেই। এর SheetBest fallback endpoint-এ browser থেকেই create/update/delete request পাঠানো হয়; ফলে public deployment-এ endpoint-টি যে কেউ ব্যবহার/পরিবর্তন করতে পারে। Sheety primary-তে token placeholder রয়েছে। Public deployment-এর আগে authenticated server-side write proxy ব্যবহার করুন এবং exposed endpoint credentials rotate/restrict করুন।
+Admin page একই SheetAPI249 endpoint-এ POST, PUT ও DELETE request পাঠায়। Write API Key password field-এ দিতে হয়; key শুধু browser sessionStorage-এ থাকে। SheetAPI249 project settings-এ Write permission enable করে project key ব্যবহার করতে হবে।
+
+**গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। Write API Key public code-এ hardcode করা হয়নি, তবে Admin page ব্যবহারকারীর browser-এ key প্রবেশ করানো হয়। Public admin access সীমিত রাখতে হবে।
 
 ## Configuration
 
 প্রধান configuration `script.js`-এর শুরুতে রয়েছে:
 
-- `API_ENDPOINTS` — read API ও timeout।
-- `ENABLE_DB_WRITE` — duration write-back on/off।
-- `WRITE_API_ENDPOINTS` — duration update provider configuration।
+- `API_ENDPOINT` / `API_ENDPOINTS` — একমাত্র SheetAPI249 course data endpoint।
+- `ENABLE_DB_WRITE` — duration write-back on/off (বর্তমানে false)।
 - `YOUTUBE_API_KEY` — YouTube Data API key।
 - `COMPLETION_THRESHOLD` — video completion percentage।
 - `ADMIN_PAGE` — admin page path।
