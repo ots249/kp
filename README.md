@@ -111,7 +111,7 @@ cd kp
 - `manifest.json` app name, icons, theme color, standalone display ও reset shortcut নির্ধারণ করে।
 - `sw.js` install-এর সময় static assets cache করে।
 - Static resource-এর strategy হলো cache-first, cache miss হলে network fallback।
-- নির্দিষ্ট read API response network-first পদ্ধতিতে cache হয়; network failure হলে cached response ব্যবহার করা হয়।
+- Service Worker বর্তমানে Sheet2API, SheetDB, Sheety, Apps Script এবং YouTube API request cache করার চেষ্টা করে। **Primary SheetAPI249 endpoint cache allowlist-এ নেই**, তাই সেটির offline API fallback কাজ করবে না যতক্ষণ না `sw.js`-এ endpoint যোগ করা হয়।
 - YouTube player/embed network-dependent; offline অবস্থায় ভিডিও playback নিশ্চিত নয়।
 - Push event handler আছে, তবে push subscription, permission flow এবং server-side push sender আলাদাভাবে configure না করলে notification নিজে থেকে পাঠানো হবে না।
 
@@ -129,7 +129,7 @@ Service Worker cache পরিবর্তন করলে `CACHE_NAME` এব�
 
 `new.html` হলো course content manage করার আলাদা page। Main page-এর course title-এ একাধিকবার click করলে page-টি খোলার hidden navigation রয়েছে।
 
-**গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। `new.html`-এ কার্যকর server-side authentication/authorization না থাকলে URL জানা যে কেউ page-টি খুলতে পারে। Public deployment-এর আগে write endpoint-গুলো server-side permission দিয়ে সুরক্ষিত করুন।
+**গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। `new.html`-এ কার্যকর server-side authentication/authorization নেই। এর SheetBest fallback endpoint-এ browser থেকেই create/update/delete request পাঠানো হয়; ফলে public deployment-এ endpoint-টি যে কেউ ব্যবহার/পরিবর্তন করতে পারে। Sheety primary-তে token placeholder রয়েছে। Public deployment-এর আগে authenticated server-side write proxy ব্যবহার করুন এবং exposed endpoint credentials rotate/restrict করুন।
 
 ## Configuration
 
