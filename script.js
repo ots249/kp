@@ -1,11 +1,9 @@
 // ============================================================
 // Read API Endpoints (with fallback)
 // ============================================================
+const API_ENDPOINT = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
 const API_ENDPOINTS = [
-    { name: 'API 1 (Primary)', url: 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1', timeout: 15000 },
-    { name: 'API 2 (Fallback)', url: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor', timeout: 10000 },
-    { name: 'API 3 (Fallback)', url: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj', timeout: 10000 },
-    { name: 'API 4 (Fallback)', url: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1', timeout: 10000 }
+    { name: 'SheetAPI249', url: API_ENDPOINT, timeout: 15000 }
 ];
 
 // ============================================================
@@ -15,18 +13,19 @@ const API_ENDPOINTS = [
 // ENABLE_DB_WRITE = true korle tokhon e chalu koro.
 // ============================================================
 const ENABLE_DB_WRITE = false;
-
-const WRITE_API_ENDPOINTS = [
-    {
-        name: 'Google Apps Script',
-        baseUrl: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
-        method: 'POST',
-        // ✅ text/plain => CORS preflight hoy na, Apps Script e kaj kore
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        buildPayload: (rowId, seconds) => ({ action: 'updateDuration', rowId: rowId, duration: seconds }),
-        buildUrl: (baseUrl) => baseUrl
-    }
-];
+const WRITE_API_ENDPOINTS = [{
+    name: 'SheetAPI249',
+    baseUrl: API_ENDPOINT,
+    method: 'PATCH',
+    headers: {
+        'Content-Type': 'application/json',
+        ...(sessionStorage.getItem('sheetapi249_write_key')
+            ? { 'X-API-Key': sessionStorage.getItem('sheetapi249_write_key') }
+            : {})
+    },
+    buildPayload: (rowId, seconds) => ({ data: { duration: seconds } }),
+    buildUrl: (baseUrl, rowId) => `${baseUrl}?row=${encodeURIComponent(rowId)}`
+}];
 
 // ============================================================
 // API Config
@@ -244,7 +243,10 @@ async function fetchClassesWithFallback() {
             });
 
             stage = 'normalize';
-            const classes = normalizeApiResponse(data);
+            const normalizedRows = normalizeApiResponse(data);
+            const classes = Array.isArray(normalizedRows)
+                ? normalizedRows.map((row, index) => ({ ...row, _sheetRow: index + 2, id: row.id ?? index + 2 }))
+                : normalizedRows;
 
             if (!Array.isArray(classes) || classes.length === 0) {
                 throw new Error('JSON পাওয়া গেছে, কিন্তু usable rows Array খালি বা অনুপস্থিত');
@@ -475,7 +477,7 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
             result[id] = label;
             videoDurationCache[id] = label;
         } else {
-            uncachedIds.push({ id, rowId: row && row.id != null ? String(row.id) : null });
+            uncachedIds.push({ id, rowId: row && (row._sheetRow || row.id) != null ? String(row._sheetRow || row.id) : null });
         }
     });
 
