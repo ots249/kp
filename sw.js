@@ -1,8 +1,8 @@
 // ============================================================
 // Service Worker — Civil 4th Semester
 // ============================================================
-const CACHE_NAME = 'civil-4th-v1';
-const API_CACHE_NAME = 'civil-4th-api-v1';
+const CACHE_NAME = 'civil-4th-v2';
+const API_CACHE_NAME = 'civil-4th-api-v2';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
@@ -86,6 +86,7 @@ self.addEventListener('fetch', event => {
     // ✅ Handle API requests (Sheety, SheetDB, Sheet2API)
     // ============================================================
     const isAPIRequest = 
+        url.href.includes('sheetapi249.vercel.app/api/v1/diploma-tutor/') ||
         url.href.includes('api.sheety.co') ||
         url.href.includes('sheetdb.io') ||
         url.href.includes('sheet2api.com') ||

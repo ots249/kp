@@ -10,7 +10,10 @@
   "scope": "/",
   "lang": "bn-BD",
   "dir": "ltr",
-  "categories": ["education", "learning"],
+  "categories": [
+    "education",
+    "learning"
+  ],
   "prefer_related_applications": false,
   "icons": [
     {
@@ -62,15 +65,6 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "https://i.postimg.cc/7YKJhGyY/logo.png",
-      "sizes": "1920x1080",
-      "type": "image/jpeg",
-      "platform": "wide",
-      "label": "হোম স্ক্রিন"
-    }
-  ],
   "shortcuts": [
     {
       "name": "প্রোগ্রেস রিসেট",
@@ -84,5 +78,6 @@
         }
       ]
     }
-  ]
+  ],
+  "id": "/"
 }
