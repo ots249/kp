@@ -536,6 +536,31 @@
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
   }
+
+  /* SheetAPI249 key controls */
+  .api-key-panel { margin: 0 0 20px; padding: 16px; border: 1px solid var(--border-soft); border-radius: 12px; background: linear-gradient(180deg,#f8fbff,#fff); }
+  .api-key-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .api-key-heading h2 { font-size:.98rem; margin:0 0 4px; }
+  .api-key-note { margin:0; color:var(--muted); font-size:.78rem; line-height:1.45; }
+  .api-key-status { flex:none; padding:4px 8px; border-radius:999px; background:#f1f5f9; color:#64748b; font-size:.68rem; font-weight:700; }
+  .api-key-status.saved { background:var(--ok-tint); color:var(--ok); }
+  .api-key-controls { display:flex; gap:8px; margin-top:12px; }
+  .api-key-controls input { min-width:0; flex:1; }
+  .api-key-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:9px; }
+  .api-key-btn { min-height:40px; padding:9px 13px; font-size:.8rem; border-radius:8px; }
+  .api-key-btn.primary { background:var(--primary); color:white; }
+  .api-key-btn.secondary { background:#fff; color:var(--text-2); border:1px solid var(--border); }
+  .api-key-btn.danger { background:#fff; color:var(--danger); border:1px solid #f3c5c1; }
+  @media(max-width:480px) {
+    .api-key-panel { padding:13px; }
+    .api-key-heading { flex-direction:column; gap:8px; }
+    .api-key-controls { flex-wrap:wrap; }
+    .api-key-controls input { flex-basis:100%; }
+    .api-key-controls button { width:100%; }
+    .api-key-actions { display:grid; grid-template-columns:1fr 1fr; }
+    .api-key-actions .danger { grid-column:1/-1; }
+  }
+
 </style>
 </head>
 <body>
@@ -578,6 +603,25 @@
   <div class="card">
     <h1>Civil 4th Diploma Tutor</h1>
     <p class="sub" id="formSubtitle">Add a new lecture resource.</p>
+
+    <section class="api-key-panel" aria-labelledby="apiKeyTitle">
+      <div class="api-key-heading">
+        <div>
+          <h2 id="apiKeyTitle">SheetAPI249 Project Key</h2>
+          <p class="api-key-note">Write permission থাকা Project API Key এখানে paste করে Save করুন। পরে Copy দিয়ে দ্রুত কপি করতে পারবেন।</p>
+        </div>
+        <span class="api-key-status" id="apiKeyStatus">Not saved</span>
+      </div>
+      <div class="api-key-controls">
+        <input id="apiProjectKey" type="password" placeholder="Paste Project API Key" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="SheetAPI249 Project API Key">
+        <button type="button" id="toggleApiKey" class="api-key-btn secondary">Show</button>
+      </div>
+      <div class="api-key-actions">
+        <button type="button" id="saveApiKey" class="api-key-btn primary">Save Key</button>
+        <button type="button" id="copyApiKey" class="api-key-btn secondary">Copy Key</button>
+        <button type="button" id="clearApiKey" class="api-key-btn danger">Clear</button>
+      </div>
+    </section>
 
     <div class="editing" id="editBanner">
       <span>✏️ Editing row <strong id="editIdLabel"></strong></span>
@@ -699,14 +743,57 @@
     'X-API-Key': sessionStorage.getItem(API_KEY_STORAGE) || ''
   });
   function requireApiKey() {
-    let key = sessionStorage.getItem(API_KEY_STORAGE) || '';
-    if (!key) {
-      key = window.prompt('Enter SheetAPI249 Project API Key (write permission required):') || '';
-      if (key.trim()) sessionStorage.setItem(API_KEY_STORAGE, key.trim());
-    }
-    if (!key.trim()) throw new Error('API Key is required for Add / Edit / Delete.');
+    const key = sessionStorage.getItem(API_KEY_STORAGE) || $('apiProjectKey')?.value || '';
+    if (!key.trim()) throw new Error('আগে SheetAPI249 Project Key Save করুন।');
     return key.trim();
   }
+
+  const apiKeyInput = $('apiProjectKey');
+  const apiKeyStatus = $('apiKeyStatus');
+  function refreshApiKeyUI() {
+    const saved = sessionStorage.getItem(API_KEY_STORAGE) || '';
+    if (apiKeyInput && saved && !apiKeyInput.value) apiKeyInput.value = saved;
+    if (apiKeyStatus) {
+      apiKeyStatus.textContent = saved ? 'Saved in this tab' : 'Not saved';
+      apiKeyStatus.classList.toggle('saved', !!saved);
+    }
+  }
+  $('saveApiKey')?.addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    if (!key) return toast('Project Key paste করুন', 'err');
+    sessionStorage.setItem(API_KEY_STORAGE, key);
+    apiKeyInput.value = key;
+    toast('Project Key saved for this tab', 'ok');
+    refreshApiKeyUI();
+  });
+  $('copyApiKey')?.addEventListener('click', async () => {
+    const key = apiKeyInput.value.trim() || sessionStorage.getItem(API_KEY_STORAGE) || '';
+    if (!key) return toast('Copy করার মতো Project Key নেই', 'err');
+    try {
+      await navigator.clipboard.writeText(key);
+    } catch (_) {
+      apiKeyInput.type = 'text';
+      apiKeyInput.focus();
+      apiKeyInput.select();
+      document.execCommand('copy');
+      apiKeyInput.setSelectionRange(0, 0);
+    }
+    toast('Project Key copied', 'ok');
+  });
+  $('toggleApiKey')?.addEventListener('click', () => {
+    const visible = apiKeyInput.type === 'text';
+    apiKeyInput.type = visible ? 'password' : 'text';
+    $('toggleApiKey').textContent = visible ? 'Show' : 'Hide';
+  });
+  $('clearApiKey')?.addEventListener('click', () => {
+    sessionStorage.removeItem(API_KEY_STORAGE);
+    apiKeyInput.value = '';
+    apiKeyInput.type = 'password';
+    $('toggleApiKey').textContent = 'Show';
+    refreshApiKeyUI();
+    toast('Project Key cleared from this tab', 'ok');
+  });
+  refreshApiKeyUI();
 
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
