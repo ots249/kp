@@ -1070,9 +1070,10 @@
      SheetAPI249 — single provider for all CRUD operations
      ===================================================== */
   function apiHeaders(includeKey = false) {
+    if (!includeKey) return {};
     const headers = { 'Content-Type': 'application/json' };
     const key = apiKeyInput.value.trim();
-    if (includeKey && key) headers['X-API-Key'] = key;
+    if (key) headers['X-API-Key'] = key;
     return headers;
   }
 
