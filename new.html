@@ -691,19 +691,22 @@
   /* =====================================================
      CONFIG
      ===================================================== */
-  // Primary API (Sheety)
-  const PRIMARY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
-  const PRIMARY_TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
-  const PRIMARY_HEADERS = {
+  // SheetAPI249 — single source of truth
+  const API_URL = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
+  const API_KEY_STORAGE = 'civil4th_sheetapi_write_key';
+  const API_HEADERS = () => ({
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + PRIMARY_TOKEN
-  };
-
-  // Fallback API (SheetBest) — flat object, no wrapper
-  const FALLBACK_API = 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2';
-  const FALLBACK_HEADERS = {
-    'Content-Type': 'application/json'
-  };
+    'X-API-Key': sessionStorage.getItem(API_KEY_STORAGE) || ''
+  });
+  function requireApiKey() {
+    let key = sessionStorage.getItem(API_KEY_STORAGE) || '';
+    if (!key) {
+      key = window.prompt('Enter SheetAPI249 Project API Key (write permission required):') || '';
+      if (key.trim()) sessionStorage.setItem(API_KEY_STORAGE, key.trim());
+    }
+    if (!key.trim()) throw new Error('API Key is required for Add / Edit / Delete.');
+    return key.trim();
+  }
 
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
@@ -1098,34 +1101,14 @@
     else showSkeleton();
 
     try {
-      const { data: json, api } = await fetchWithFallback(async (url, headers) => {
-        const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      });
+      const res = await fetch(API_URL, { headers: { 'Accept': 'application/json' } });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (!Array.isArray(json.data)) throw new Error('Unexpected SheetAPI249 response: data[] not found');
 
-      // Normalize response shapes:
-      //   Sheety:        { sheet1: [...] }
-      //   SheetBest:     [ ... ] or { data: [...] } or { records: [...] }
-      let rows = [];
-      if (Array.isArray(json)) {
-        rows = json;
-      } else if (json && Array.isArray(json.sheet1)) {
-        rows = json.sheet1;
-      } else if (json && Array.isArray(json.data)) {
-        rows = json.data;
-      } else if (json && Array.isArray(json.records)) {
-        rows = json.records;
-      } else {
-        rows = [];
-      }
-
-      cachedRows = rows;
+      // SheetAPI249 returns id as a 1-based data-row index; actual sheet row = id + 1 (header is row 1).
+      cachedRows = json.data.map(row => ({ ...row, id: String(row.id) }));
       applyFilters();
-
-      if (api === 'fallback') {
-        console.info('Loaded via fallback (SheetBest)');
-      }
     } catch (err) {
       listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
       toast('Failed to load resources', 'err');
@@ -1147,64 +1130,32 @@
     submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
     setFormDisabled(true);
 
-    // Sheety payload (nested under sheet1)
-    const primaryPayload = {
-      sheet1: {
-        subject: form.subject.value,
-        chapter: form.chapter.value.trim(),
-        lecture: form.lecture.value.trim(),
-        type:    form.type.value,
-        link:    form.link.value.trim()
-      }
-    };
-
-    // SheetBest payload (flat object)
-    const fallbackPayload = {
+    const payload = {
       subject: form.subject.value,
       chapter: form.chapter.value.trim(),
       lecture: form.lecture.value.trim(),
-      type:    form.type.value,
-      link:    form.link.value.trim()
+      type: form.type.value,
+      link: form.link.value.trim()
     };
 
     try {
-      const { data: json, api } = await fetchWithFallback(async (baseURL, headers, isFallback) => {
-        const url    = isEdit ? `${baseURL}/${editingId}` : baseURL;
-        const method = isEdit ? 'PUT' : 'POST';
-        const body   = isFallback ? fallbackPayload : primaryPayload;
-
-        const res = await fetch(url, {
-          method,
-          headers,
-          body: JSON.stringify(body)
-        });
-        const jsonRes = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(jsonRes.error || jsonRes.message || `HTTP ${res.status}`);
-        return jsonRes;
+      const key = requireApiKey();
+      const actualSheetRow = isEdit ? Number(editingId) + 1 : null;
+      const url = isEdit ? `${API_URL}?row=${actualSheetRow}` : API_URL;
+      const res = await fetch(url, {
+        method: isEdit ? 'PATCH' : 'POST',
+        headers: { ...API_HEADERS(), 'X-API-Key': key },
+        body: JSON.stringify({ data: payload })
       });
-
-      // Normalize saved row
-      let saved;
-      if (json && json.sheet1) {
-        saved = json.sheet1;
-      } else if (json && json.id) {
-        saved = json;
-      } else if (json && json.record) {
-        saved = json.record;
-      } else {
-        saved = { ...fallbackPayload, id: (json && json.id) || Date.now() };
-      }
-
-      if (isEdit) {
-        const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
-        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...fallbackPayload, id: editingId };
-      } else {
-        cachedRows.push(saved);
-      }
-      applyFilters();
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+      await loadRows();
+      const saved = isEdit
+        ? cachedRows.find(row => String(row.id) === String(editingId))
+        : cachedRows[cachedRows.length - 1];
 
       requestAnimationFrame(() => {
-        const el = listWrap.querySelector(`[data-row-id="${saved.id}"]`);
+        const el = listWrap.querySelector(`[data-row-id="${isEdit ? editingId : saved?.id}"]`);
         if (el) {
           el.classList.add('flash');
           setTimeout(() => el.classList.remove('flash'), 900);
@@ -1214,7 +1165,7 @@
       toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
 
       if (!isEdit) {
-        const shareRow = { ...fallbackPayload, id: saved.id };
+        const shareRow = { ...payload, id: saved?.id };
         setTimeout(() => openShareModal(shareRow), 250);
       }
 
@@ -1302,14 +1253,15 @@
     }, 250);
 
     try {
-      await fetchWithFallback(async (baseURL, headers) => {
-        const res = await fetch(`${baseURL}/${id}`, { method: 'DELETE', headers });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || j.message || `HTTP ${res.status}`);
-        }
-        return true;
+      const key = requireApiKey();
+      const actualSheetRow = Number(id) + 1;
+      const res = await fetch(`${API_URL}?row=${actualSheetRow}`, {
+        method: 'DELETE',
+        headers: { 'X-API-Key': key }
       });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || j.message || `HTTP ${res.status}`);
+      await loadRows();
       toast('Deleted successfully', 'ok');
     } catch (err) {
       console.error(err);
