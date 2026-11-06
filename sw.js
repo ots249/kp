@@ -82,15 +82,10 @@ self.addEventListener('fetch', event => {
     // Skip Chrome extension requests
     if (url.protocol === 'chrome-extension:') return;
     
+    // Handle SheetAPI249 course data and YouTube Data API requests.
     // ============================================================
-    // ✅ Handle API requests (Sheety, SheetDB, Sheet2API)
-    // ============================================================
-    const isAPIRequest = 
+    const isAPIRequest =
         url.href.includes('sheetapi249.vercel.app/api/v1/diploma-tutor/') ||
-        url.href.includes('api.sheety.co') ||
-        url.href.includes('sheetdb.io') ||
-        url.href.includes('sheet2api.com') ||
-        url.href.includes('script.google.com') ||
         url.href.includes('googleapis.com/youtube');
     
     if (isAPIRequest) {
