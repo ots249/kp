@@ -584,6 +584,14 @@
       <button type="button" id="cancelEditBtn">Cancel</button>
     </div>
 
+    <div class="field" style="margin: 0 0 16px;">
+      <label for="apiKey">SheetAPI249 Write API Key</label>
+      <input id="apiKey" type="password" placeholder="Paste your SheetAPI249 project key"
+             autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <small style="display:block;margin-top:6px;color:var(--muted,#8b98a8);">
+        Keyটি শুধু এই browser tab-এর session-এ রাখা হবে; public code-এ hardcode করা হবে না।
+      </small>
+    </div>
     <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
@@ -689,26 +697,20 @@
 
 <script>
   /* =====================================================
-     CONFIG
+     CONFIG — single API provider
      ===================================================== */
-  // Primary API (Sheety)
-  const PRIMARY_API = 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1';
-  const PRIMARY_TOKEN = 'PASTE_YOUR_SHEETY_BEARER_TOKEN_HERE';
-  const PRIMARY_HEADERS = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + PRIMARY_TOKEN
-  };
-
-  // Fallback API (SheetBest) — flat object, no wrapper
-  const FALLBACK_API = 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2';
-  const FALLBACK_HEADERS = {
-    'Content-Type': 'application/json'
-  };
-
+  const API_ENDPOINT = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
+  const API_KEY_STORAGE = 'sheetapi249_write_key';
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
   const $ = (id) => document.getElementById(id);
   const form        = $('entryForm');
+  const apiKeyInput = $('apiKey');
+  apiKeyInput.value = sessionStorage.getItem(API_KEY_STORAGE) || '';
+  apiKeyInput.addEventListener('input', () => {
+    if (apiKeyInput.value.trim()) sessionStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
+    else sessionStorage.removeItem(API_KEY_STORAGE);
+  });
   const submitBtn   = $('submitBtn');
   const listWrap    = $('listWrap');
   const refreshBtn  = $('refreshBtn');
@@ -1065,27 +1067,28 @@
   }
 
   /* =====================================================
-     API FALLBACK LOGIC
+     SheetAPI249 — single provider for all CRUD operations
      ===================================================== */
-  // Tries primary (Sheety), falls back to SheetBest.
-  // `operation` receives (baseURL, headers, isFallback)
-  async function fetchWithFallback(operation) {
-    // Try primary
-    try {
-      const result = await operation(PRIMARY_API, PRIMARY_HEADERS, false);
-      return { data: result, api: 'primary' };
-    } catch (primaryErr) {
-      console.warn('Primary API failed, trying fallback…', primaryErr);
-      // Try fallback
-      try {
-        const result = await operation(FALLBACK_API, FALLBACK_HEADERS, true);
-        return { data: result, api: 'fallback' };
-      } catch (fallbackErr) {
-        throw new Error(
-          `Primary & fallback APIs failed. Primary: ${primaryErr.message}. Fallback: ${fallbackErr.message}`
-        );
-      }
-    }
+  function apiHeaders(includeKey = false) {
+    const headers = { 'Content-Type': 'application/json' };
+    const key = apiKeyInput.value.trim();
+    if (includeKey && key) headers['X-API-Key'] = key;
+    return headers;
+  }
+
+  async function apiRequest(method = 'GET', row = null, payload = null) {
+    const url = new URL(API_ENDPOINT);
+    if (row !== null) url.searchParams.set('row', String(row));
+    const write = method !== 'GET';
+    if (write && !apiKeyInput.value.trim()) throw new Error('POST/PUT/DELETE করার আগে SheetAPI249 Write API Key দিন।');
+    const response = await fetch(url.toString(), {
+      method,
+      headers: apiHeaders(write),
+      ...(payload ? { body: JSON.stringify(payload) } : {})
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || json.success === false) throw new Error(json.error || json.message || `HTTP ${response.status}`);
+    return json;
   }
 
   /* =====================================================
@@ -1096,36 +1099,14 @@
     isFetching = true;
     if (showSpinner) refreshBtn.classList.add('spinning');
     else showSkeleton();
-
     try {
-      const { data: json, api } = await fetchWithFallback(async (url, headers) => {
-        const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      });
-
-      // Normalize response shapes:
-      //   Sheety:        { sheet1: [...] }
-      //   SheetBest:     [ ... ] or { data: [...] } or { records: [...] }
-      let rows = [];
-      if (Array.isArray(json)) {
-        rows = json;
-      } else if (json && Array.isArray(json.sheet1)) {
-        rows = json.sheet1;
-      } else if (json && Array.isArray(json.data)) {
-        rows = json.data;
-      } else if (json && Array.isArray(json.records)) {
-        rows = json.records;
-      } else {
-        rows = [];
-      }
-
-      cachedRows = rows;
+      const json = await apiRequest('GET');
+      const rows = Array.isArray(json) ? json
+        : Array.isArray(json.data) ? json.data
+        : Array.isArray(json.rows) ? json.rows
+        : Array.isArray(json.records) ? json.records : [];
+      cachedRows = rows.map((row, index) => ({ ...row, _sheetRow: index + 2, id: index + 2 }));
       applyFilters();
-
-      if (api === 'fallback') {
-        console.info('Loaded via fallback (SheetBest)');
-      }
     } catch (err) {
       listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
       toast('Failed to load resources', 'err');
@@ -1136,88 +1117,27 @@
   }
 
   /* =====================================================
-     CREATE / UPDATE
+     CREATE / UPDATE — POST / PUT through SheetAPI249
      ===================================================== */
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (submitBtn.disabled) return;
-
-    const isEdit = !!editingId;
+    const isEdit = editingId !== null;
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
     setFormDisabled(true);
-
-    // Sheety payload (nested under sheet1)
-    const primaryPayload = {
-      sheet1: {
-        subject: form.subject.value,
-        chapter: form.chapter.value.trim(),
-        lecture: form.lecture.value.trim(),
-        type:    form.type.value,
-        link:    form.link.value.trim()
-      }
-    };
-
-    // SheetBest payload (flat object)
-    const fallbackPayload = {
+    const payload = { data: {
       subject: form.subject.value,
       chapter: form.chapter.value.trim(),
       lecture: form.lecture.value.trim(),
-      type:    form.type.value,
-      link:    form.link.value.trim()
-    };
-
+      type: form.type.value,
+      link: form.link.value.trim()
+    }};
     try {
-      const { data: json, api } = await fetchWithFallback(async (baseURL, headers, isFallback) => {
-        const url    = isEdit ? `${baseURL}/${editingId}` : baseURL;
-        const method = isEdit ? 'PUT' : 'POST';
-        const body   = isFallback ? fallbackPayload : primaryPayload;
-
-        const res = await fetch(url, {
-          method,
-          headers,
-          body: JSON.stringify(body)
-        });
-        const jsonRes = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(jsonRes.error || jsonRes.message || `HTTP ${res.status}`);
-        return jsonRes;
-      });
-
-      // Normalize saved row
-      let saved;
-      if (json && json.sheet1) {
-        saved = json.sheet1;
-      } else if (json && json.id) {
-        saved = json;
-      } else if (json && json.record) {
-        saved = json.record;
-      } else {
-        saved = { ...fallbackPayload, id: (json && json.id) || Date.now() };
-      }
-
-      if (isEdit) {
-        const i = cachedRows.findIndex(r => String(r.id) === String(editingId));
-        if (i > -1) cachedRows[i] = { ...cachedRows[i], ...fallbackPayload, id: editingId };
-      } else {
-        cachedRows.push(saved);
-      }
-      applyFilters();
-
-      requestAnimationFrame(() => {
-        const el = listWrap.querySelector(`[data-row-id="${saved.id}"]`);
-        if (el) {
-          el.classList.add('flash');
-          setTimeout(() => el.classList.remove('flash'), 900);
-        }
-      });
-
+      await apiRequest(isEdit ? 'PUT' : 'POST', isEdit ? editingId : null, payload);
+      await loadRows();
       toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
-
-      if (!isEdit) {
-        const shareRow = { ...fallbackPayload, id: saved.id };
-        setTimeout(() => openShareModal(shareRow), 250);
-      }
-
+      if (!isEdit) setTimeout(() => openShareModal({ ...payload.data, id: 'new' }), 250);
       resetForm();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
@@ -1241,7 +1161,7 @@
      ===================================================== */
   function startEdit(row) {
     if (!row) return;
-    editingId = row.id;
+    editingId = row._sheetRow || row.id;
     form.subject.value = row.subject || '';
     form.chapter.value = row.chapter || '';
     form.lecture.value = row.lecture || '';
@@ -1277,44 +1197,25 @@
   cancelBtn.addEventListener('click', resetForm);
 
   /* =====================================================
-     DELETE
+     DELETE — SheetAPI249
      ===================================================== */
   async function deleteRow(id) {
     const row = cachedRows.find(r => String(r.id) === String(id));
+    const rowNumber = row ? (row._sheetRow || row.id) : id;
     const label = row ? `"${row.subject} — ${row.lecture}"` : `#${id}`;
-
     const ok = await openConfirm({
       title: 'Delete this row?',
       message: `You're about to delete <strong>${esc(label)}</strong>. This action cannot be undone.`,
       confirmText: 'Delete'
     });
     if (!ok) return;
-
-    const el = listWrap.querySelector(`[data-row-id="${id}"]`);
-    const backup = cachedRows.slice();
-
-    if (el) el.classList.add('removing');
-    cachedRows = cachedRows.filter(r => String(r.id) !== String(id));
-
-    setTimeout(() => {
-      applyFilters();
-      if (String(id) === String(editingId)) resetForm();
-    }, 250);
-
     try {
-      await fetchWithFallback(async (baseURL, headers) => {
-        const res = await fetch(`${baseURL}/${id}`, { method: 'DELETE', headers });
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error || j.message || `HTTP ${res.status}`);
-        }
-        return true;
-      });
+      await apiRequest('DELETE', rowNumber);
+      if (String(rowNumber) === String(editingId)) resetForm();
+      await loadRows();
       toast('Deleted successfully', 'ok');
     } catch (err) {
       console.error(err);
-      cachedRows = backup;
-      applyFilters();
       toast('Delete failed: ' + err.message, 'err', 4500);
     }
   }
