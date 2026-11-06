@@ -350,16 +350,23 @@
             }
         })();
 
-        // ক্লোজ বাটন - আগের পেজে ফিরে যাওয়া
-        document.getElementById('closeBtn').addEventListener('click', function() {
-            if (document.referrer && document.referrer !== '') {
-                // যদি কোনো আগের পেজ থেকে আসা হয়
-                window.history.back();
-            } else {
-                // সরাসরি লিংকে ঢুকলে fallback
-                window.location.href = '/';
-                // অথবা আপনার হোম পেজ: window.location.href = 'index.html';
-            }
+        // ক্লোজ বাটন: নতুন ট্যাব হলে বন্ধ করার চেষ্টা, নইলে আগের পেজ/হোমে ফেরা
+        const closeBtn = document.getElementById('closeBtn');
+
+        closeBtn.addEventListener('click', function () {
+            // window.open() দিয়ে খোলা tab/window বন্ধ করার চেষ্টা
+            window.close();
+
+            // Browser tab বন্ধ করতে না দিলে safe fallback
+            setTimeout(function () {
+                if (!window.closed) {
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        window.location.replace('/');
+                    }
+                }
+            }, 150);
         });
     </script>
 
