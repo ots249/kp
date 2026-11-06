@@ -1689,3 +1689,63 @@ body.pdf-overlay-open {
     #pdf-overlay-viewer .pdf-btn span { display: none; }
     #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
 }
+
+/* ============================================================
+   Mobile layout hardening — small phones and tablets
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html { width:100%; overflow-x:hidden; }
+body { width:100%; min-width:320px; overflow-x:hidden; }
+.app { width:100%; max-width:1100px; margin-inline:auto; min-width:0; }
+.banner-container, .header, .progress-summary, .main, .sections-container, .section-card, .contents-list, .footer { min-width:0; max-width:100%; }
+.banner-image { display:block; width:100%; height:auto; object-fit:cover; }
+.section-header { min-width:0; }
+.section-header .left-content { flex:1 1 auto; min-width:0; }
+.section-header h3, .content-title { overflow-wrap:anywhere; }
+.contents-list { min-width:0; }
+.content-item { min-width:0; max-width:100%; }
+.content-item > * { min-width:0; }
+.content-title { flex:1 1 auto; }
+.content-item a { min-width:0; }
+iframe, img, video { max-width:100%; }
+@media (max-width:768px) {
+  body { padding-left:0; padding-right:0; }
+  .app { padding:12px; }
+  .banner-container { width:100%; }
+  .banner-image { max-height:none; border-radius:12px; }
+  .header { padding:18px 16px; }
+  .header h1 { line-height:1.25; overflow-wrap:anywhere; }
+  .progress-summary { display:flex; flex-wrap:wrap; gap:8px; }
+  .progress-summary-bar { flex:1 1 100%; min-width:0; }
+  .section-header { align-items:center; flex-wrap:wrap; }
+  .section-header .left-content { width:100%; min-width:0; }
+  .section-progress-container { flex:0 0 64px; }
+  .contents-list { padding:10px; }
+  .content-item { align-items:flex-start; flex-wrap:wrap; gap:8px; padding:12px; }
+  .content-title { min-width:0; white-space:normal; overflow-wrap:anywhere; }
+  .video-duration { margin-left:auto; margin-right:0; }
+  .footer { padding:16px 10px; }
+}
+@media (max-width:480px) {
+  .app { padding:9px; }
+  .header { padding:15px 12px; }
+  .header h1 { font-size:1.2rem; }
+  .section-header { padding:12px; }
+  .section-header .left-content { gap:8px; }
+  .section-header h3 { font-size:.95rem; }
+  .contents-list { padding:8px; }
+  .content-item { padding:10px; }
+  .content-title { font-size:.86rem; line-height:1.35; }
+  .complete-checkbox { flex:0 0 18px; }
+  .theme-toggle-btn { top:8px; right:8px; width:38px; height:38px; }
+  .floating-reload-btn { bottom:calc(12px + env(safe-area-inset-bottom,0px)); right:12px; }
+  #yt-overlay-player .yt-toolbar, #pdf-overlay-viewer .pdf-toolbar { padding:8px; gap:6px; }
+  #yt-overlay-player .yt-title, #pdf-overlay-viewer .pdf-title { max-width:48vw; }
+}
+@media (max-width:360px) {
+  .app { padding:7px; }
+  .section-progress-container { width:48px; flex-basis:48px; }
+  .progress-text { font-size:.72rem; }
+  .content-item { gap:6px; }
+  .video-duration { font-size:.65rem; }
+}
