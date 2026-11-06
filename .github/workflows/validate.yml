@@ -1,0 +1,28 @@
+name: Validate static site
+
+on:
+  push:
+    branches:
+      - main
+      - chore/full-scope-review
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: |
+          node --check script.js
+          node --check sw.js
+      - name: Validate JSON files
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8'))"
