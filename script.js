@@ -18,42 +18,10 @@ const ENABLE_DB_WRITE = false;
 
 const WRITE_API_ENDPOINTS = [
     {
-        name: 'Sheety',
-        baseUrl: 'https://api.sheety.co/821ecc958a063a3a52c103e87f8a214f/civil4ThDiplomaTutor/sheet1',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        buildPayload: (rowId, seconds) => ({ sheet1: { duration: seconds } }),
-        buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
-    },
-    {
-        name: 'SheetDB',
-        baseUrl: 'https://sheetdb.io/api/v1/bw2ae39l9rmaj',
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        buildPayload: (rowId, seconds) => ({ duration: seconds }),
-        buildUrl: (baseUrl, rowId) => `${baseUrl}/id/${rowId}`
-    },
-    {
-        name: 'Sheet2API',
-        baseUrl: 'https://sheet2api.com/v1/jJwY3qT5TFqV/civil-4th-diploma-tutor',
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        buildPayload: (rowId, seconds) => ({ duration: seconds }),
-        buildUrl: (baseUrl, rowId) => `${baseUrl}/${rowId}`
-    },
-    {
-        name: 'SheetBest',
-        baseUrl: 'https://api.sheetbest.com/sheets/4d65ba14-30d4-4131-b22d-dbf7644beee2',
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        buildPayload: (rowId, seconds) => ({ duration: seconds }),
-        buildUrl: (baseUrl, rowId) => `${baseUrl}/id/${rowId}`
-    },
-    {
         name: 'Google Apps Script',
         baseUrl: 'https://script.google.com/macros/s/AKfycbwSamBeEh5VSs939teC74Riw6XW0ZHveyTtCNr8itBm7BtwnDeKjChxNG3gnplySwk/exec',
         method: 'POST',
-        // ✅ FIX: text/plain => CORS preflight hoy na, Apps Script e kaj kore
+        // ✅ text/plain => CORS preflight hoy na, Apps Script e kaj kore
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         buildPayload: (rowId, seconds) => ({ action: 'updateDuration', rowId: rowId, duration: seconds }),
         buildUrl: (baseUrl) => baseUrl
@@ -83,7 +51,7 @@ let cacheSaveTimer = null;
 let _currentDbRows = [];
 
 // ============================================================
-// Theme — page load e e system theme respect kore
+// Theme — page load e system theme respect kore
 // ============================================================
 (function applyInitialTheme() {
     const saved = localStorage.getItem('theme');
@@ -154,6 +122,13 @@ function saveVideoDurationCache() {
     cacheSaveTimer = setTimeout(() => saveJSON('videoDurationCache', videoDurationCache), 1000);
 }
 
+// Flush cache on tab hide/close
+window.addEventListener('visibilitychange', () => {
+    if (document.hidden && Object.keys(videoDurationCache).length > 0) {
+        saveJSON('videoDurationCache', videoDurationCache);
+    }
+});
+
 // ============================================================
 // Fetch helpers
 // ============================================================
@@ -190,16 +165,18 @@ function normalizeApiResponse(responseData) {
 
         if (!data || typeof data !== 'object') return null;
 
+        // Prefer the first key whose value is array/object (skip primitives).
         const preferredKeys = ['data', 'classes', 'rows', 'results', 'result', 'payload', 'sheet1'];
         let next = null;
         for (const key of preferredKeys) {
-            if (data[key] !== undefined && data[key] !== null) {
-                next = data[key];
+            const v = data[key];
+            if (v !== undefined && v !== null && (Array.isArray(v) || typeof v === 'object')) {
+                next = v;
                 break;
             }
         }
 
-        // Support provider-specific response keys when no known key exists.
+        // Fallback: first array-valued key
         if (next === null) {
             const arrayValue = Object.values(data).find(Array.isArray);
             if (arrayValue) next = arrayValue;
@@ -344,42 +321,67 @@ async function fetchClassesWithFallback() {
     console.table(apiDiagnostics);
     throw lastError || new Error('সব API ব্যর্থ হয়েছে');
 }
+
 // ============================================================
 // Transform classes -> sections
+// ✅ Notice row (subject starts with ⚠️) alada section hishebe rakha hoy
 // ============================================================
 function transformClassesToSections(classes) {
     if (!Array.isArray(classes)) return [];
 
     const grouped = {};
+    const subjectOrder = [];
+
     classes.forEach((item, index) => {
         const subject = item.subject || `Subject ${index + 1}`;
-        if (!grouped[subject]) grouped[subject] = [];
+        if (!grouped[subject]) {
+            grouped[subject] = [];
+            subjectOrder.push(subject);
+        }
         grouped[subject].push(item);
     });
 
     let sectionId = 1;
     const sections = [];
 
-    Object.entries(grouped).forEach(([subject, items]) => {
+    subjectOrder.forEach((subject) => {
+        const items = grouped[subject];
+        const isNotice = /^[⚠️\s]/.test(subject);
+
         const contents = items.map((item, idx) => {
-            const chapter = item.chapter || '';
-            const lecture = item.lecture || (idx + 1);
+            const chapter = item.chapter != null && item.chapter !== '' ? String(item.chapter) : '';
+            const lecture = item.lecture != null && item.lecture !== '' ? String(item.lecture) : String(idx + 1);
 
             let title = '';
-            if (chapter) title += `Chapter ${chapter}`;
-            if (chapter && lecture) title += ' - ';
-            title += `Lecture ${lecture}`;
+            if (isNotice) {
+                // Notice row e chapter/lecture gulo text — sheta title hishebe dekhabo
+                const parts = [chapter, lecture].filter(Boolean);
+                title = parts.join(' — ') || 'নোটিশ';
+            } else if (chapter) {
+                title = `Chapter ${chapter} - Lecture ${lecture}`;
+            } else {
+                // chapter empty (Old Classes) => lecture er text-i title
+                title = lecture;
+            }
 
-            const rowId = item.id || null;
-            // ✅ FIX: row id thakle sheta diye stable ID, nahole fallback
+            const rowId = item.id != null && item.id !== '' ? String(item.id) : null;
             const contentId = rowId
                 ? `row_${rowId}`
                 : `${subject}_${chapter}_${lecture}_${idx}`.replace(/\s+/g, '_');
 
+            const linkLower = String(item.link || '').toLowerCase();
+            const explicitType = String(item.type || '').toLowerCase();
+            let type = explicitType;
+            if (!type) {
+                if (linkLower.includes('.pdf')) type = 'pdf';
+                else if (/youtu\.?be|youtube\.com/.test(linkLower)) type = 'video';
+                else type = 'link';
+            }
+
             return {
                 id: contentId,
                 title: title,
-                type: String(item.type || (String(item.link || '').toLowerCase().includes('.pdf') ? 'pdf' : 'video')).toLowerCase(),
+                type: type,
                 link: item.link || '#',
                 rowId: rowId,
                 duration: item.duration || '',
@@ -399,10 +401,19 @@ function transformClassesToSections(classes) {
 function extractYouTubeVideoId(url) {
     if (!url) return '';
     try {
-        if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split(/[?&#]/)[0];
+        if (url.includes('youtu.be/')) {
+            const rest = url.split('youtu.be/')[1];
+            return rest ? rest.split(/[?&#]/)[0] : '';
+        }
         if (url.includes('youtube.com/watch')) return new URL(url).searchParams.get('v') || '';
-        if (url.includes('youtube.com/embed/')) return url.split('embed/')[1].split(/[?&#]/)[0];
-        if (url.includes('youtube.com/shorts/')) return url.split('shorts/')[1].split(/[?&#]/)[0];
+        if (url.includes('youtube.com/embed/')) {
+            const rest = url.split('embed/')[1];
+            return rest ? rest.split(/[?&#]/)[0] : '';
+        }
+        if (url.includes('youtube.com/shorts/')) {
+            const rest = url.split('shorts/')[1];
+            return rest ? rest.split(/[?&#]/)[0] : '';
+        }
     } catch (e) { console.error('Invalid URL:', url); }
     return '';
 }
@@ -464,7 +475,7 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
             result[id] = label;
             videoDurationCache[id] = label;
         } else {
-            uncachedIds.push({ id, rowId: row ? row.id : null });
+            uncachedIds.push({ id, rowId: row && row.id != null ? String(row.id) : null });
         }
     });
 
@@ -729,7 +740,7 @@ function updateAllProgress() {
 // Icon detection
 // ============================================================
 function getIconForContent(content, link, title) {
-    const titleLower = title.toLowerCase();
+    const titleLower = (title || '').toLowerCase();
     const linkLower = (link || '').toLowerCase();
 
     if (content.type === 'pdf' || linkLower.includes('.pdf') || titleLower.includes('pdf') || titleLower.includes('পিডিএফ')) {
@@ -744,6 +755,11 @@ function getIconForContent(content, link, title) {
 
     if (linkLower.includes('whatsapp') || titleLower.includes('whatsapp') || titleLower.includes('হোয়াটসঅ্যাপ')) {
         return { iconClass: 'fab fa-whatsapp', isPDF: false, isYouTube: false };
+    }
+
+    // Notice (relative link like notice.html) — special icon
+    if (content.type === 'notice' || /^[⚠️\s]/.test(content.title || '')) {
+        return { iconClass: 'fas fa-bullhorn', isPDF: false, isYouTube: false };
     }
 
     return { iconClass: 'fas fa-file-alt', isPDF: false, isYouTube: false };
@@ -761,12 +777,15 @@ function escapeHtml(str) {
 const escapeAttr = escapeHtml;
 
 // ✅ FIX: '#' ba invalid / unsafe (javascript:) link block kora
+// Relative same-origin link (notice.html) o allow kora hoy
 function isUsableLink(url) {
     if (!url || url === '#') return false;
     try {
         const u = new URL(url, window.location.href);
-        return u.protocol === 'http:' || u.protocol === 'https:';
-    } catch (e) { return false; }
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+        // javascript:, data:, vbscript: etc block hoy already
+        return true;
+    } catch { return false; }
 }
 
 // ============================================================
@@ -949,12 +968,14 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         }
     });
 
-    // ✅ FIX: resume position — video er asol duration diye seek
+    // Resume position — video er asol duration diye seek
     function onPlayerReady(event) {
         const d = event.target.getDuration();
         if (d && savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) {
             event.target.seekTo(savedProgress * d, true);
         }
+        // Already completed? reflect in hint UI
+        if (itemId && completedItems[itemId]) updateHintUI();
         event.target.playVideo();
         startProgressTracking();
     }
@@ -1181,7 +1202,7 @@ function displaySections(sections) {
                 contentLink = content.link;
             }
 
-            // ✅ FIX: row id based stable ID (title/index er upor nirbhor kore na)
+            // row id based stable ID
             const itemId = content.rowId
                 ? `item_${content.rowId}`
                 : `section_${section.id || index}_content_${content.id || contentIndex}`;
@@ -1270,7 +1291,6 @@ function attachEventHandlers() {
 
         const { link, title, type, itemId } = contentItem.dataset;
 
-        // ✅ FIX: '#' ba faka link handle
         if (!isUsableLink(link)) {
             showNotification('এই আইটেমের লিংক এখনও যোগ করা হয়নি', 'info');
             return;
@@ -1307,11 +1327,14 @@ window.toggleSection = function (header) {
 // Unicode Decode
 // ============================================================
 function decodeUnicode(str) {
-    if (!str) return '';
+    if (str == null) return '';
+    const s = String(str);
+    // Only attempt JSON decode when actual \uXXXX escapes are present
+    if (!/\\u[0-9a-fA-F]{4}/.test(s)) return s;
     try {
-        return JSON.parse(`"${String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`);
+        return JSON.parse('"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
     } catch (e) {
-        return str;
+        return s;
     }
 }
 
@@ -1399,6 +1422,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(n);
         setTimeout(() => n.remove(), 2000);
     }
+
+    // PWA Install — attach click listener once
+    const installButton = document.getElementById('install-button');
+    if (installButton) {
+        installButton.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installButton.style.display = 'none';
+        });
+    }
 });
 
 // System theme change (user manually theme na bachle)
@@ -1414,7 +1449,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
 
 // ============================================================
 // PWA Install
-// ✅ FIX: click listener ekbar-i attach hoy
 // ============================================================
 let deferredPrompt = null;
 
@@ -1423,18 +1457,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
     const installButton = document.getElementById('install-button');
     if (installButton) installButton.style.display = 'inline-flex';
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    const installButton = document.getElementById('install-button');
-    if (!installButton) return;
-    installButton.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        installButton.style.display = 'none';
-    });
 });
 
 window.addEventListener('appinstalled', () => {
