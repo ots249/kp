@@ -228,6 +228,39 @@
             color: #713f12;
         }
 
+        /* WhatsApp Group Button */
+        .whatsapp-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            background: #16a34a;
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            box-shadow: 0 5px 14px rgba(22, 163, 74, 0.2);
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .whatsapp-group:hover {
+            background: #15803d;
+            transform: translateY(-1px);
+        }
+
+        .whatsapp-group:active {
+            transform: scale(0.98);
+        }
+
+        .whatsapp-group .wa-icon {
+            font-size: 21px;
+            line-height: 1;
+        }
+
         /* ফুটার */
         .notice-footer {
             padding: 18px 20px 22px;
@@ -322,6 +355,18 @@
                     সাথে নিচে কিছু বিষয়ের <strong>পুরাতন ক্লাসও</strong> দেওয়া আছে।
                 </p>
             </div>
+
+            <a
+                class="whatsapp-group"
+                href="https://chat.whatsapp.com/DWsl59QIUbzLHfRoN6docC?s=cl&amp;p=a&amp;iam=2"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp গ্রুপে যোগ দিন"
+            >
+                <span class="wa-icon">🟢</span>
+                WhatsApp গ্রুপে যোগ দিন
+                <span aria-hidden="true">↗</span>
+            </a>
         </div>
 
         <!-- ফুটার -->
