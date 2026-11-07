@@ -1093,6 +1093,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
     seekInput.addEventListener('pointerdown', () => { isSeeking = true; });
     seekInput.addEventListener('input', () => {
+        isSeeking = true;
         const duration = player && player.getDuration ? player.getDuration() : 0;
         if (duration > 0) currentTimeLabel.textContent = formatPlayerTime((Number(seekInput.value) / 1000) * duration);
     });
