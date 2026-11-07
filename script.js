@@ -929,8 +929,14 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 #yt-overlay-player .yt-actions { gap: 0.2rem; }
                 #yt-overlay-player .yt-toolbar { padding: 0.4rem 0.5rem; gap: 0.3rem; }
                 #yt-overlay-player .yt-title { max-width: 34vw; }
-                #yt-overlay-player .yt-title { max-width: 30vw; }
                 #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+            }
+            @media (orientation: landscape) and (max-height: 500px) {
+                #yt-overlay-player .yt-toolbar { padding: 0.25rem 0.6rem; }
+                #yt-overlay-player .yt-btn { width: 30px; height: 30px; }
+                #yt-overlay-player .yt-video-wrap { width: min(100%, calc((100dvh - 105px) * 1.7777778)); }
+                #yt-overlay-player .yt-progress-info { padding: 0.25rem 0.7rem; }
+                #yt-overlay-player .yt-hint { display: none; }
             }
         `;
         document.head.appendChild(styleEl);
