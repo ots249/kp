@@ -3,21 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Civil 4th Semester</title>
+    <title>Civil 4th Semester | Diploma Civil Study Resources</title>
+    <meta name="description" content="Civil 4th Semester Diploma Engineering study resources, lecture notes, PDFs and class videos for Civil Technology students.">
     <link rel="stylesheet" href="style.css">
-    <!-- Font Awesome 6 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<script defer src="https://cloud.umami.is/script.js" data-website-id="b8159591-1c2c-47fd-af61-28c2cd4adc57"></script>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-RTHT9NVFND"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-RTHT9NVFND');
-</script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Establish early connections only to critical external origins -->
+    <link rel="preconnect" href="https://i.postimg.cc" fetchpriority="high">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+    <!-- Prioritize the above-the-fold LCP banner -->
+    <link rel="preload" as="image" href="https://i.postimg.cc/MKx5W94w/4thct.webp" fetchpriority="high">
+
+    <!-- Non-blocking icon and font stylesheets -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"></noscript>
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"></noscript>
+
+    <!-- Analytics are loaded after first interaction or a short idle delay -->
     
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
@@ -65,7 +70,7 @@
     <div class="app">
         <!-- Banner/Live Video Section -->
         <div class="banner-container" id="banner-container">
-            <img src="https://i.postimg.cc/MKx5W94w/4thct.webp" alt="কোর্স ব্যানার" class="banner-image" id="banner-image">
+            <img src="https://i.postimg.cc/MKx5W94w/4thct.webp" alt="কোর্স ব্যানার" class="banner-image" id="banner-image" width="1280" height="668" fetchpriority="high" decoding="async">
             <div class="live-video-container" id="live-video-container" style="display: none;">
                 <iframe 
                     id="live-video-frame"
@@ -122,6 +127,38 @@
 	<button id="floating-reload-btn" class="floating-reload-btn" aria-label="রিফ্রেশ করুন">
 	<i class="fas fa-sync-alt"></i>
 	</button>
-    <script src="script.js"></script>
+    <script>
+      (function () {
+        let analyticsLoaded = false;
+        function loadAnalytics() {
+          if (analyticsLoaded) return;
+          analyticsLoaded = true;
+
+          const umami = document.createElement('script');
+          umami.defer = true;
+          umami.src = 'https://cloud.umami.is/script.js';
+          umami.dataset.websiteId = 'b8159591-1c2c-47fd-af61-28c2cd4adc57';
+          document.head.appendChild(umami);
+
+          window.dataLayer = window.dataLayer || [];
+          window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+          window.gtag('js', new Date());
+          window.gtag('config', 'G-RTHT9NVFND');
+
+          const ga = document.createElement('script');
+          ga.async = true;
+          ga.src = 'https://www.googletagmanager.com/gtag/js?id=G-RTHT9NVFND';
+          document.head.appendChild(ga);
+        }
+
+        ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(function (eventName) {
+          window.addEventListener(eventName, loadAnalytics, { once: true, passive: true });
+        });
+        window.addEventListener('load', function () {
+          window.setTimeout(loadAnalytics, 8000);
+        }, { once: true });
+      })();
+    </script>
+    <script src="script.js" defer></script>
 </body>
 </html>
