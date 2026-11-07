@@ -1615,6 +1615,21 @@ body.dark-mode .theme-toggle-btn {
 }
 #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
 
+#yt-overlay-player .yt-fs-timeline {
+    display: none;
+    position: absolute;
+    z-index: 21;
+    left: max(16px, env(safe-area-inset-left));
+    right: 78px;
+    bottom: max(25px, env(safe-area-inset-bottom));
+    width: calc(100% - 110px);
+    height: 22px;
+    margin: 0;
+    accent-color: #ef4444;
+    cursor: pointer;
+}
+#yt-overlay-player.is-fullscreen .yt-fs-timeline { display: block; }
+
 /* ✅ Fullscreen-এ iframe-এর নিজের element — YouTube handle করে */
 #yt-overlay-player iframe {
     border: 0;
