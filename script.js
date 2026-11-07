@@ -1163,7 +1163,13 @@ async function loadSections() {
         window._currentSections = sections;
 
         displaySections(sections);
-        setTimeout(updateAllVideoDurations, 500);
+        // Fetch missing YouTube durations only after the initial page has settled.
+        const updateDurationsWhenIdle = () => updateAllVideoDurations();
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(updateDurationsWhenIdle, { timeout: 8000 });
+        } else {
+            setTimeout(updateDurationsWhenIdle, 6000);
+        }
     } catch (error) {
         console.error('সব API ব্যর্থ:', error);
         document.getElementById('sections-container').innerHTML = `
@@ -1242,7 +1248,7 @@ function displaySections(sections) {
                 <div class="section-header">
                     <div class="left-content">
                         <i class="fas fa-chevron-right section-icon"></i>
-                        <h3>${escapeHtml(sectionTitle)}</h3>
+                        <h2>${escapeHtml(sectionTitle)}</h2>
                     </div>
                     <div class="right-content">
                         <div class="section-progress-container">
@@ -1374,7 +1380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
 
-    loadYouTubeIframeAPI();
+    // Load the YouTube IFrame API only when a user opens a video.
     loadSections();
     setupHiddenAdminAccess();
 
