@@ -2,13 +2,13 @@
 // App shell/navigation: network-first with cached/offline fallback.
 // API GET: network-first with cached fallback. YouTube embeds remain network-only.
 const CACHE_PREFIX = 'civil-4th-';
-const CACHE_NAME = 'civil-4th-shell-v4';
-const API_CACHE_NAME = 'civil-4th-api-v4';
-const RUNTIME_CACHE_NAME = 'civil-4th-runtime-v4';
+const CACHE_NAME = 'civil-4th-shell-v5';
+const API_CACHE_NAME = 'civil-4th-api-v5';
+const RUNTIME_CACHE_NAME = 'civil-4th-runtime-v5';
 
 const CORE_ASSETS = [
     '/', '/index.html', '/style.css', '/script.js',
-    '/manifest.json', '/offline.html', '/icons/pwa-icon.svg'
+    '/manifest.json', '/offline.html', '/icons/pwa-icon.svg', '/icons/diploma-tutor-logo.svg'
 ];
 const EXTERNAL_STATIC_HOSTS = new Set([
     'cdnjs.cloudflare.com', 'fonts.googleapis.com',
@@ -145,7 +145,7 @@ self.addEventListener('push', event => {
     catch (error) { console.warn('[SW] Push payload parse error:', error); }
 
     const options = {
-        body, icon: '/icons/pwa-icon.svg', badge: '/icons/pwa-icon.svg',
+        body, icon: '/icons/diploma-tutor-logo.svg', badge: '/icons/diploma-tutor-logo.svg',
         vibrate: [100, 50, 100],
         data: { dateOfArrival: Date.now(), primaryKey: 1 },
         actions: [{ action: 'open', title: 'খুলুন' }, { action: 'close', title: 'বন্ধ করুন' }]
