@@ -1736,3 +1736,100 @@ body.pdf-overlay-open {
         transition-duration: 0.01ms !important;
     }
 }
+
+
+/* ============================================================
+   Mobile YouTube player — external controls and clean iframe
+   ============================================================ */
+#yt-overlay-player .yt-control-panel {
+    flex-shrink: 0;
+    background: #101010;
+    padding: 0.45rem 0.75rem 0.55rem;
+    border-top: 1px solid #222;
+}
+#yt-overlay-player .yt-main-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+#yt-overlay-player .yt-control-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 38px;
+    min-height: 36px;
+    padding: 0.35rem 0.55rem;
+    border: 1px solid #383838;
+    border-radius: 8px;
+    color: #eee;
+    background: #202020;
+    font-size: 0.78rem;
+    line-height: 1;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+#yt-overlay-player .yt-control-btn.is-active {
+    color: #7dd3fc;
+    border-color: #0369a1;
+    background: #082f49;
+}
+#yt-overlay-player .yt-control-btn i { font-size: 0.9rem; }
+#yt-overlay-player .yt-play-toggle {
+    width: 38px;
+    padding: 0;
+    color: #fff;
+    background: #b91c1c;
+    border-color: #dc2626;
+}
+#yt-overlay-player .yt-time {
+    color: #cfcfcf;
+    font: 500 0.72rem/1.2 system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+#yt-overlay-player .yt-seek {
+    flex: 1;
+    min-width: 30px;
+    width: 100%;
+    accent-color: #ef4444;
+    height: 24px;
+    cursor: pointer;
+}
+#yt-overlay-player .yt-secondary-controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.45rem;
+    padding-top: 0.45rem;
+    flex-wrap: wrap;
+}
+#yt-overlay-player .yt-progress-label {
+    color: #888;
+    font-size: 0.68rem;
+    white-space: nowrap;
+}
+#yt-overlay-player .yt-toolbar { min-height: 46px; }
+#yt-overlay-player .yt-title { max-width: min(72vw, 520px); }
+
+@media (max-width: 480px) {
+    #yt-overlay-player .yt-toolbar { padding: 0.35rem 0.5rem; gap: 0.3rem; }
+    #yt-overlay-player .yt-title { font-size: 0.82rem; max-width: 78vw; }
+    #yt-overlay-player .yt-btn { width: 32px; height: 32px; font-size: 0.78rem; }
+    #yt-overlay-player .yt-control-panel { padding: 0.35rem 0.45rem 0.45rem; }
+    #yt-overlay-player .yt-main-controls { gap: 0.35rem; }
+    #yt-overlay-player .yt-time { font-size: 0.66rem; }
+    #yt-overlay-player .yt-secondary-controls { gap: 0.3rem; padding-top: 0.35rem; }
+    #yt-overlay-player .yt-control-btn { min-height: 32px; padding: 0.3rem 0.42rem; font-size: 0.68rem; }
+    #yt-overlay-player .yt-control-btn i { font-size: 0.78rem; }
+    #yt-overlay-player .yt-progress-label { display: none; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+    #yt-overlay-player .yt-toolbar { padding: 0.25rem 0.6rem; min-height: 38px; }
+    #yt-overlay-player .yt-video-wrap { width: min(100%, calc((100dvh - 155px) * 1.7777778)); }
+    #yt-overlay-player .yt-control-panel { padding: 0.2rem 0.5rem; }
+    #yt-overlay-player .yt-secondary-controls { display: flex; gap: 0.25rem; padding-top: 0.2rem; }
+    #yt-overlay-player .yt-control-btn { min-height: 28px; padding: 0.2rem 0.4rem; }
+    #yt-overlay-player .yt-hint { display: none; }
+}
