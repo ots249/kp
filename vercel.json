@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/push/check-classes", "schedule": "0 8 * * *" }
+  ]
+}
