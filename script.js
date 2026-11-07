@@ -996,12 +996,20 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
             #yt-overlay-player .yt-fs-timeline {
                 display: none; position: absolute; z-index: 21;
-                left: max(16px, env(safe-area-inset-left));
-                right: 78px; bottom: max(25px, env(safe-area-inset-bottom));
-                width: calc(100% - 110px); height: 22px; margin: 0;
+                left: 76px; right: 78px; bottom: max(27px, env(safe-area-inset-bottom));
+                width: calc(100% - 170px); height: 22px; margin: 0;
                 accent-color: #ef4444; cursor: pointer;
             }
-            #yt-overlay-player.is-fullscreen .yt-fs-timeline { display: block; }
+            #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
+            #yt-overlay-player .yt-fs-timeline-toggle {
+                display: none; position: absolute; z-index: 22;
+                left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
+                width: 46px; height: 46px; align-items: center; justify-content: center;
+                border: 1px solid #555; border-radius: 50%; background: rgba(20,20,20,.82);
+                color: #fff; font-size: 1rem; cursor: pointer;
+            }
+            #yt-overlay-player.is-fullscreen .yt-fs-timeline-toggle { display: flex; }
+            #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline-toggle { background: rgba(185,28,28,.9); }
         `;
         document.head.appendChild(styleEl);
     }
@@ -1010,6 +1018,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     overlay.id = 'yt-overlay-player';
     overlay.innerHTML = `
         <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+        <button class="yt-fs-timeline-toggle" id="yt-fs-timeline-toggle" type="button" aria-label="Show timeline" title="Show timeline"><i class="fas fa-sliders-h"></i></button>
         <input class="yt-fs-timeline" id="yt-fs-timeline" type="range" min="0" max="1000" value="0" step="1" aria-label="Video timeline">
         <div class="yt-toolbar">
             <div class="yt-title-wrap">
@@ -1056,6 +1065,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
     const seekInput = document.getElementById('yt-seek');
     const fullscreenTimeline = document.getElementById('yt-fs-timeline');
+    const fullscreenTimelineToggle = document.getElementById('yt-fs-timeline-toggle');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
@@ -1169,6 +1179,15 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     });
 
     document.addEventListener('fullscreenchange', updateFullscreenButton);
+
+    fullscreenTimelineToggle.addEventListener('click', () => {
+        const visible = overlay.classList.toggle('is-timeline-visible');
+        fullscreenTimelineToggle.setAttribute('aria-label', visible ? 'Hide timeline' : 'Show timeline');
+        fullscreenTimelineToggle.title = visible ? 'Hide timeline' : 'Show timeline';
+        fullscreenTimelineToggle.innerHTML = visible
+            ? '<i class="fas fa-times"></i>'
+            : '<i class="fas fa-sliders-h"></i>';
+    });
 
     fullscreenTimeline.addEventListener('pointerdown', () => { isFullscreenSeeking = true; });
     fullscreenTimeline.addEventListener('input', () => {
