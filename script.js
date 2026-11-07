@@ -1001,23 +1001,25 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 accent-color: #ef4444; cursor: pointer;
             }
             #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
-            #yt-overlay-player .yt-fs-controls {
-                display: none; position: absolute; z-index: 22; left: 0; right: 0;
-                bottom: max(58px, calc(env(safe-area-inset-bottom) + 48px));
-                align-items: center; justify-content: center; gap: 22px; pointer-events: none;
-            }
-            #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-controls { display: flex; }
-            #yt-overlay-player .yt-fs-control-btn {
-                pointer-events: auto; position: relative; width: 54px; height: 54px;
-                display: inline-flex; align-items: center; justify-content: center; gap: 2px;
-                border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
-                background: rgba(15,15,15,.78); color: #fff; font-size: 20px;
+            #yt-overlay-player .yt-fs-center-play {
+                display: none; position: absolute; z-index: 23; left: 50%; top: 50%;
+                transform: translate(-50%, -50%); width: 68px; height: 68px;
+                align-items: center; justify-content: center; border: 0; border-radius: 50%;
+                background: rgba(0,0,0,.62); color: #fff; font-size: 28px;
                 cursor: pointer; -webkit-tap-highlight-color: transparent;
             }
-            #yt-overlay-player .yt-fs-control-btn span {
-                font-size: 10px; font-weight: 700; position: absolute; top: 17px; right: 11px;
+            #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-center-play { display: flex; }
+            #yt-overlay-player .yt-fs-skip-feedback {
+                display: none; position: absolute; z-index: 22; top: 50%; transform: translateY(-50%);
+                width: 28%; height: 44%; align-items: center; justify-content: center;
+                flex-direction: column; gap: 8px; color: #fff; pointer-events: none;
+                background: radial-gradient(ellipse, rgba(0,0,0,.48), transparent 72%);
+                font-size: 24px; text-shadow: 0 1px 4px #000;
             }
-            #yt-overlay-player .yt-fs-play-btn { width: 62px; height: 62px; font-size: 24px; }
+            #yt-overlay-player .yt-fs-skip-feedback strong { font-size: 13px; font-weight: 600; }
+            #yt-overlay-player .yt-fs-skip-left { left: 0; border-radius: 0 50% 50% 0; }
+            #yt-overlay-player .yt-fs-skip-right { right: 0; border-radius: 50% 0 0 50%; }
+            #yt-overlay-player .yt-fs-skip-feedback.is-active { display: flex; }
             #yt-overlay-player .yt-fs-tap-surface {
                 display: none; position: absolute; inset: 0; z-index: 10;
                 background: transparent; cursor: default; touch-action: manipulation;
@@ -1032,11 +1034,9 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     overlay.innerHTML = `
         <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
         <div class="yt-fs-tap-surface" id="yt-fs-tap-surface" aria-hidden="true"></div>
-        <div class="yt-fs-controls" id="yt-fs-controls" aria-label="Fullscreen playback controls">
-            <button type="button" class="yt-fs-control-btn" id="yt-fs-backward" aria-label="Back 10 seconds" title="Back 10 seconds"><i class="fas fa-undo"></i><span>10</span></button>
-            <button type="button" class="yt-fs-control-btn yt-fs-play-btn" id="yt-fs-play" aria-label="Pause" title="Pause"><i class="fas fa-pause"></i></button>
-            <button type="button" class="yt-fs-control-btn" id="yt-fs-forward" aria-label="Forward 10 seconds" title="Forward 10 seconds"><i class="fas fa-redo"></i><span>10</span></button>
-        </div>
+        <button type="button" class="yt-fs-center-play" id="yt-fs-play" aria-label="Pause" title="Play/Pause"><i class="fas fa-pause"></i></button>
+        <div class="yt-fs-skip-feedback yt-fs-skip-left" id="yt-fs-skip-left"><i class="fas fa-undo"></i><strong>10 seconds</strong></div>
+        <div class="yt-fs-skip-feedback yt-fs-skip-right" id="yt-fs-skip-right"><i class="fas fa-redo"></i><strong>10 seconds</strong></div>
                 <input class="yt-fs-timeline" id="yt-fs-timeline" type="range" min="0" max="1000" value="0" step="1" aria-label="Video timeline">
         <div class="yt-toolbar">
             <div class="yt-title-wrap">
@@ -1084,9 +1084,9 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const seekInput = document.getElementById('yt-seek');
     const fullscreenTimeline = document.getElementById('yt-fs-timeline');
     const fullscreenPlayBtn = document.getElementById('yt-fs-play');
-    const fullscreenBackBtn = document.getElementById('yt-fs-backward');
-    const fullscreenForwardBtn = document.getElementById('yt-fs-forward');
     const fullscreenTapSurface = document.getElementById('yt-fs-tap-surface');
+    const fullscreenSkipLeft = document.getElementById('yt-fs-skip-left');
+    const fullscreenSkipRight = document.getElementById('yt-fs-skip-right');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
@@ -1164,9 +1164,10 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     }
 
     playToggleBtn.addEventListener('click', toggleVideoPlayback);
-    fullscreenPlayBtn.addEventListener('click', () => {
+    fullscreenPlayBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
         toggleVideoPlayback();
-        if (overlay.classList.contains('is-fullscreen')) showFullscreenTimeline();
+        showFullscreenTimeline();
     });
 
     function seekFullscreenBy(seconds) {
@@ -1176,10 +1177,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         if (duration <= 0) return;
         player.seekTo(Math.max(0, Math.min(duration, current + seconds)), true);
         showFullscreenTimeline();
+        const feedback = seconds < 0 ? fullscreenSkipLeft : fullscreenSkipRight;
+        feedback.classList.add('is-active');
+        setTimeout(() => feedback.classList.remove('is-active'), 650);
         setTimeout(updatePlaybackControls, 150);
     }
-    fullscreenBackBtn.addEventListener('click', () => seekFullscreenBy(-10));
-    fullscreenForwardBtn.addEventListener('click', () => seekFullscreenBy(10));
 
     const fullscreenExitBtn = document.getElementById('yt-fs-exit');
 
@@ -1241,11 +1243,33 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         timelineAutoHideTimer = setTimeout(hideFullscreenTimeline, 4000);
     }
 
-    // Like YouTube: tap anywhere on the fullscreen video to reveal the timeline.
-    // A second tap hides it; otherwise it auto-hides after four seconds.
-    fullscreenTapSurface.addEventListener('click', () => {
-        if (overlay.classList.contains('is-timeline-visible')) hideFullscreenTimeline();
-        else showFullscreenTimeline();
+    // YouTube-style gestures: single tap reveals controls; double tap left/right seeks 10s.
+    let lastTapAt = 0;
+    let lastTapSide = '';
+    let tapTimer = null;
+    fullscreenTapSurface.addEventListener('pointerup', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        const rect = fullscreenTapSurface.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const side = x < rect.width * 0.38 ? 'left' : (x > rect.width * 0.62 ? 'right' : 'center');
+        const now = Date.now();
+        const isDoubleTap = (now - lastTapAt) < 300 && side !== 'center' && side === lastTapSide;
+
+        if (tapTimer) clearTimeout(tapTimer);
+        if (isDoubleTap) {
+            lastTapAt = 0;
+            lastTapSide = '';
+            seekFullscreenBy(side === 'left' ? -10 : 10);
+            return;
+        }
+
+        lastTapAt = now;
+        lastTapSide = side;
+        tapTimer = setTimeout(() => {
+            showFullscreenTimeline();
+            lastTapAt = 0;
+            lastTapSide = '';
+        }, 300);
     });
 
     fullscreenTimeline.addEventListener('pointerdown', () => { isFullscreenSeeking = true; });
