@@ -140,17 +140,16 @@ self.addEventListener('sync', event => {
 });
 
 self.addEventListener('push', event => {
-    let body = 'নতুন ক্লাস যোগ হয়েছে!';
-    try { if (event.data) body = event.data.text(); }
-    catch (error) { console.warn('[SW] Push payload parse error:', error); }
-
+    let payload = { title: 'Civil 4th Semester', body: 'নতুন ক্লাস যোগ হয়েছে!', url: '/' };
+    try { if (event.data) payload = { ...payload, ...event.data.json() }; }
+    catch (error) { try { if (event.data) payload.body = event.data.text(); } catch (_) {} }
     const options = {
-        body, icon: '/icons/diploma-tutor-logo.svg', badge: '/icons/diploma-tutor-logo.svg',
+        body: payload.body, icon: '/icons/diploma-tutor-logo.svg', badge: '/icons/diploma-tutor-logo.svg',
         vibrate: [100, 50, 100],
-        data: { dateOfArrival: Date.now(), primaryKey: 1 },
+        data: { url: payload.url || '/', dateOfArrival: Date.now(), primaryKey: 1 },
         actions: [{ action: 'open', title: 'খুলুন' }, { action: 'close', title: 'বন্ধ করুন' }]
     };
-    event.waitUntil(self.registration.showNotification('Civil 4th Semester', options));
+    event.waitUntil(self.registration.showNotification(payload.title || 'Civil 4th Semester', options));
 });
 
 self.addEventListener('notificationclick', event => {
@@ -159,9 +158,9 @@ self.addEventListener('notificationclick', event => {
     event.waitUntil((async () => {
         const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         for (const client of windows) {
-            if (client.url.startsWith(self.location.origin) && 'focus' in client) return client.focus();
+            if (client.url.startsWith(self.location.origin) && 'focus' in client) if ('navigate' in client) await client.navigate(event.notification.data?.url || '/'); return client.focus();
         }
-        if (self.clients.openWindow) return self.clients.openWindow('/');
+        if (self.clients.openWindow) return self.clients.openWindow(event.notification.data?.url || '/');
     })());
 });
 
