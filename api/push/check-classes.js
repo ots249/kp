@@ -1,4 +1,4 @@
-const { put, list, del } = require('@vercel/blob');
+const { put, list, del, get } = require('@vercel/blob');
 const webpush = require('web-push');
 const API = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
 const SNAPSHOT = 'push/state/course-snapshot.json';
@@ -22,8 +22,8 @@ module.exports = async function handler(req, res) {
     const previous = await list({ prefix: SNAPSHOT });
     let oldRows = [];
     if (previous.blobs[0]) {
-      const r = await fetch(previous.blobs[0].url);
-      if (r.ok) oldRows = await r.json();
+      const snapshot = await get(previous.blobs[0].url, { access: 'private' });
+      if (snapshot && snapshot.statusCode === 200) oldRows = await new Response(snapshot.stream).json();
     }
     const key = r => JSON.stringify([r.subject, r.chapter, r.lecture, r.type, r.link]);
     const oldKeys = new Set(oldRows.map(key));
@@ -45,9 +45,9 @@ module.exports = async function handler(req, res) {
       });
       for (const blob of subscriptions.blobs) {
         try {
-          const sr = await fetch(blob.url);
-          if (!sr.ok) continue;
-          const saved = await sr.json();
+          const privateBlob = await get(blob.url, { access: 'private' });
+          if (!privateBlob || privateBlob.statusCode !== 200) continue;
+          const saved = await new Response(privateBlob.stream).json();
           await webpush.sendNotification(saved.subscription, payload);
           sent++;
         } catch (e) {
