@@ -1629,44 +1629,48 @@ body.dark-mode .theme-toggle-btn {
     cursor: pointer;
 }
 #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
-#yt-overlay-player .yt-fs-controls {
+#yt-overlay-player .yt-fs-center-play {
     display: none;
     position: absolute;
-    z-index: 22;
-    left: 0;
-    right: 0;
-    bottom: max(58px, calc(env(safe-area-inset-bottom) + 48px));
+    z-index: 23;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 68px;
+    height: 68px;
     align-items: center;
     justify-content: center;
-    gap: 22px;
-    pointer-events: none;
-}
-#yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-controls { display: flex; }
-#yt-overlay-player .yt-fs-control-btn {
-    pointer-events: auto;
-    position: relative;
-    width: 54px;
-    height: 54px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    border: 1px solid rgba(255,255,255,.28);
+    border: 0;
     border-radius: 50%;
-    background: rgba(15,15,15,.78);
+    background: rgba(0,0,0,.62);
     color: #fff;
-    font-size: 20px;
+    font-size: 28px;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-#yt-overlay-player .yt-fs-control-btn span {
-    font-size: 10px;
-    font-weight: 700;
+#yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-center-play { display: flex; }
+#yt-overlay-player .yt-fs-skip-feedback {
+    display: none;
     position: absolute;
-    top: 17px;
-    right: 11px;
+    z-index: 22;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 28%;
+    height: 44%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    color: #fff;
+    pointer-events: none;
+    background: radial-gradient(ellipse, rgba(0,0,0,.48), transparent 72%);
+    font-size: 24px;
+    text-shadow: 0 1px 4px #000;
 }
-#yt-overlay-player .yt-fs-play-btn { width: 62px; height: 62px; font-size: 24px; }
+#yt-overlay-player .yt-fs-skip-feedback strong { font-size: 13px; font-weight: 600; }
+#yt-overlay-player .yt-fs-skip-left { left: 0; border-radius: 0 50% 50% 0; }
+#yt-overlay-player .yt-fs-skip-right { right: 0; border-radius: 50% 0 0 50%; }
+#yt-overlay-player .yt-fs-skip-feedback.is-active { display: flex; }
 #yt-overlay-player .yt-fs-tap-surface {
     display: none;
     position: absolute;
