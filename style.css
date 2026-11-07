@@ -73,6 +73,7 @@ html {
 .banner-image {
     width: 100%;
     height: auto;
+    aspect-ratio: 1280 / 668;
     display: block;
     object-fit: cover;
     max-height: 400px;
@@ -1688,4 +1689,25 @@ body.pdf-overlay-open {
     #pdf-overlay-viewer .pdf-title { font-size: 0.85rem; }
     #pdf-overlay-viewer .pdf-btn span { display: none; }
     #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
+}
+
+
+/* Performance and layout stability */
+.sections-container {
+    min-height: 24rem;
+}
+
+.footer {
+    min-height: 7rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .banner-container,
+    .banner-image,
+    .section-card,
+    .header,
+    .loading-spinner {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
 }
