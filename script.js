@@ -966,50 +966,32 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 #yt-overlay-player .yt-hint { display: none; }
             }
 
-            /* Fullscreen: let the video wrapper use remaining flex space,
-               then size the actual 16:9 iframe viewport within that space. */
-            #yt-overlay-player:fullscreen .yt-video-wrap,
-            #yt-overlay-player:-webkit-full-screen .yt-video-wrap,
-            #yt-overlay-player:-moz-full-screen .yt-video-wrap {
-                flex: 1 1 auto !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                width: 100% !important;
-                min-width: 0 !important;
-                min-height: 0 !important;
-                height: auto !important;
-                aspect-ratio: auto !important;
-                align-self: stretch !important;
-                margin: 0 !important;
+            /* Fullscreen mode hides the app chrome so video gets the full viewport. */
+            #yt-overlay-player.is-fullscreen .yt-toolbar,
+            #yt-overlay-player.is-fullscreen .yt-control-panel,
+            #yt-overlay-player.is-fullscreen .yt-progress-info,
+            #yt-overlay-player.is-fullscreen .yt-hint { display: none !important; }
+            #yt-overlay-player.is-fullscreen .yt-video-wrap {
+                flex: 1 1 auto !important; width: 100% !important; height: 100% !important;
+                min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important;
+                display: flex !important; align-items: center !important; justify-content: center !important;
             }
-            #yt-overlay-player:fullscreen #yt-player-container,
-            #yt-overlay-player:-webkit-full-screen #yt-player-container,
-            #yt-overlay-player:-moz-full-screen #yt-player-container {
-                position: relative !important;
-                inset: auto !important;
-                flex: 0 1 auto !important;
-                width: min(100%, calc((100dvh - 190px) * 1.7777778)) !important;
-                max-width: 100% !important;
-                max-height: 100% !important;
-                height: auto !important;
-                aspect-ratio: 16 / 9 !important;
+            #yt-overlay-player.is-fullscreen #yt-player-container {
+                position: relative !important; inset: auto !important; flex: 0 0 auto !important;
+                width: min(100vw, calc(100dvh * 1.7777778)) !important;
+                height: min(100dvh, calc(100vw * 0.5625)) !important;
+                max-width: 100% !important; max-height: 100% !important; aspect-ratio: 16 / 9 !important;
             }
-            #yt-overlay-player:fullscreen #yt-player-container iframe,
-            #yt-overlay-player:-webkit-full-screen #yt-player-container iframe,
-            #yt-overlay-player:-moz-full-screen #yt-player-container iframe {
-                position: absolute !important;
-                inset: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
+            #yt-overlay-player.is-fullscreen #yt-player-container iframe {
+                position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
             }
-            @media (orientation: landscape) and (max-height: 500px) {
-                #yt-overlay-player:fullscreen #yt-player-container,
-                #yt-overlay-player:-webkit-full-screen #yt-player-container,
-                #yt-overlay-player:-moz-full-screen #yt-player-container {
-                    width: min(100%, calc((100dvh - 145px) * 1.7777778)) !important;
-                }
+            #yt-overlay-player .yt-fs-exit {
+                display: none; position: absolute; z-index: 20; top: max(12px, env(safe-area-inset-top));
+                right: max(12px, env(safe-area-inset-right)); width: 42px; height: 42px;
+                border: 1px solid #555; border-radius: 50%; background: rgba(20,20,20,.82);
+                color: #fff; font-size: 1.1rem; align-items: center; justify-content: center;
             }
+            #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -1017,6 +999,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const overlay = document.createElement('div');
     overlay.id = 'yt-overlay-player';
     overlay.innerHTML = `
+        <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
         <div class="yt-toolbar">
             <div class="yt-title-wrap">
                 <i class="fab fa-youtube"></i>
@@ -1145,8 +1128,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         updatePlaybackControls();
     });
 
+    const fullscreenExitBtn = document.getElementById('yt-fs-exit');
+
     function updateFullscreenButton() {
-        const active = !!document.fullscreenElement;
+        const active = document.fullscreenElement === overlay;
+        overlay.classList.toggle('is-fullscreen', active);
         fullscreenToggleBtn.innerHTML = active
             ? '<i class="fas fa-compress"></i><span>Exit</span>'
             : '<i class="fas fa-expand"></i><span>Fullscreen</span>';
@@ -1154,6 +1140,12 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         fullscreenToggleBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
         fullscreenToggleBtn.title = active ? 'Exit fullscreen' : 'Fullscreen';
     }
+
+    fullscreenExitBtn.addEventListener('click', () => {
+        if (document.fullscreenElement === overlay && document.exitFullscreen) {
+            document.exitFullscreen().catch(error => console.warn('Exit fullscreen failed:', error));
+        }
+    });
 
     fullscreenToggleBtn.addEventListener('click', async () => {
         try {
