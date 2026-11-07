@@ -986,8 +986,10 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
             }
             #yt-overlay-player .yt-fs-exit {
-                display: none; position: absolute; z-index: 20; top: max(12px, env(safe-area-inset-top));
-                right: max(12px, env(safe-area-inset-right)); width: 42px; height: 42px;
+                display: none; position: absolute; z-index: 20;
+                right: max(16px, env(safe-area-inset-right));
+                bottom: max(16px, env(safe-area-inset-bottom));
+                top: auto; width: 46px; height: 46px;
                 border: 1px solid #555; border-radius: 50%; background: rgba(20,20,20,.82);
                 color: #fff; font-size: 1.1rem; align-items: center; justify-content: center;
             }
