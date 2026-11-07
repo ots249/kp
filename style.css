@@ -1666,19 +1666,31 @@ body.dark-mode .theme-toggle-btn {
     color: #fff;
     font-size: 13px;
 }
+#yt-overlay-player .yt-fs-quality-row strong {
+    font-size: 12px;
+    font-weight: 600;
+    color: #b8c4d2;
+}
+#yt-overlay-player .yt-fs-quality-note {
+    margin: -2px 2px 4px;
+    color: #9ca3af;
+    font-size: 11px;
+    line-height: 1.45;
+}
 #yt-overlay-player .yt-fs-speed-feedback {
     display: none;
     position: absolute;
-    z-index: 24;
+    z-index: 34;
     left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    padding: 12px 18px;
-    border-radius: 24px;
-    background: rgba(0,0,0,.7);
+    top: max(18px, calc(env(safe-area-inset-top) + 12px));
+    transform: translateX(-50%);
+    padding: 6px 11px;
+    border-radius: 16px;
+    background: rgba(0,0,0,.72);
     color: #fff;
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.2;
+    font-weight: 600;
     pointer-events: none;
 }
 #yt-overlay-player.is-fullscreen.is-boosting .yt-fs-speed-feedback { display: block; }
