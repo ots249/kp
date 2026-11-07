@@ -1,8 +1,8 @@
 // ============================================================
 // Service Worker — Civil 4th Semester
 // ============================================================
-const CACHE_NAME = 'civil-4th-v2';
-const API_CACHE_NAME = 'civil-4th-api-v2';
+const CACHE_NAME = 'civil-4th-v3';
+const API_CACHE_NAME = 'civil-4th-api-v3';
 
 // Assets to cache on install
 const STATIC_ASSETS = [
