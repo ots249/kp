@@ -1909,7 +1909,53 @@ window.resetAllProgress = function () {
 // ============================================================
 // Initialize
 // ============================================================
+const PUSH_PUBLIC_KEY = 'BGwPZXgc-EbHqTesceQa5KhyUm_pc9PMxAVQ74gmfMQJAZnxfm4sb4wQu8Ny0ioqlEPvL_edIyKiElC9LzWlzXc';
+function pushBase64ToBytes(value) {
+ const padding = '='.repeat((4 - value.length % 4) % 4);
+ const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
+ return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+}
+async function setupPushNotifications() {
+ const button = document.getElementById('push-notification-toggle');
+ if (!button) return;
+ if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+   button.disabled = true; button.textContent = 'এই ব্রাউজারে Notification নেই'; return;
+ }
+ const refresh = async () => {
+   const reg = await navigator.serviceWorker.ready;
+   const sub = await reg.pushManager.getSubscription();
+   button.textContent = sub ? '🔔 ক্লাস Notification চালু আছে' : '🔔 ক্লাস Notification চালু করুন';
+   button.dataset.subscribed = sub ? '1' : '0';
+ };
+ await refresh();
+ button.addEventListener('click', async () => {
+   button.disabled = true;
+   try {
+     const reg = await navigator.serviceWorker.ready;
+     let sub = await reg.pushManager.getSubscription();
+     if (sub) {
+       const response = await fetch('/api/push/subscribe', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unsubscribe',subscription:sub})});
+       if (!response.ok) throw new Error('Unsubscribe failed');
+       await sub.unsubscribe();
+       if (typeof showNotification === 'function') showNotification('ক্লাস Notification বন্ধ করা হয়েছে।','success');
+     } else {
+       const permission = await Notification.requestPermission();
+       if (permission !== 'granted') throw new Error('Notification permission দেওয়া হয়নি।');
+       sub = await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushBase64ToBytes(PUSH_PUBLIC_KEY)});
+       const response = await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub})});
+       if (!response.ok) throw new Error('Subscription save failed');
+       if (typeof showNotification === 'function') showNotification('নতুন Lecture ও PDF Notification চালু হয়েছে।','success');
+     }
+     await refresh();
+   } catch (error) {
+     console.error('[Push]',error);
+     if (typeof showNotification === 'function') showNotification(error.message || 'Notification সেটআপ করা যায়নি।','error');
+   } finally { button.disabled = false; }
+ });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    setupPushNotifications();
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
