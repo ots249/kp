@@ -896,9 +896,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             #yt-overlay-player .yt-title-wrap i.fa-youtube { color: #ff0000; font-size: 1.4rem; flex-shrink: 0; }
             #yt-overlay-player .yt-title { color: #fff; font-size: 0.95rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
             #yt-overlay-player .yt-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-            #yt-overlay-player .yt-speed-wrap { display:flex; align-items:center; gap:0.3rem; color:#bbb; background:#252525; border:1px solid #444; border-radius:20px; padding:0 0.55rem; height:38px; }
-            #yt-overlay-player .yt-speed-wrap select { color:#fff; background:transparent; border:0; outline:0; font:inherit; font-size:0.8rem; min-width:48px; }
-            #yt-overlay-player .yt-speed-wrap option { background:#222; color:#fff; }
             #yt-overlay-player .yt-btn.is-active { background:#075985; border-color:#0284c7; color:#fff; }
             #yt-overlay-player .yt-video-wrap.is-locked::after { content:'SCREEN LOCKED'; position:absolute; inset:0; z-index:5; background:transparent; }
             #yt-overlay-player .yt-video-wrap.is-locked { touch-action:none; }
@@ -921,8 +918,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 #yt-overlay-player .yt-btn { width: 34px; height: 34px; font-size: 0.82rem; }
                 #yt-overlay-player .yt-actions { gap: 0.25rem; }
                 #yt-overlay-player .yt-toolbar { padding: 0.45rem 0.55rem; gap: 0.35rem; }
-                #yt-overlay-player .yt-speed-wrap { height:34px; padding:0 0.35rem; }
-                #yt-overlay-player .yt-speed-wrap select { font-size:0.72rem; min-width:42px; }
                 #yt-overlay-player .yt-title { max-width: 30vw; }
                 #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
             }
@@ -939,18 +934,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 <h3 class="yt-title">${safeTitle}</h3>
             </div>
             <div class="yt-actions">
-                <label class="yt-speed-wrap" title="Playback speed">
-                    <i class="fas fa-gauge-high"></i>
-                    <select id="yt-playback-speed" aria-label="Playback speed">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1">1x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="1.75">1.75x</option>
-                        <option value="2">2x</option>
-                    </select>
-                </label>
                 <button class="yt-btn" id="yt-auto-next" type="button" aria-pressed="true" title="Auto Next চালু"><i class="fas fa-forward-step"></i></button>
                 <button class="yt-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i></button>
                 <a class="yt-btn yt-yt-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন">
@@ -975,7 +958,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     document.body.classList.add('yt-overlay-open');
 
     const closeBtn = document.getElementById('yt-overlay-close');
-    const speedSelect = document.getElementById('yt-playback-speed');
     const autoNextBtn = document.getElementById('yt-auto-next');
     const screenLockBtn = document.getElementById('yt-screen-lock');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
@@ -983,9 +965,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const PLAYER_MEMORY_KEY = 'civil4thPlayerSettings';
     let playerMemory = {};
     try { playerMemory = JSON.parse(localStorage.getItem(PLAYER_MEMORY_KEY) || '{}'); } catch (_) {}
-    const savedSpeed = Number(playerMemory.speed) || 1;
     const savedAutoNext = playerMemory.autoNext !== false;
-    speedSelect.value = String(savedSpeed);
     let autoNextEnabled = savedAutoNext;
     let screenLocked = false;
 
@@ -1019,12 +999,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         showNotification(autoNextEnabled ? 'Auto Next চালু হয়েছে' : 'Auto Next বন্ধ হয়েছে', 'info');
     });
 
-    speedSelect.addEventListener('change', () => {
-        const speed = Number(speedSelect.value) || 1;
-        savePlayerMemory({ speed });
-        if (player && player.setPlaybackRate) player.setPlaybackRate(speed);
-    });
-
     await loadYouTubeIframeAPI();
 
     let player = null;
@@ -1053,16 +1027,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         }
         // Already completed? reflect in hint UI
         if (itemId && completedItems[itemId]) updateHintUI();
-        const availableRates = event.target.getAvailablePlaybackRates
-            ? event.target.getAvailablePlaybackRates()
-            : [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-        Array.from(speedSelect.options).forEach(option => {
-            option.disabled = !availableRates.some(rate => Number(rate) === Number(option.value));
-        });
-        const preferredSpeed = availableRates.includes(savedSpeed) ? savedSpeed : 1;
-        speedSelect.value = String(preferredSpeed);
-        event.target.setPlaybackRate(preferredSpeed);
-        if (preferredSpeed !== savedSpeed) savePlayerMemory({ speed: preferredSpeed });
         event.target.playVideo();
         startProgressTracking();
     }
