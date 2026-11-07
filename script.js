@@ -965,6 +965,51 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 #yt-overlay-player .yt-progress-info { padding: 0.25rem 0.7rem; }
                 #yt-overlay-player .yt-hint { display: none; }
             }
+
+            /* Fullscreen: let the video wrapper use remaining flex space,
+               then size the actual 16:9 iframe viewport within that space. */
+            #yt-overlay-player:fullscreen .yt-video-wrap,
+            #yt-overlay-player:-webkit-full-screen .yt-video-wrap,
+            #yt-overlay-player:-moz-full-screen .yt-video-wrap {
+                flex: 1 1 auto !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                min-height: 0 !important;
+                height: auto !important;
+                aspect-ratio: auto !important;
+                align-self: stretch !important;
+                margin: 0 !important;
+            }
+            #yt-overlay-player:fullscreen #yt-player-container,
+            #yt-overlay-player:-webkit-full-screen #yt-player-container,
+            #yt-overlay-player:-moz-full-screen #yt-player-container {
+                position: relative !important;
+                inset: auto !important;
+                flex: 0 1 auto !important;
+                width: min(100%, calc((100dvh - 190px) * 1.7777778)) !important;
+                max-width: 100% !important;
+                max-height: 100% !important;
+                height: auto !important;
+                aspect-ratio: 16 / 9 !important;
+            }
+            #yt-overlay-player:fullscreen #yt-player-container iframe,
+            #yt-overlay-player:-webkit-full-screen #yt-player-container iframe,
+            #yt-overlay-player:-moz-full-screen #yt-player-container iframe {
+                position: absolute !important;
+                inset: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+            }
+            @media (orientation: landscape) and (max-height: 500px) {
+                #yt-overlay-player:fullscreen #yt-player-container,
+                #yt-overlay-player:-webkit-full-screen #yt-player-container,
+                #yt-overlay-player:-moz-full-screen #yt-player-container {
+                    width: min(100%, calc((100dvh - 145px) * 1.7777778)) !important;
+                }
+            }
         `;
         document.head.appendChild(styleEl);
     }
