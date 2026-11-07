@@ -994,6 +994,14 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 color: #fff; font-size: 1.1rem; align-items: center; justify-content: center;
             }
             #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
+            #yt-overlay-player .yt-fs-timeline {
+                display: none; position: absolute; z-index: 21;
+                left: max(16px, env(safe-area-inset-left));
+                right: 78px; bottom: max(25px, env(safe-area-inset-bottom));
+                width: calc(100% - 110px); height: 22px; margin: 0;
+                accent-color: #ef4444; cursor: pointer;
+            }
+            #yt-overlay-player.is-fullscreen .yt-fs-timeline { display: block; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -1002,6 +1010,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     overlay.id = 'yt-overlay-player';
     overlay.innerHTML = `
         <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+        <input class="yt-fs-timeline" id="yt-fs-timeline" type="range" min="0" max="1000" value="0" step="1" aria-label="Video timeline">
         <div class="yt-toolbar">
             <div class="yt-title-wrap">
                 <i class="fab fa-youtube"></i>
@@ -1046,10 +1055,12 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const playToggleBtn = document.getElementById('yt-play-toggle');
     const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
     const seekInput = document.getElementById('yt-seek');
+    const fullscreenTimeline = document.getElementById('yt-fs-timeline');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
     let isSeeking = false;
+    let isFullscreenSeeking = false;
 
     const PLAYER_MEMORY_KEY = 'civil4thPlayerSettings';
     let playerMemory = {};
@@ -1106,6 +1117,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             durationLabel.textContent = formatPlayerTime(duration);
             currentTimeLabel.textContent = formatPlayerTime(current);
             if (!isSeeking && duration > 0) seekInput.value = String(Math.round((current / duration) * 1000));
+            if (!isFullscreenSeeking && duration > 0) fullscreenTimeline.value = String(Math.round((current / duration) * 1000));
         } catch (_) {}
     }
 
@@ -1157,6 +1169,22 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     });
 
     document.addEventListener('fullscreenchange', updateFullscreenButton);
+
+    fullscreenTimeline.addEventListener('pointerdown', () => { isFullscreenSeeking = true; });
+    fullscreenTimeline.addEventListener('input', () => {
+        const duration = player && player.getDuration ? player.getDuration() : 0;
+        if (duration > 0) fullscreenTimeline.title = formatPlayerTime((Number(fullscreenTimeline.value) / 1000) * duration);
+    });
+    const finishFullscreenSeek = () => {
+        if (!isFullscreenSeeking) return;
+        const duration = player && player.getDuration ? player.getDuration() : 0;
+        if (duration > 0) player.seekTo((Number(fullscreenTimeline.value) / 1000) * duration, true);
+        isFullscreenSeeking = false;
+        setTimeout(updatePlaybackControls, 250);
+    };
+    fullscreenTimeline.addEventListener('change', finishFullscreenSeek);
+    fullscreenTimeline.addEventListener('pointerup', finishFullscreenSeek);
+    fullscreenTimeline.addEventListener('pointercancel', finishFullscreenSeek);
 
     seekInput.addEventListener('pointerdown', () => { isSeeking = true; });
     seekInput.addEventListener('input', () => {
