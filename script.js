@@ -1248,7 +1248,7 @@ function displaySections(sections) {
                 <div class="section-header">
                     <div class="left-content">
                         <i class="fas fa-chevron-right section-icon"></i>
-                        <h2>${escapeHtml(sectionTitle)}</h2>
+                        <h3>${escapeHtml(sectionTitle)}</h3>
                     </div>
                     <div class="right-content">
                         <div class="section-progress-container">
