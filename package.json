@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@vercel/blob": "^2.0.0",
+    "web-push": "^3.6.7"
+  }
+}
