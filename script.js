@@ -1001,15 +1001,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 accent-color: #ef4444; cursor: pointer;
             }
             #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
-            #yt-overlay-player .yt-fs-timeline-toggle {
-                display: none; position: absolute; z-index: 22;
-                left: max(16px, env(safe-area-inset-left)); bottom: max(16px, env(safe-area-inset-bottom));
-                width: 46px; height: 46px; align-items: center; justify-content: center;
-                border: 1px solid #555; border-radius: 50%; background: rgba(20,20,20,.82);
-                color: #fff; font-size: 1rem; cursor: pointer;
+            #yt-overlay-player .yt-fs-tap-surface {
+                display: none; position: absolute; inset: 0; z-index: 10;
+                background: transparent; cursor: default; touch-action: manipulation;
             }
-            #yt-overlay-player.is-fullscreen .yt-fs-timeline-toggle { display: flex; }
-            #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline-toggle { background: rgba(185,28,28,.9); }
+            #yt-overlay-player.is-fullscreen .yt-fs-tap-surface { display: block; }
         `;
         document.head.appendChild(styleEl);
     }
@@ -1018,7 +1014,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     overlay.id = 'yt-overlay-player';
     overlay.innerHTML = `
         <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
-        <button class="yt-fs-timeline-toggle" id="yt-fs-timeline-toggle" type="button" aria-label="Show timeline" title="Show timeline"><i class="fas fa-sliders-h"></i></button>
+        <div class="yt-fs-tap-surface" id="yt-fs-tap-surface" aria-hidden="true"></div>
         <input class="yt-fs-timeline" id="yt-fs-timeline" type="range" min="0" max="1000" value="0" step="1" aria-label="Video timeline">
         <div class="yt-toolbar">
             <div class="yt-title-wrap">
@@ -1065,7 +1061,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
     const seekInput = document.getElementById('yt-seek');
     const fullscreenTimeline = document.getElementById('yt-fs-timeline');
-    const fullscreenTimelineToggle = document.getElementById('yt-fs-timeline-toggle');
+    const fullscreenTapSurface = document.getElementById('yt-fs-tap-surface');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
@@ -1178,15 +1174,32 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         updateFullscreenButton();
     });
 
-    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('fullscreenchange', () => {
+        updateFullscreenButton();
+        if (!document.fullscreenElement) hideFullscreenTimeline();
+    });
 
-    fullscreenTimelineToggle.addEventListener('click', () => {
-        const visible = overlay.classList.toggle('is-timeline-visible');
-        fullscreenTimelineToggle.setAttribute('aria-label', visible ? 'Hide timeline' : 'Show timeline');
-        fullscreenTimelineToggle.title = visible ? 'Hide timeline' : 'Show timeline';
-        fullscreenTimelineToggle.innerHTML = visible
-            ? '<i class="fas fa-times"></i>'
-            : '<i class="fas fa-sliders-h"></i>';
+    let timelineAutoHideTimer = null;
+
+    function hideFullscreenTimeline() {
+        overlay.classList.remove('is-timeline-visible');
+        if (timelineAutoHideTimer) {
+            clearTimeout(timelineAutoHideTimer);
+            timelineAutoHideTimer = null;
+        }
+    }
+
+    function showFullscreenTimeline() {
+        overlay.classList.add('is-timeline-visible');
+        if (timelineAutoHideTimer) clearTimeout(timelineAutoHideTimer);
+        timelineAutoHideTimer = setTimeout(hideFullscreenTimeline, 4000);
+    }
+
+    // Like YouTube: tap anywhere on the fullscreen video to reveal the timeline.
+    // A second tap hides it; otherwise it auto-hides after four seconds.
+    fullscreenTapSurface.addEventListener('click', () => {
+        if (overlay.classList.contains('is-timeline-visible')) hideFullscreenTimeline();
+        else showFullscreenTimeline();
     });
 
     fullscreenTimeline.addEventListener('pointerdown', () => { isFullscreenSeeking = true; });
@@ -1199,6 +1212,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         const duration = player && player.getDuration ? player.getDuration() : 0;
         if (duration > 0) player.seekTo((Number(fullscreenTimeline.value) / 1000) * duration, true);
         isFullscreenSeeking = false;
+        if (overlay.classList.contains('is-fullscreen')) showFullscreenTimeline();
         setTimeout(updatePlaybackControls, 250);
     };
     fullscreenTimeline.addEventListener('change', finishFullscreenSeek);
