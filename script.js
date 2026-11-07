@@ -832,7 +832,9 @@ window.openPDFViewer = function (pdfUrl, title) {
                 #yt-overlay-player .yt-video-wrap { width: min(100%, calc((100dvh - 105px) * 1.7777778)); }
                 #yt-overlay-player .yt-progress-info { padding: 0.2rem 0.6rem; }
                 #yt-overlay-player .yt-control-panel { padding: 0.2rem 0.5rem; }
-                #yt-overlay-player .yt-secondary-controls { display: none; }
+                #yt-overlay-player .yt-secondary-controls { display: flex; gap: 0.25rem; padding-top: 0.2rem; }
+                #yt-overlay-player .yt-control-btn { min-height: 28px; padding: 0.2rem 0.4rem; }
+                #yt-overlay-player .yt-control-btn span { display: inline; }
                 #yt-overlay-player .yt-hint { display: none; }
             }
         `;
