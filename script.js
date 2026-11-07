@@ -830,7 +830,9 @@ window.openPDFViewer = function (pdfUrl, title) {
                 #yt-overlay-player .yt-toolbar { padding: 0.25rem 0.6rem; }
                 #yt-overlay-player .yt-btn { width: 30px; height: 30px; }
                 #yt-overlay-player .yt-video-wrap { width: min(100%, calc((100dvh - 105px) * 1.7777778)); }
-                #yt-overlay-player .yt-progress-info { padding: 0.25rem 0.7rem; }
+                #yt-overlay-player .yt-progress-info { padding: 0.2rem 0.6rem; }
+                #yt-overlay-player .yt-control-panel { padding: 0.2rem 0.5rem; }
+                #yt-overlay-player .yt-secondary-controls { display: none; }
                 #yt-overlay-player .yt-hint { display: none; }
             }
         `;
@@ -898,11 +900,21 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             @keyframes ytFadeIn { from { opacity: 0; } to { opacity: 1; } }
             body.yt-overlay-open { overflow: hidden !important; }
             #yt-overlay-player { position: fixed; inset: 0; height: 100vh; height: 100dvh; box-sizing: border-box; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); background: #000; z-index: 999999; display: flex; flex-direction: column; animation: ytFadeIn 0.25s ease; }
-            #yt-overlay-player .yt-toolbar { background: #1a1a1a; padding: 0.6rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2a; flex-shrink: 0; gap: 0.75rem; }
+            #yt-overlay-player .yt-toolbar { background: #151515; padding: 0.55rem 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #242424; flex-shrink: 0; gap: 0.5rem; min-height: 48px; }
             #yt-overlay-player .yt-title-wrap { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
             #yt-overlay-player .yt-title-wrap i.fa-youtube { color: #ff0000; font-size: 1.4rem; flex-shrink: 0; }
-            #yt-overlay-player .yt-title { color: #fff; font-size: 0.95rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.3; }
-            #yt-overlay-player .yt-actions { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+            #yt-overlay-player .yt-title { color: #fff; font-size: 0.88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; line-height: 1.25; }
+            #yt-overlay-player .yt-actions { display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+            #yt-overlay-player .yt-control-panel { flex-shrink: 0; background: #101010; padding: 0.45rem 0.75rem 0.55rem; border-top: 1px solid #222; }
+            #yt-overlay-player .yt-main-controls { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+            #yt-overlay-player .yt-control-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; min-width: 38px; min-height: 36px; padding: 0.35rem 0.55rem; border: 1px solid #383838; border-radius: 8px; color: #eee; background: #202020; font-size: 0.78rem; line-height: 1; text-decoration: none; cursor: pointer; white-space: nowrap; }
+            #yt-overlay-player .yt-control-btn.is-active { color: #7dd3fc; border-color: #0369a1; background: #082f49; }
+            #yt-overlay-player .yt-control-btn i { font-size: 0.9rem; }
+            #yt-overlay-player .yt-play-toggle { width: 38px; padding: 0; color: #fff; background: #b91c1c; border-color: #dc2626; }
+            #yt-overlay-player .yt-time { color: #cfcfcf; font: 500 0.72rem/1.2 system-ui,sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; }
+            #yt-overlay-player .yt-seek { flex: 1; min-width: 30px; width: 100%; accent-color: #ef4444; height: 24px; cursor: pointer; }
+            #yt-overlay-player .yt-secondary-controls { display: flex; justify-content: center; gap: 0.45rem; padding-top: 0.45rem; flex-wrap: wrap; }
+            #yt-overlay-player .yt-progress-label { color:#888; font-size:0.68rem; white-space:nowrap; }
             #yt-overlay-player .yt-btn.is-active { background:#075985; border-color:#0284c7; color:#fff; }
             #yt-overlay-player .yt-video-wrap.is-locked::after { content:'SCREEN LOCKED'; position:absolute; inset:0; z-index:5; background:transparent; }
             #yt-overlay-player .yt-video-wrap.is-locked { touch-action:none; }
@@ -924,11 +936,17 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             #yt-overlay-player .yt-hint { background: #111; color: #888; padding: 0.4rem 1rem; font-size: 0.75rem; text-align: center; border-top: 1px solid #222; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
             #yt-overlay-player .yt-hint.unlocked { background: linear-gradient(90deg, #065f46, #10b981); color: #fff; }
             @media (max-width: 480px) {
-                #yt-overlay-player .yt-title { font-size: 0.85rem; }
+                #yt-overlay-player .yt-title { font-size: 0.82rem; max-width: 78vw; }
                 #yt-overlay-player .yt-btn { width: 32px; height: 32px; font-size: 0.78rem; }
                 #yt-overlay-player .yt-actions { gap: 0.2rem; }
-                #yt-overlay-player .yt-toolbar { padding: 0.4rem 0.5rem; gap: 0.3rem; }
-                #yt-overlay-player .yt-title { max-width: 34vw; }
+                #yt-overlay-player .yt-toolbar { padding: 0.35rem 0.5rem; gap: 0.3rem; }
+                #yt-overlay-player .yt-control-panel { padding: 0.35rem 0.45rem 0.45rem; }
+                #yt-overlay-player .yt-main-controls { gap: 0.35rem; }
+                #yt-overlay-player .yt-time { font-size: 0.66rem; }
+                #yt-overlay-player .yt-secondary-controls { gap: 0.3rem; padding-top: 0.35rem; }
+                #yt-overlay-player .yt-control-btn { min-height: 32px; padding: 0.3rem 0.42rem; font-size: 0.68rem; }
+                #yt-overlay-player .yt-control-btn i { font-size: 0.78rem; }
+                #yt-overlay-player .yt-progress-label { display:none; }
                 #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
             }
             @media (orientation: landscape) and (max-height: 500px) {
@@ -951,17 +969,26 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 <h3 class="yt-title">${safeTitle}</h3>
             </div>
             <div class="yt-actions">
-                <button class="yt-btn" id="yt-auto-next" type="button" aria-pressed="true" title="Auto Next চালু"><i class="fas fa-forward-step"></i></button>
-                <button class="yt-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i></button>
-                <a class="yt-btn yt-yt-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন">
-                    <i class="fab fa-youtube"></i>
-                </a>
-                <button class="yt-btn" id="yt-overlay-close" title="বন্ধ করুন (ESC)"><i class="fas fa-times"></i></button>
+                <button class="yt-btn" id="yt-overlay-close" type="button" aria-label="Close player" title="বন্ধ করুন"><i class="fas fa-times"></i></button>
             </div>
         </div>
         <div class="yt-video-wrap"><div id="yt-player-container"></div></div>
+        <div class="yt-control-panel" aria-label="Video controls">
+            <div class="yt-main-controls">
+                <button class="yt-control-btn yt-play-toggle" id="yt-play-toggle" type="button" aria-label="Play" title="Play"><i class="fas fa-play"></i></button>
+                <span class="yt-time" id="yt-current-time">0:00</span>
+                <input class="yt-seek" id="yt-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Seek video">
+                <span class="yt-time" id="yt-duration">0:00</span>
+            </div>
+            <div class="yt-secondary-controls">
+                <button class="yt-control-btn" id="yt-auto-next" type="button" aria-pressed="true" title="Auto Next চালু"><i class="fas fa-forward-step"></i><span>Auto Next</span></button>
+                <button class="yt-control-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i><span>Lock</span></button>
+                <button class="yt-control-btn" id="yt-mute-toggle" type="button" aria-pressed="false" title="Mute"><i class="fas fa-volume-up"></i><span>Sound</span></button>
+                <a class="yt-control-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন"><i class="fab fa-youtube"></i><span>YouTube</span></a>
+            </div>
+        </div>
         <div class="yt-progress-info">
-            <i class="fas fa-play-circle" style="color:#ef4444;"></i>
+            <span class="yt-progress-label">Course progress</span>
             <div class="yt-progress-bar-wrap"><div class="yt-progress-bar" id="yt-progress-bar"></div></div>
             <span class="yt-progress-text" id="yt-progress-text">0%</span>
         </div>
@@ -977,7 +1004,13 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const closeBtn = document.getElementById('yt-overlay-close');
     const autoNextBtn = document.getElementById('yt-auto-next');
     const screenLockBtn = document.getElementById('yt-screen-lock');
+    const playToggleBtn = document.getElementById('yt-play-toggle');
+    const muteToggleBtn = document.getElementById('yt-mute-toggle');
+    const seekInput = document.getElementById('yt-seek');
+    const currentTimeLabel = document.getElementById('yt-current-time');
+    const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
+    let isSeeking = false;
 
     const PLAYER_MEMORY_KEY = 'civil4thPlayerSettings';
     let playerMemory = {};
@@ -995,6 +1028,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         autoNextBtn.classList.toggle('is-active', autoNextEnabled);
         autoNextBtn.setAttribute('aria-pressed', String(autoNextEnabled));
         autoNextBtn.title = autoNextEnabled ? 'Auto Next চালু' : 'Auto Next বন্ধ';
+        autoNextBtn.classList.toggle('is-active', autoNextEnabled);
     }
     updateAutoNextButton();
 
@@ -1007,7 +1041,69 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             ? '<i class="fas fa-lock"></i>'
             : '<i class="fas fa-lock-open"></i>';
         screenLockBtn.title = screenLocked ? 'Screen Unlock' : 'Screen Lock';
+        const lockLabel = screenLockBtn.querySelector('span');
+        if (lockLabel) lockLabel.textContent = screenLocked ? 'Unlock' : 'Lock';
     });
+
+    function formatPlayerTime(seconds) {
+        if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+        const value = Math.floor(seconds);
+        const hours = Math.floor(value / 3600);
+        const minutes = Math.floor((value % 3600) / 60);
+        const secs = value % 60;
+        return hours ? hours + ':' + String(minutes).padStart(2, '0') + ':' + String(secs).padStart(2, '0') : minutes + ':' + String(secs).padStart(2, '0');
+    }
+
+    function updatePlaybackControls() {
+        if (!player || !player.getPlayerState) return;
+        const state = player.getPlayerState();
+        const playing = state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING;
+        playToggleBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        playToggleBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+        playToggleBtn.title = playing ? 'Pause' : 'Play';
+        try {
+            const duration = player.getDuration() || 0;
+            const current = player.getCurrentTime() || 0;
+            durationLabel.textContent = formatPlayerTime(duration);
+            currentTimeLabel.textContent = formatPlayerTime(current);
+            if (!isSeeking && duration > 0) seekInput.value = String(Math.round((current / duration) * 1000));
+        } catch (_) {}
+        const muted = player.isMuted && player.isMuted();
+        muteToggleBtn.innerHTML = muted ? '<i class="fas fa-volume-mute"></i><span>Muted</span>' : '<i class="fas fa-volume-up"></i><span>Sound</span>';
+        muteToggleBtn.setAttribute('aria-pressed', String(!!muted));
+        muteToggleBtn.classList.toggle('is-active', !!muted);
+    }
+
+    playToggleBtn.addEventListener('click', () => {
+        if (!player) return;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) player.pauseVideo();
+        else player.playVideo();
+        setTimeout(updatePlaybackControls, 100);
+    });
+
+    muteToggleBtn.addEventListener('click', () => {
+        if (!player) return;
+        if (player.isMuted()) player.unMute();
+        else player.mute();
+        updatePlaybackControls();
+    });
+
+    seekInput.addEventListener('pointerdown', () => { isSeeking = true; });
+    seekInput.addEventListener('input', () => {
+        const duration = player && player.getDuration ? player.getDuration() : 0;
+        if (duration > 0) currentTimeLabel.textContent = formatPlayerTime((Number(seekInput.value) / 1000) * duration);
+    });
+    const finishSeek = () => {
+        if (!isSeeking) return;
+        const duration = player && player.getDuration ? player.getDuration() : 0;
+        if (duration > 0) player.seekTo((Number(seekInput.value) / 1000) * duration, true);
+        isSeeking = false;
+        setTimeout(updatePlaybackControls, 250);
+    };
+    seekInput.addEventListener('change', finishSeek);
+    seekInput.addEventListener('pointerup', finishSeek);
+    seekInput.addEventListener('pointercancel', finishSeek);
 
     autoNextBtn.addEventListener('click', () => {
         autoNextEnabled = !autoNextEnabled;
@@ -1028,7 +1124,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         videoId: videoId,
         width: '100%',
         height: '100%',
-        playerVars: { autoplay: 0, rel: 0, modestbranding: 1, playsinline: 1, fs: 1 },
+        playerVars: { autoplay: 0, controls: 0, disablekb: 1, rel: 0, modestbranding: 1, playsinline: 1, fs: 0, iv_load_policy: 3 },
         events: {
             onReady: onPlayerReady,
             onStateChange: onPlayerStateChange,
@@ -1044,11 +1140,14 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         }
         // Already completed? reflect in hint UI
         if (itemId && completedItems[itemId]) updateHintUI();
+        durationLabel.textContent = formatPlayerTime(event.target.getDuration() || 0);
+        updatePlaybackControls();
         event.target.playVideo();
         startProgressTracking();
     }
 
     function onPlayerStateChange(event) {
+        updatePlaybackControls();
         if (event.data === YT.PlayerState.PLAYING) {
             startProgressTracking();
         } else if (event.data === YT.PlayerState.PAUSED) {
@@ -1083,7 +1182,10 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
     function startProgressTracking() {
         if (progressCheckInterval) return;
-        progressCheckInterval = setInterval(() => checkAndMarkCompletion(false), 1000);
+        progressCheckInterval = setInterval(() => {
+            checkAndMarkCompletion(false);
+            updatePlaybackControls();
+        }, 1000);
     }
 
     function stopProgressTracking() {
