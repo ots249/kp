@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="72" fill="#fff"/>
+<path d="M72 190 Q122 160 190 164 L374 157 Q390 159 389 179 L403 206 Q418 218 409 237 L420 274 Q416 292 395 294 L384 330 Q368 346 344 336 L280 358 L221 344 L161 355 Q141 350 134 331 L95 336 Q75 330 79 306 L62 267 Q58 248 76 237Z" fill="#ff3038"/>
+<path d="M300 75 Q316 58 331 75 Q337 84 331 108 L290 222 L269 215 L284 112Z" fill="#0752b8" stroke="#111" stroke-width="8" stroke-linejoin="round"/>
+<path d="M269 215 L290 222 L244 357 Q237 376 225 382 Q220 364 226 345Z" fill="#0752b8" stroke="#111" stroke-width="8" stroke-linejoin="round"/>
+<path d="M270 215 Q282 207 296 218 L291 232 Q279 239 265 229Z" fill="#ffe36b" stroke="#111" stroke-width="6"/>
+<path d="M227 375 L244 357 L234 388 Q228 398 221 398Z" fill="#aaa" stroke="#111" stroke-width="5"/>
+<path d="M328 232 C365 226 410 229 444 230 M325 245 C370 250 430 253 445 265 C457 279 401 286 346 291 C320 293 338 310 377 321 C409 331 409 340 374 344 L243 356" fill="none" stroke="#292929" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="256" y="444" text-anchor="middle" font-family="Impact,'Arial Narrow',sans-serif" font-size="55" font-weight="900" letter-spacing="-1.8" fill="#101114">DIPLOMA TUTOR</text>
+</svg>
