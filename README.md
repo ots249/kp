@@ -109,14 +109,19 @@ cd kp
 
 ## PWA ও offline behavior
 
-- `manifest.json` app name, icons, theme color, standalone display ও reset shortcut নির্ধারণ করে।
-- `sw.js` install-এর সময় static assets cache করে।
-- Static resource-এর strategy হলো cache-first, cache miss হলে network fallback।
-- Service Worker SheetAPI249 course API এবং YouTube Data API request cache করার চেষ্টা করে। SheetAPI249 response আগে cache না থাকলে offline API fallback পাওয়া যাবে না।
-- YouTube player/embed network-dependent; offline অবস্থায় ভিডিও playback নিশ্চিত নয়।
-- Push event handler আছে, তবে push subscription, permission flow এবং server-side push sender আলাদাভাবে configure না করলে notification নিজে থেকে পাঠানো হবে না।
+- `manifest.json` app name, scalable same-origin SVG icon, theme color, standalone display ও reset shortcut নির্ধারণ করে।
+- `sw.js` app shell, offline page, CSS/JS, icons এবং নির্বাচিত external fonts/images cache করে।
+- Navigation এবং same-origin static assets network-first; network ব্যর্থ হলে cached copy দেওয়া হয়।
+- SheetAPI249 ও YouTube Data API GET response Service Worker Cache API-তে network-first হিসেবে cache হয়।
+- Course API request ব্যর্থ হলে `script.js` সর্বশেষ সফল course rows `localStorage`-এ সংরক্ষণ করে এবং offline-এ সেই data দেখায়। Progress ও settings আলাদা key-তে থাকে।
+- Offline অবস্থায় আগে খোলা app shell এবং আগে সফলভাবে লোড করা course list ব্যবহার করা যায়। প্রথমবারের load-এর আগে cache না থাকলে course data পাওয়া যাবে না।
+- YouTube player/embed এবং live video network-dependent; offline playback নিশ্চিত নয়। PDF-এর external source-ও offline নাও চলতে পারে।
+- Install button Android/Desktop-এর native prompt থাকলে সেটি ব্যবহার করে; iOS ও অন্যান্য browser-এ manual install guide দেখায়।
+- নতুন Service Worker প্রস্তুত হলে in-app update banner আসে। ব্যবহারকারী Update চাপলে নতুন version activate হয়ে page reload হয়।
+- Network status indicator offline অবস্থা দেখায়। Cache পরিষ্কার button শুধু temporary/API/course cache মুছে; progress ও theme preference অক্ষত রাখে।
+- Push handler আছে, তবে push subscription এবং server-side push sender configure না করলে notification নিজে থেকে পাঠানো হবে না।
 
-Service Worker cache পরিবর্তন করলে `CACHE_NAME` এবং API cache strategy review করুন। পুরোনো cache version বদলালে activation-এ পুরোনো cache মুছে যাবে।
+নতুন deploy-এ `CACHE_NAME`, `API_CACHE_NAME` এবং `RUNTIME_CACHE_NAME` version review করুন। Cache version bump করলে পুরোনো app-shell cache activation-এর সময় মুছে যাবে।
 
 ## Progress ও video tracking
 
