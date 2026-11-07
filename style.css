@@ -1629,6 +1629,44 @@ body.dark-mode .theme-toggle-btn {
     cursor: pointer;
 }
 #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
+#yt-overlay-player .yt-fs-controls {
+    display: none;
+    position: absolute;
+    z-index: 22;
+    left: 0;
+    right: 0;
+    bottom: max(58px, calc(env(safe-area-inset-bottom) + 48px));
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    pointer-events: none;
+}
+#yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-controls { display: flex; }
+#yt-overlay-player .yt-fs-control-btn {
+    pointer-events: auto;
+    position: relative;
+    width: 54px;
+    height: 54px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 50%;
+    background: rgba(15,15,15,.78);
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+#yt-overlay-player .yt-fs-control-btn span {
+    font-size: 10px;
+    font-weight: 700;
+    position: absolute;
+    top: 17px;
+    right: 11px;
+}
+#yt-overlay-player .yt-fs-play-btn { width: 62px; height: 62px; font-size: 24px; }
 #yt-overlay-player .yt-fs-tap-surface {
     display: none;
     position: absolute;
