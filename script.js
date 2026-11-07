@@ -873,7 +873,14 @@ window.openPDFViewer = function (pdfUrl, title) {
             }, 140);
         }
     }
-    function onKeydown(e) { if (e.key === 'Escape') closeOverlay(); }
+    function onKeydown(e) {
+        if (e.key === 'Escape' && document.fullscreenElement === overlay) {
+            e.preventDefault();
+            document.exitFullscreen().catch(() => {});
+            return;
+        }
+        if (e.key === 'Escape') closeOverlay();
+    }
 
     document.getElementById('pdf-overlay-close').addEventListener('click', closeOverlay);
     document.addEventListener('keydown', onKeydown);
@@ -986,6 +993,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 <button class="yt-control-btn" id="yt-auto-next" type="button" aria-pressed="true" title="Auto Next চালু"><i class="fas fa-forward-step"></i><span>Auto Next</span></button>
                 <button class="yt-control-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i><span>Lock</span></button>
                 <button class="yt-control-btn" id="yt-mute-toggle" type="button" aria-pressed="false" title="Mute"><i class="fas fa-volume-up"></i><span>Sound</span></button>
+                <button class="yt-control-btn" id="yt-fullscreen-toggle" type="button" aria-pressed="false" title="Fullscreen" aria-label="Enter fullscreen"><i class="fas fa-expand"></i><span>Fullscreen</span></button>
                 <a class="yt-control-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন"><i class="fab fa-youtube"></i><span>YouTube</span></a>
             </div>
         </div>
@@ -1008,6 +1016,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const screenLockBtn = document.getElementById('yt-screen-lock');
     const playToggleBtn = document.getElementById('yt-play-toggle');
     const muteToggleBtn = document.getElementById('yt-mute-toggle');
+    const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
     const seekInput = document.getElementById('yt-seek');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
@@ -1090,6 +1099,38 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         else player.mute();
         updatePlaybackControls();
     });
+
+    function updateFullscreenButton() {
+        const active = !!document.fullscreenElement;
+        fullscreenToggleBtn.innerHTML = active
+            ? '<i class="fas fa-compress"></i><span>Exit</span>'
+            : '<i class="fas fa-expand"></i><span>Fullscreen</span>';
+        fullscreenToggleBtn.setAttribute('aria-pressed', String(active));
+        fullscreenToggleBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+        fullscreenToggleBtn.title = active ? 'Exit fullscreen' : 'Fullscreen';
+    }
+
+    fullscreenToggleBtn.addEventListener('click', async () => {
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else if (overlay.requestFullscreen) {
+                await overlay.requestFullscreen();
+                // Orientation lock is optional; unsupported browsers simply stay in fullscreen.
+                if (screen.orientation && screen.orientation.lock) {
+                    try { await screen.orientation.lock('landscape'); } catch (_) {}
+                }
+            } else {
+                showNotification('এই ব্রাউজারে Fullscreen সমর্থিত নয়', 'warning');
+            }
+        } catch (error) {
+            console.warn('Fullscreen request failed:', error);
+            showNotification('Fullscreen চালু করা যায়নি। Chrome-এর অনুমতি পরীক্ষা করুন।', 'warning');
+        }
+        updateFullscreenButton();
+    });
+
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
 
     seekInput.addEventListener('pointerdown', () => { isSeeking = true; });
     seekInput.addEventListener('input', () => {
@@ -1257,6 +1298,13 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
         stopProgressTracking();
         document.removeEventListener('keydown', onKeydown);
+        document.removeEventListener('fullscreenchange', updateFullscreenButton);
+        if (document.fullscreenElement === overlay && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        }
+        if (screen.orientation && screen.orientation.unlock) {
+            try { screen.orientation.unlock(); } catch (_) {}
+        }
 
         if (player && player.destroy) {
             try { player.destroy(); } catch (e) { /* ignore */ }
