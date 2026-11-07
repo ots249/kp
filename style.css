@@ -1629,25 +1629,16 @@ body.dark-mode .theme-toggle-btn {
     cursor: pointer;
 }
 #yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline { display: block; }
-#yt-overlay-player .yt-fs-timeline-toggle {
+#yt-overlay-player .yt-fs-tap-surface {
     display: none;
     position: absolute;
-    z-index: 22;
-    left: max(16px, env(safe-area-inset-left));
-    bottom: max(16px, env(safe-area-inset-bottom));
-    width: 46px;
-    height: 46px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #555;
-    border-radius: 50%;
-    background: rgba(20,20,20,.82);
-    color: #fff;
-    font-size: 1rem;
-    cursor: pointer;
+    inset: 0;
+    z-index: 10;
+    background: transparent;
+    cursor: default;
+    touch-action: manipulation;
 }
-#yt-overlay-player.is-fullscreen .yt-fs-timeline-toggle { display: flex; }
-#yt-overlay-player.is-fullscreen.is-timeline-visible .yt-fs-timeline-toggle { background: rgba(185,28,28,.9); }
+#yt-overlay-player.is-fullscreen .yt-fs-tap-surface { display: block; }
 
 /* ✅ Fullscreen-এ iframe-এর নিজের element — YouTube handle করে */
 #yt-overlay-player iframe {
