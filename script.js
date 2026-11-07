@@ -252,6 +252,16 @@ async function fetchClassesWithFallback() {
                 throw new Error('JSON পাওয়া গেছে, কিন্তু usable rows Array খালি বা অনুপস্থিত');
             }
 
+            // Save the last successful course response for offline startup.
+            try {
+                localStorage.setItem('civil4th_course_cache_v1', JSON.stringify({
+                    savedAt: new Date().toISOString(),
+                    rows: classes
+                }));
+            } catch (cacheError) {
+                console.warn('[Course API] Local course cache could not be saved:', cacheError);
+            }
+
             const invalidRows = classes.filter(row =>
                 !row || typeof row !== 'object' || Array.isArray(row)
             ).length;
@@ -321,6 +331,22 @@ async function fetchClassesWithFallback() {
 
     console.error('[Course API] সব API ব্যর্থ — সারাংশ:');
     console.table(apiDiagnostics);
+
+    // Use the last successful payload if the API cannot be reached.
+    try {
+        const cachedCourse = JSON.parse(localStorage.getItem('civil4th_course_cache_v1') || 'null');
+        if (cachedCourse && Array.isArray(cachedCourse.rows) && cachedCourse.rows.length > 0) {
+            const savedLabel = cachedCourse.savedAt
+                ? new Date(cachedCourse.savedAt).toLocaleString('bn-BD')
+                : 'আগে';
+            console.warn('[Course API] Network unavailable; serving saved course data.');
+            showNotification(`অফলাইন কপি দেখানো হচ্ছে • সর্বশেষ আপডেট: ${savedLabel}`, 'info');
+            return cachedCourse.rows;
+        }
+    } catch (cacheError) {
+        console.warn('[Course API] Saved offline course data could not be read:', cacheError);
+    }
+
     throw lastError || new Error('সব API ব্যর্থ হয়েছে');
 }
 
@@ -1944,17 +1970,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => n.remove(), 2000);
     }
 
-    // PWA Install — attach click listener once
-    const installButton = document.getElementById('install-button');
-    if (installButton) {
-        installButton.addEventListener('click', async () => {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
-            await deferredPrompt.userChoice;
-            deferredPrompt = null;
-            installButton.style.display = 'none';
-        });
-    }
 });
 
 // System theme change (user manually theme na bachle)
@@ -1969,17 +1984,204 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
 });
 
 // ============================================================
-// PWA Install
+// PWA Full Upgrade — install guide, update lifecycle, network
+// status and temporary cache management.
 // ============================================================
 let deferredPrompt = null;
 
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installButton = document.getElementById('install-button');
-    if (installButton) installButton.style.display = 'inline-flex';
-});
+function isRunningAsInstalledApp() {
+    return window.matchMedia('(display-mode: standalone)').matches ||
+        window.matchMedia('(display-mode: fullscreen)').matches ||
+        window.navigator.standalone === true;
+}
 
-window.addEventListener('appinstalled', () => {
-    showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
+function isAppleMobileDevice() {
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function refreshInstallButton() {
+    const button = document.getElementById('install-button');
+    if (!button) return;
+    if (isRunningAsInstalledApp()) {
+        button.style.display = 'none';
+        return;
+    }
+    button.style.display = 'inline-flex';
+    button.innerHTML = deferredPrompt
+        ? '<i class="fas fa-download"></i> অ্যাপ ইন্সটল করুন'
+        : '<i class="fas fa-mobile-alt"></i> Install Guide';
+}
+
+function closePwaInstallGuide() {
+    const dialog = document.getElementById('pwa-install-guide');
+    if (dialog) dialog.remove();
+}
+
+function showPwaInstallGuide() {
+    closePwaInstallGuide();
+    const ios = isAppleMobileDevice();
+    const android = /Android/i.test(navigator.userAgent);
+    let steps;
+    if (ios) {
+        steps = '<ol><li>Safari-তে ওয়েবসাইটটি খুলুন।</li><li>Share আইকনে চাপ দিন।</li><li>Add to Home Screen নির্বাচন করুন।</li><li>Add চাপ দিয়ে ইনস্টল সম্পন্ন করুন।</li></ol>';
+    } else if (android) {
+        steps = '<ol><li>Chrome বা Edge-এ ওয়েবসাইটটি খুলুন।</li><li>ব্রাউজারের ⋮ Menu খুলুন।</li><li>Install app অথবা Add to Home screen নির্বাচন করুন।</li><li>Confirm করে Home Screen-এ যোগ করুন।</li></ol>';
+    } else {
+        steps = '<ol><li>Chrome বা Edge ব্যবহার করুন।</li><li>Address bar-এর Install আইকন অথবা ব্রাউজারের Menu খুলুন।</li><li>Install Civil 4th Semester নির্বাচন করুন।</li></ol>';
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'pwa-install-guide';
+    overlay.className = 'pwa-guide-overlay';
+    overlay.innerHTML = `
+        <section class="pwa-guide-dialog" role="dialog" aria-modal="true" aria-labelledby="pwa-guide-title">
+            <button class="pwa-guide-close" type="button" aria-label="বন্ধ করুন">×</button>
+            <div class="pwa-guide-icon"><i class="fas fa-mobile-alt"></i></div>
+            <h2 id="pwa-guide-title">Civil 4th Semester Install</h2>
+            <p>${ios ? 'iPhone বা iPad' : android ? 'Android' : 'আপনার কম্পিউটার'}-এ অ্যাপ হিসেবে ব্যবহার করতে নিচের ধাপগুলো অনুসরণ করুন।</p>
+            ${steps}
+            <p class="pwa-guide-note">ইনস্টল করার জন্য Internet এবং HTTPS সংযোগ প্রয়োজন।</p>
+            <button class="pwa-guide-done" type="button">ঠিক আছে</button>
+        </section>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', event => {
+        if (event.target === overlay || event.target.closest('.pwa-guide-close, .pwa-guide-done')) {
+            closePwaInstallGuide();
+        }
+    });
+    overlay.querySelector('.pwa-guide-done').focus();
+}
+
+async function handlePwaInstallClick() {
+    if (isRunningAsInstalledApp()) {
+        showNotification('অ্যাপটি ইতোমধ্যে ইন্সটল করা আছে।', 'info');
+        return;
+    }
+    if (deferredPrompt) {
+        const promptEvent = deferredPrompt;
+        deferredPrompt = null;
+        try {
+            await promptEvent.prompt();
+            const choice = await promptEvent.userChoice;
+            if (choice && choice.outcome === 'accepted') {
+                showNotification('ইন্সটল শুরু হয়েছে।', 'success');
+            }
+        } catch (error) {
+            console.warn('[PWA] Install prompt failed:', error);
+            showPwaInstallGuide();
+        }
+        refreshInstallButton();
+        return;
+    }
+    showPwaInstallGuide();
+}
+
+function setupPwaInstall() {
+    const button = document.getElementById('install-button');
+    if (button) button.addEventListener('click', handlePwaInstallClick);
+    window.addEventListener('beforeinstallprompt', event => {
+        event.preventDefault();
+        deferredPrompt = event;
+        refreshInstallButton();
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        refreshInstallButton();
+        showNotification('অ্যাপ সফলভাবে ইন্সটল হয়েছে! 🎉', 'success');
+    });
+    refreshInstallButton();
+}
+
+function setupPwaNetworkStatus() {
+    const indicator = document.getElementById('pwa-network-status');
+    const update = () => {
+        if (indicator) indicator.hidden = navigator.onLine;
+        document.documentElement.classList.toggle('is-offline', !navigator.onLine);
+    };
+    update();
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+}
+
+function showPwaUpdateBanner(registration) {
+    const banner = document.getElementById('pwa-update-banner');
+    if (!banner) return;
+    banner.hidden = false;
+    const apply = document.getElementById('pwa-update-apply');
+    const dismiss = document.getElementById('pwa-update-dismiss');
+    if (apply && !apply.dataset.bound) {
+        apply.dataset.bound = 'true';
+        apply.addEventListener('click', () => {
+            if (!registration.waiting) return;
+            apply.disabled = true;
+            apply.textContent = 'আপডেট হচ্ছে…';
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        });
+    }
+    if (dismiss && !dismiss.dataset.bound) {
+        dismiss.dataset.bound = 'true';
+        dismiss.addEventListener('click', () => { banner.hidden = true; });
+    }
+}
+
+async function setupPwaUpdates() {
+    if (!('serviceWorker' in navigator)) return;
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+    });
+    try {
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none'
+        });
+        if (registration.waiting && navigator.serviceWorker.controller) {
+            showPwaUpdateBanner(registration);
+        }
+        registration.addEventListener('updatefound', () => {
+            const worker = registration.installing;
+            if (!worker) return;
+            worker.addEventListener('statechange', () => {
+                if (worker.state === 'installed' &&
+                    navigator.serviceWorker.controller &&
+                    registration.waiting) {
+                    showPwaUpdateBanner(registration);
+                }
+            });
+        });
+        registration.update().catch(error => {
+            console.info('[PWA] Update check skipped:', error.message);
+        });
+        console.info('[PWA] Service Worker ready:', registration.scope);
+    } catch (error) {
+        console.error('[PWA] Service Worker registration failed:', error);
+    }
+}
+
+async function clearPwaTemporaryCache() {
+    if (!window.confirm('সেভ করা Course Data ও অস্থায়ী API Cache মুছবেন? আপনার Progress ও Settings মুছবে না।')) return;
+    try {
+        localStorage.removeItem('civil4th_course_cache_v1');
+        if ('caches' in window) {
+            const names = await caches.keys();
+            await Promise.all(names
+                .filter(name => /civil-4th-(api|runtime)-/i.test(name))
+                .map(name => caches.delete(name)));
+        }
+        showNotification('অস্থায়ী Cache পরিষ্কার হয়েছে। পরেরবার Online হলে Course Data আবার লোড হবে।', 'success');
+    } catch (error) {
+        console.error('[PWA] Cache cleanup failed:', error);
+        showNotification('Cache পরিষ্কার করা যায়নি।', 'error');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupPwaInstall();
+    setupPwaNetworkStatus();
+    const cacheButton = document.getElementById('pwa-cache-clear');
+    if (cacheButton) cacheButton.addEventListener('click', clearPwaTemporaryCache);
+    setupPwaUpdates();
 });
