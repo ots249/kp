@@ -126,6 +126,7 @@ self.addEventListener('fetch', event => {
     }
     if (request.destination === 'script' || request.destination === 'style' ||
         request.destination === 'font' || request.destination === 'image' ||
+        request.destination === 'worker' ||
         ['.css', '.js', '.mjs', '.json', '.svg', '.png', '.webp', '.woff', '.woff2']
             .some(extension => url.pathname.toLowerCase().endsWith(extension))) {
         event.respondWith(networkFirst(request, CACHE_NAME));
