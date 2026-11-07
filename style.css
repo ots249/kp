@@ -2045,3 +2045,5 @@ body.dark-mode .pwa-guide-dialog{background:#172033;color:#f8fafc;border-color:#
 .pwa-guide-done{width:100%;min-height:44px;border:0;border-radius:11px;background:var(--primary,#2563eb);color:#fff;font-size:14px;font-weight:700;cursor:pointer}
 .pwa-cache-btn{background:#64748b;color:#fff}
 @media(max-width:420px){.pwa-update-banner{gap:6px;padding:9px;font-size:11px}.pwa-update-banner button{padding:7px 8px;font-size:11px}}
+
+#push-notification-toggle{background:#0f766e;color:#fff;border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}#push-notification-toggle:disabled{opacity:.55}
