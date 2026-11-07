@@ -53,7 +53,11 @@ async function networkFirst(request, cacheName, fallbackUrls = []) {
     try {
         const response = await fetch(request);
         if (response && (response.ok || response.type === 'opaque')) {
-            await cache.put(request, response.clone());
+            try {
+                await cache.put(request, response.clone());
+            } catch (cacheError) {
+                console.warn('[SW] Response cache write skipped:', cacheError.message);
+            }
         }
         return response;
     } catch (error) {
@@ -72,8 +76,12 @@ async function cacheFirst(request, cacheName) {
     if (cached) return cached;
     const response = await fetch(request);
     if (response && (response.ok || response.type === 'opaque')) {
-        const cache = await caches.open(cacheName);
-        await cache.put(request, response.clone());
+        try {
+            const cache = await caches.open(cacheName);
+            await cache.put(request, response.clone());
+        } catch (cacheError) {
+            console.warn('[SW] Runtime asset cache write skipped:', cacheError.message);
+        }
     }
     return response;
 }
