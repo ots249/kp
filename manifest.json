@@ -22,15 +22,9 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "https://i.postimg.cc/7YKJhGyY/logo.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "https://i.postimg.cc/7YKJhGyY/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "/icons/diploma-tutor-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
@@ -48,9 +42,9 @@
       "url": "/?reset=true",
       "icons": [
         {
-          "src": "https://i.postimg.cc/7YKJhGyY/logo.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "/icons/diploma-tutor-logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     }
