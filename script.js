@@ -1019,10 +1019,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 background: #292929; color: #fff; font-size: 13px;
             }
             #yt-overlay-player .yt-fs-speed-feedback {
-                display: none; position: absolute; z-index: 24; left: 50%; top: 50%;
-                transform: translate(-50%, -50%); padding: 12px 18px; border-radius: 24px;
-                background: rgba(0,0,0,.7); color: #fff; font-size: 20px; font-weight: 700;
-                pointer-events: none;
+                display: none; position: absolute; z-index: 34; left: 50%;
+                top: max(18px, calc(env(safe-area-inset-top) + 12px));
+                transform: translateX(-50%); padding: 6px 11px; border-radius: 16px;
+                background: rgba(0,0,0,.72); color: #fff; font-size: 13px; line-height: 1.2;
+                font-weight: 600; pointer-events: none;
             }
             #yt-overlay-player.is-fullscreen.is-boosting .yt-fs-speed-feedback { display: block; }
             #yt-overlay-player .yt-fs-timeline {
@@ -1068,7 +1069,8 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         <div class="yt-fs-settings-menu" id="yt-fs-settings-menu" role="dialog" aria-label="Playback settings">
             <div class="yt-fs-settings-title">Playback settings</div>
             <label class="yt-fs-setting-row"><span><i class="fas fa-tachometer-alt"></i> Playback speed</span><select id="yt-fs-speed"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>Normal (1x)</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="1.75">1.75x</option><option value="2">2x</option></select></label>
-            <label class="yt-fs-setting-row"><span><i class="fas fa-tv"></i> Video quality</span><select id="yt-fs-quality"><option value="default">Auto</option></select></label>
+            <div class="yt-fs-setting-row yt-fs-quality-row"><span><i class="fas fa-tv"></i> Video quality</span><strong>Auto</strong></div>
+            <p class="yt-fs-quality-note">YouTube automatically adjusts video quality based on your connection and device.</p>
         </div>
         <div class="yt-fs-speed-feedback" id="yt-fs-speed-feedback">2× speed</div>
         <div class="yt-fs-tap-surface" id="yt-fs-tap-surface" aria-hidden="true"></div>
@@ -1128,7 +1130,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const fullscreenSettingsBtn = document.getElementById('yt-fs-settings-btn');
     const fullscreenSettingsMenu = document.getElementById('yt-fs-settings-menu');
     const fullscreenSpeedSelect = document.getElementById('yt-fs-speed');
-    const fullscreenQualitySelect = document.getElementById('yt-fs-quality');
     const fullscreenSpeedFeedback = document.getElementById('yt-fs-speed-feedback');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
@@ -1142,7 +1143,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const savedAutoNext = playerMemory.autoNext !== false;
     let autoNextEnabled = savedAutoNext;
     let selectedPlaybackRate = Number(playerMemory.playbackRate) || 1;
-    let selectedVideoQuality = playerMemory.videoQuality || 'default';
     let longPressTimer = null;
     let longPressTriggered = false;
     let previousPlaybackRate = 1;
@@ -1238,18 +1238,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         if (persist) savePlayerMemory({ playbackRate: selectedPlaybackRate });
     }
 
-    function refreshQualityOptions() {
-        const current = selectedVideoQuality;
-        let levels = [];
-        try { levels = player && player.getAvailableQualityLevels ? player.getAvailableQualityLevels() : []; } catch (_) {}
-        const labels = { highres: 'High resolution', hd2160: '2160p', hd1440: '1440p', hd1080: '1080p', hd720: '720p', large: '480p', medium: '360p', small: '240p', tiny: '144p' };
-        const qualityValues = ['default', ...levels.filter(level => level !== 'auto' && level !== 'default')];
-        if (qualityValues.length === 1) qualityValues.push('hd1080', 'hd720', 'large', 'medium', 'small');
-        fullscreenQualitySelect.innerHTML = qualityValues.map(level =>
-            '<option value="' + level + '">' + (level === 'default' ? 'Auto' : (labels[level] || level)) + '</option>'
-        ).join('');
-        fullscreenQualitySelect.value = qualityValues.includes(current) ? current : 'default';
-    }
 
     fullscreenSettingsBtn.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -1263,22 +1251,12 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                     });
                 }
             } catch (_) {}
-            refreshQualityOptions();
             showFullscreenTimeline();
         }
     });
 
     fullscreenSpeedSelect.addEventListener('change', () => {
         applyPlaybackRate(fullscreenSpeedSelect.value);
-        showFullscreenTimeline();
-    });
-
-    fullscreenQualitySelect.addEventListener('change', () => {
-        selectedVideoQuality = fullscreenQualitySelect.value;
-        if (player && player.setPlaybackQuality) {
-            try { player.setPlaybackQuality(selectedVideoQuality); } catch (error) { console.warn('Quality change unavailable:', error); }
-        }
-        savePlayerMemory({ videoQuality: selectedVideoQuality });
         showFullscreenTimeline();
     });
 
@@ -1398,7 +1376,8 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         lastTapAt = now;
         lastTapSide = side;
         tapTimer = setTimeout(() => {
-            showFullscreenTimeline();
+            if (overlay.classList.contains('is-timeline-visible')) hideFullscreenTimeline();
+            else showFullscreenTimeline();
             lastTapAt = 0;
             lastTapSide = '';
         }, 300);
@@ -1483,10 +1462,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         if (itemId && completedItems[itemId]) updateHintUI();
         durationLabel.textContent = formatPlayerTime(event.target.getDuration() || 0);
         applyPlaybackRate(selectedPlaybackRate, false);
-        refreshQualityOptions();
-        if (selectedVideoQuality !== 'default' && event.target.setPlaybackQuality) {
-            try { event.target.setPlaybackQuality(selectedVideoQuality); } catch (_) {}
-        }
         updatePlaybackControls();
         event.target.playVideo();
         startProgressTracking();
