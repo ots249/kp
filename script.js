@@ -994,7 +994,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 <button class="yt-control-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i><span>Lock</span></button>
                 <button class="yt-control-btn" id="yt-mute-toggle" type="button" aria-pressed="false" title="Mute"><i class="fas fa-volume-up"></i><span>Sound</span></button>
                 <button class="yt-control-btn" id="yt-fullscreen-toggle" type="button" aria-pressed="false" title="Fullscreen" aria-label="Enter fullscreen"><i class="fas fa-expand"></i><span>Fullscreen</span></button>
-                <button class="yt-control-btn" id="yt-pip-toggle" type="button" title="Picture-in-Picture" aria-label="Picture in Picture"><i class="fas fa-clone"></i><span>PiP</span></button>
                 <a class="yt-control-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন"><i class="fab fa-youtube"></i><span>YouTube</span></a>
             </div>
         </div>
@@ -1018,7 +1017,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const playToggleBtn = document.getElementById('yt-play-toggle');
     const muteToggleBtn = document.getElementById('yt-mute-toggle');
     const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
-    const pipToggleBtn = document.getElementById('yt-pip-toggle');
     const seekInput = document.getElementById('yt-seek');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
@@ -1134,28 +1132,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
     document.addEventListener('fullscreenchange', updateFullscreenButton);
 
-    pipToggleBtn.addEventListener('click', () => {
-        // YouTube's cross-origin iframe does not expose its internal video element.
-        // Use a native iframe PiP request only where the browser explicitly supports it.
-        const iframe = player && player.getIframe ? player.getIframe() : null;
-        if (iframe && typeof iframe.requestPictureInPicture === 'function') {
-            iframe.requestPictureInPicture().catch(() => {
-                window.open(videoUrl, '_blank', 'noopener');
-                showNotification('এই embedded player-এ PiP নেই। YouTube tab-এ PiP চালু করুন।', 'info');
-            });
-            return;
-        }
-
-        // Reliable fallback: open the same video on YouTube, where Chrome/YouTube
-        // can expose its own Picture-in-Picture option when supported by the device/account.
-        const pipTab = window.open(videoUrl, '_blank', 'noopener');
-        if (pipTab) {
-            showNotification('ভিডিও YouTube-এ খুলেছে। Chrome menu থেকে Picture-in-Picture ব্যবহার করুন।', 'info');
-        } else {
-            showNotification('Pop-up blocked. YouTube button দিয়ে ভিডিও খুলে PiP চালু করুন।', 'warning');
-        }
-    });
-
     seekInput.addEventListener('pointerdown', () => { isSeeking = true; });
     seekInput.addEventListener('input', () => {
         isSeeking = true;
@@ -1202,13 +1178,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
     // Resume position — video er asol duration diye seek
     function onPlayerReady(event) {
-        const iframe = event.target.getIframe && event.target.getIframe();
-        if (iframe) {
-            const currentAllow = iframe.getAttribute('allow') || '';
-            if (!currentAllow.includes('picture-in-picture')) {
-                iframe.setAttribute('allow', (currentAllow ? currentAllow + '; ' : '') + 'picture-in-picture');
-            }
-        }
         const d = event.target.getDuration();
         if (d && savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) {
             event.target.seekTo(savedProgress * d, true);
