@@ -1560,15 +1560,30 @@ body.dark-mode .theme-toggle-btn {
     background: #000 !important;
 }
 
+/* In fullscreen, give the iframe the entire space between toolbar and controls.
+   The YouTube player will contain its 16:9 video inside this larger viewport. */
 #yt-overlay-player:fullscreen .yt-video-wrap,
 #yt-overlay-player:-webkit-full-screen .yt-video-wrap,
 #yt-overlay-player:-moz-full-screen .yt-video-wrap {
-    flex: 0 1 auto !important;
-    width: min(100vw, calc((100dvh - 20px) * 1.7777778)) !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
     height: auto !important;
-    aspect-ratio: 16 / 9 !important;
-    align-self: center !important;
-    margin: auto 0 !important;
+    aspect-ratio: auto !important;
+    align-self: stretch !important;
+    margin: 0 !important;
+}
+#yt-overlay-player:fullscreen #yt-player-container,
+#yt-overlay-player:-webkit-full-screen #yt-player-container,
+#yt-overlay-player:-moz-full-screen #yt-player-container,
+#yt-overlay-player:fullscreen #yt-player-container iframe,
+#yt-overlay-player:-webkit-full-screen #yt-player-container iframe,
+#yt-overlay-player:-moz-full-screen #yt-player-container iframe {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
 }
 
 /* ✅ Fullscreen-এ iframe-এর নিজের element — YouTube handle করে */
