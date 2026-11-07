@@ -994,6 +994,37 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 color: #fff; font-size: 1.1rem; align-items: center; justify-content: center;
             }
             #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
+            #yt-overlay-player .yt-fs-settings-btn {
+                display: none; position: absolute; z-index: 31; top: max(16px, env(safe-area-inset-top));
+                right: max(16px, env(safe-area-inset-right)); width: 46px; height: 46px;
+                align-items: center; justify-content: center; border: 1px solid #555;
+                border-radius: 50%; background: rgba(20,20,20,.82); color: #fff; font-size: 20px;
+            }
+            #yt-overlay-player.is-fullscreen .yt-fs-settings-btn { display: flex; }
+            #yt-overlay-player .yt-fs-settings-menu {
+                display: none; position: absolute; z-index: 32; top: max(70px, calc(env(safe-area-inset-top) + 58px));
+                right: max(16px, env(safe-area-inset-right)); width: min(290px, calc(100vw - 32px));
+                padding: 14px; border: 1px solid rgba(255,255,255,.16); border-radius: 14px;
+                background: rgba(20,20,20,.96); color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.45);
+            }
+            #yt-overlay-player.is-fullscreen.is-settings-open .yt-fs-settings-menu { display: block; }
+            #yt-overlay-player .yt-fs-settings-title { font-size: 14px; font-weight: 700; padding: 2px 2px 10px; }
+            #yt-overlay-player .yt-fs-setting-row {
+                display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 10px 2px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px;
+            }
+            #yt-overlay-player .yt-fs-setting-row span { display: flex; align-items: center; gap: 8px; }
+            #yt-overlay-player .yt-fs-setting-row select {
+                max-width: 118px; padding: 7px 8px; border: 1px solid #555; border-radius: 8px;
+                background: #292929; color: #fff; font-size: 13px;
+            }
+            #yt-overlay-player .yt-fs-speed-feedback {
+                display: none; position: absolute; z-index: 24; left: 50%; top: 50%;
+                transform: translate(-50%, -50%); padding: 12px 18px; border-radius: 24px;
+                background: rgba(0,0,0,.7); color: #fff; font-size: 20px; font-weight: 700;
+                pointer-events: none;
+            }
+            #yt-overlay-player.is-fullscreen.is-boosting .yt-fs-speed-feedback { display: block; }
             #yt-overlay-player .yt-fs-timeline {
                 display: none; position: absolute; z-index: 21;
                 left: 76px; right: 78px; bottom: max(27px, env(safe-area-inset-bottom));
@@ -1033,6 +1064,13 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     overlay.id = 'yt-overlay-player';
     overlay.innerHTML = `
         <button class="yt-fs-exit" id="yt-fs-exit" type="button" aria-label="Exit fullscreen" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+        <button class="yt-fs-settings-btn" id="yt-fs-settings-btn" type="button" aria-label="Playback settings" title="Settings"><i class="fas fa-cog"></i></button>
+        <div class="yt-fs-settings-menu" id="yt-fs-settings-menu" role="dialog" aria-label="Playback settings">
+            <div class="yt-fs-settings-title">Playback settings</div>
+            <label class="yt-fs-setting-row"><span><i class="fas fa-tachometer-alt"></i> Playback speed</span><select id="yt-fs-speed"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1" selected>Normal (1x)</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="1.75">1.75x</option><option value="2">2x</option></select></label>
+            <label class="yt-fs-setting-row"><span><i class="fas fa-tv"></i> Video quality</span><select id="yt-fs-quality"><option value="default">Auto</option></select></label>
+        </div>
+        <div class="yt-fs-speed-feedback" id="yt-fs-speed-feedback">2× speed</div>
         <div class="yt-fs-tap-surface" id="yt-fs-tap-surface" aria-hidden="true"></div>
         <button type="button" class="yt-fs-center-play" id="yt-fs-play" aria-label="Pause" title="Play/Pause"><i class="fas fa-pause"></i></button>
         <div class="yt-fs-skip-feedback yt-fs-skip-left" id="yt-fs-skip-left"><i class="fas fa-undo"></i><strong>10 seconds</strong></div>
@@ -1087,6 +1125,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const fullscreenTapSurface = document.getElementById('yt-fs-tap-surface');
     const fullscreenSkipLeft = document.getElementById('yt-fs-skip-left');
     const fullscreenSkipRight = document.getElementById('yt-fs-skip-right');
+    const fullscreenSettingsBtn = document.getElementById('yt-fs-settings-btn');
+    const fullscreenSettingsMenu = document.getElementById('yt-fs-settings-menu');
+    const fullscreenSpeedSelect = document.getElementById('yt-fs-speed');
+    const fullscreenQualitySelect = document.getElementById('yt-fs-quality');
+    const fullscreenSpeedFeedback = document.getElementById('yt-fs-speed-feedback');
     const currentTimeLabel = document.getElementById('yt-current-time');
     const durationLabel = document.getElementById('yt-duration');
     const videoWrap = overlay.querySelector('.yt-video-wrap');
@@ -1098,6 +1141,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     try { playerMemory = JSON.parse(localStorage.getItem(PLAYER_MEMORY_KEY) || '{}'); } catch (_) {}
     const savedAutoNext = playerMemory.autoNext !== false;
     let autoNextEnabled = savedAutoNext;
+    let selectedPlaybackRate = Number(playerMemory.playbackRate) || 1;
+    let selectedVideoQuality = playerMemory.videoQuality || 'default';
+    let longPressTimer = null;
+    let longPressTriggered = false;
+    let previousPlaybackRate = 1;
     let screenLocked = false;
 
     function savePlayerMemory(patch) {
@@ -1183,11 +1231,68 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         setTimeout(updatePlaybackControls, 150);
     }
 
+    function applyPlaybackRate(rate, persist = true) {
+        selectedPlaybackRate = Number(rate) || 1;
+        if (player && player.setPlaybackRate) player.setPlaybackRate(selectedPlaybackRate);
+        fullscreenSpeedSelect.value = String(selectedPlaybackRate);
+        if (persist) savePlayerMemory({ playbackRate: selectedPlaybackRate });
+    }
+
+    function refreshQualityOptions() {
+        const current = selectedVideoQuality;
+        let levels = [];
+        try { levels = player && player.getAvailableQualityLevels ? player.getAvailableQualityLevels() : []; } catch (_) {}
+        const labels = { highres: 'High resolution', hd2160: '2160p', hd1440: '1440p', hd1080: '1080p', hd720: '720p', large: '480p', medium: '360p', small: '240p', tiny: '144p' };
+        const qualityValues = ['default', ...levels.filter(level => level !== 'auto' && level !== 'default')];
+        if (qualityValues.length === 1) qualityValues.push('hd1080', 'hd720', 'large', 'medium', 'small');
+        fullscreenQualitySelect.innerHTML = qualityValues.map(level =>
+            '<option value="' + level + '">' + (level === 'default' ? 'Auto' : (labels[level] || level)) + '</option>'
+        ).join('');
+        fullscreenQualitySelect.value = qualityValues.includes(current) ? current : 'default';
+    }
+
+    fullscreenSettingsBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const opened = overlay.classList.toggle('is-settings-open');
+        if (opened) {
+            try {
+                const rates = player && player.getAvailablePlaybackRates ? player.getAvailablePlaybackRates() : [];
+                if (rates && rates.length) {
+                    Array.from(fullscreenSpeedSelect.options).forEach(option => {
+                        option.disabled = !rates.includes(Number(option.value));
+                    });
+                }
+            } catch (_) {}
+            refreshQualityOptions();
+            showFullscreenTimeline();
+        }
+    });
+
+    fullscreenSpeedSelect.addEventListener('change', () => {
+        applyPlaybackRate(fullscreenSpeedSelect.value);
+        showFullscreenTimeline();
+    });
+
+    fullscreenQualitySelect.addEventListener('change', () => {
+        selectedVideoQuality = fullscreenQualitySelect.value;
+        if (player && player.setPlaybackQuality) {
+            try { player.setPlaybackQuality(selectedVideoQuality); } catch (error) { console.warn('Quality change unavailable:', error); }
+        }
+        savePlayerMemory({ videoQuality: selectedVideoQuality });
+        showFullscreenTimeline();
+    });
+
     const fullscreenExitBtn = document.getElementById('yt-fs-exit');
 
     function updateFullscreenButton() {
         const active = document.fullscreenElement === overlay;
         overlay.classList.toggle('is-fullscreen', active);
+        if (!active) {
+            overlay.classList.remove('is-settings-open', 'is-boosting');
+            if (longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = null;
+            if (player && player.setPlaybackRate) player.setPlaybackRate(selectedPlaybackRate);
+        }
         fullscreenToggleBtn.innerHTML = active
             ? '<i class="fas fa-compress"></i><span>Exit</span>'
             : '<i class="fas fa-expand"></i><span>Fullscreen</span>';
@@ -1247,8 +1352,35 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     let lastTapAt = 0;
     let lastTapSide = '';
     let tapTimer = null;
+    fullscreenTapSurface.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        longPressTriggered = false;
+        if (longPressTimer) clearTimeout(longPressTimer);
+        previousPlaybackRate = selectedPlaybackRate;
+        longPressTimer = setTimeout(() => {
+            longPressTriggered = true;
+            lastTapAt = 0;
+            lastTapSide = '';
+            if (player && player.setPlaybackRate) player.setPlaybackRate(2);
+            overlay.classList.add('is-boosting');
+        }, 450);
+    });
+
+    function endLongPress() {
+        if (longPressTimer) clearTimeout(longPressTimer);
+        longPressTimer = null;
+        if (longPressTriggered) {
+            if (player && player.setPlaybackRate) player.setPlaybackRate(selectedPlaybackRate || previousPlaybackRate || 1);
+            overlay.classList.remove('is-boosting');
+        }
+    }
     fullscreenTapSurface.addEventListener('pointerup', (event) => {
         if (event.pointerType === 'mouse' && event.button !== 0) return;
+        endLongPress();
+        if (longPressTriggered) {
+            longPressTriggered = false;
+            return;
+        }
         const rect = fullscreenTapSurface.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const side = x < rect.width * 0.38 ? 'left' : (x > rect.width * 0.62 ? 'right' : 'center');
@@ -1270,6 +1402,14 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             lastTapAt = 0;
             lastTapSide = '';
         }, 300);
+    });
+    fullscreenTapSurface.addEventListener('pointercancel', endLongPress);
+    fullscreenTapSurface.addEventListener('contextmenu', event => event.preventDefault());
+
+    overlay.addEventListener('click', event => {
+        if (!event.target.closest('#yt-fs-settings-menu, #yt-fs-settings-btn')) {
+            overlay.classList.remove('is-settings-open');
+        }
     });
 
     fullscreenTimeline.addEventListener('pointerdown', () => { isFullscreenSeeking = true; });
@@ -1342,6 +1482,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         // Already completed? reflect in hint UI
         if (itemId && completedItems[itemId]) updateHintUI();
         durationLabel.textContent = formatPlayerTime(event.target.getDuration() || 0);
+        applyPlaybackRate(selectedPlaybackRate, false);
+        refreshQualityOptions();
+        if (selectedVideoQuality !== 'default' && event.target.setPlaybackQuality) {
+            try { event.target.setPlaybackQuality(selectedVideoQuality); } catch (_) {}
+        }
         updatePlaybackControls();
         event.target.playVideo();
         startProgressTracking();
