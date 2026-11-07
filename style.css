@@ -1600,10 +1600,11 @@ body.dark-mode .theme-toggle-btn {
     display: none;
     position: absolute;
     z-index: 20;
-    top: max(12px, env(safe-area-inset-top));
-    right: max(12px, env(safe-area-inset-right));
-    width: 42px;
-    height: 42px;
+    top: auto;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    width: 46px;
+    height: 46px;
     border: 1px solid #555;
     border-radius: 50%;
     background: rgba(20,20,20,.82);
