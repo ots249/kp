@@ -1,5 +1,8 @@
 {
   "crons": [
     { "path": "/api/push/check-classes", "schedule": "0 8 * * *" }
+  ],
+  "rewrites": [
+    { "source": "/install", "destination": "/install.html" }
   ]
 }
