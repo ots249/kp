@@ -2030,7 +2030,7 @@ body.pdf-overlay-open {
 /* PWA Full Upgrade */
 .pwa-network-status{position:fixed;z-index:3000;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid rgba(255,255,255,.15);border-radius:999px;background:#b42318;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.22);font-size:13px;font-weight:700;white-space:nowrap}
 .pwa-network-status[hidden],.pwa-update-banner[hidden]{display:none!important}
-.pwa-update-banner{position:fixed;z-index:2999;left:12px;right:12px;bottom:max(14px,env(safe-area-inset-bottom));display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:620px;margin:0 auto;padding:11px 12px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:#172033;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.28);font-size:13px}
+.pwa-update-banner{position:fixed;z-index:2999;left:12px;right:12px;bottom:max(88px,calc(env(safe-area-inset-bottom) + 76px));display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:620px;margin:0 auto;padding:11px 12px;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:#172033;color:#fff;box-shadow:0 12px 32px rgba(0,0,0,.28);font-size:13px}
 .pwa-update-banner span{display:inline-flex;align-items:center;gap:8px}.pwa-update-banner span i{color:#60a5fa}
 .pwa-update-banner button{border:0;border-radius:8px;padding:8px 11px;background:#2563eb;color:#fff;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}
 .pwa-update-banner button:disabled{opacity:.65}.pwa-update-banner #pwa-update-dismiss{padding:2px 7px;background:transparent;font-size:20px}
