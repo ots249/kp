@@ -1614,6 +1614,74 @@ body.dark-mode .theme-toggle-btn {
     justify-content: center;
 }
 #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
+#yt-overlay-player .yt-fs-settings-btn {
+    display: none;
+    position: absolute;
+    z-index: 31;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    width: 46px;
+    height: 46px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #555;
+    border-radius: 50%;
+    background: rgba(20,20,20,.82);
+    color: #fff;
+    font-size: 20px;
+}
+#yt-overlay-player.is-fullscreen .yt-fs-settings-btn { display: flex; }
+#yt-overlay-player .yt-fs-settings-menu {
+    display: none;
+    position: absolute;
+    z-index: 32;
+    top: max(70px, calc(env(safe-area-inset-top) + 58px));
+    right: max(16px, env(safe-area-inset-right));
+    width: min(290px, calc(100vw - 32px));
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 14px;
+    background: rgba(20,20,20,.96);
+    color: #fff;
+    box-shadow: 0 8px 30px rgba(0,0,0,.45);
+}
+#yt-overlay-player.is-fullscreen.is-settings-open .yt-fs-settings-menu { display: block; }
+#yt-overlay-player .yt-fs-settings-title { font-size: 14px; font-weight: 700; padding: 2px 2px 10px; }
+#yt-overlay-player .yt-fs-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 2px;
+    border-top: 1px solid rgba(255,255,255,.12);
+    font-size: 13px;
+}
+#yt-overlay-player .yt-fs-setting-row span { display: flex; align-items: center; gap: 8px; }
+#yt-overlay-player .yt-fs-setting-row select {
+    max-width: 118px;
+    padding: 7px 8px;
+    border: 1px solid #555;
+    border-radius: 8px;
+    background: #292929;
+    color: #fff;
+    font-size: 13px;
+}
+#yt-overlay-player .yt-fs-speed-feedback {
+    display: none;
+    position: absolute;
+    z-index: 24;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    padding: 12px 18px;
+    border-radius: 24px;
+    background: rgba(0,0,0,.7);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    pointer-events: none;
+}
+#yt-overlay-player.is-fullscreen.is-boosting .yt-fs-speed-feedback { display: block; }
 
 #yt-overlay-player .yt-fs-timeline {
     display: none;
