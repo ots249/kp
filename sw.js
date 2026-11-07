@@ -1,268 +1,155 @@
-// ============================================================
-// Service Worker — Civil 4th Semester
-// ============================================================
-const CACHE_NAME = 'civil-4th-v3';
-const API_CACHE_NAME = 'civil-4th-api-v3';
+// Civil 4th Semester — upgraded PWA Service Worker
+// App shell/navigation: network-first with cached/offline fallback.
+// API GET: network-first with cached fallback. YouTube embeds remain network-only.
+const CACHE_PREFIX = 'civil-4th-';
+const CACHE_NAME = 'civil-4th-shell-v4';
+const API_CACHE_NAME = 'civil-4th-api-v4';
+const RUNTIME_CACHE_NAME = 'civil-4th-runtime-v4';
 
-// Assets to cache on install
-const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/script.js',
-    '/manifest.json',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/webfonts/fa-solid-900.woff2',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/webfonts/fa-brands-400.woff2',
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    'https://i.postimg.cc/MKx5W94w/4thct.webp',
-    'https://i.postimg.cc/7YKJhGyY/logo.png'
+const CORE_ASSETS = [
+    '/', '/index.html', '/style.css', '/script.js',
+    '/manifest.json', '/offline.html', '/icons/pwa-icon.svg'
 ];
+const EXTERNAL_STATIC_HOSTS = new Set([
+    'cdnjs.cloudflare.com', 'fonts.googleapis.com',
+    'fonts.gstatic.com', 'i.postimg.cc'
+]);
 
-// ============================================================
-// Install — cache static assets
-// ============================================================
 self.addEventListener('install', event => {
-    console.log('📦 Service Worker installing...');
-    
-    event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then(cache => {
-                console.log('📦 Caching static assets...');
-                // ✅ Individual add instead of addAll (কোনো একটা fail করলেও বাকি গুলো cache হবে)
-                return Promise.all(
-                    STATIC_ASSETS.map(url => 
-                        cache.add(url).catch(err => 
-                            console.warn(`⚠️ Failed to cache ${url}:`, err.message)
-                        )
-                    )
-                );
-            })
-            .then(() => {
-                console.log('✅ Static assets cached');
-                return self.skipWaiting();
-            })
-    );
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+        await Promise.all(CORE_ASSETS.map(async path => {
+            try {
+                const response = await fetch(new Request(new URL(path, self.location.origin), { cache: 'reload' }));
+                if (response && response.ok) await cache.put(path, response);
+            } catch (error) {
+                console.warn('[SW] Core asset cache skipped:', path, error.message);
+            }
+        }));
+        // Keep this worker waiting until the user accepts the in-app update.
+    })());
 });
 
-// ============================================================
-// Activate — old cache delete
-// ============================================================
+self.addEventListener('message', event => {
+    if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('activate', event => {
-    console.log('🚀 Service Worker activating...');
-    
-    event.waitUntil(
-        caches.keys()
-            .then(cacheNames => {
-                return Promise.all(
-                    cacheNames.map(cacheName => {
-                        if (cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME) {
-                            console.log('🗑️ Deleting old cache:', cacheName);
-                            return caches.delete(cacheName);
-                        }
-                    })
-                );
-            })
-            .then(() => {
-                console.log('✅ Service Worker activated');
-                return self.clients.claim();
-            })
-    );
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => {
+            if (key.startsWith(CACHE_PREFIX) &&
+                ![CACHE_NAME, API_CACHE_NAME, RUNTIME_CACHE_NAME].includes(key)) {
+                return caches.delete(key);
+            }
+            return Promise.resolve(false);
+        }));
+        await self.clients.claim();
+    })());
 });
 
-// ============================================================
-// Fetch — API + static asset handling
-// ============================================================
+async function networkFirst(request, cacheName, fallbackUrls = []) {
+    const cache = await caches.open(cacheName);
+    try {
+        const response = await fetch(request);
+        if (response && (response.ok || response.type === 'opaque')) {
+            await cache.put(request, response.clone());
+        }
+        return response;
+    } catch (error) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        for (const path of fallbackUrls) {
+            const fallback = await cache.match(path) || await caches.match(path);
+            if (fallback) return fallback;
+        }
+        throw error;
+    }
+}
+
+async function cacheFirst(request, cacheName) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === 'opaque')) {
+        const cache = await caches.open(cacheName);
+        await cache.put(request, response.clone());
+    }
+    return response;
+}
+
 self.addEventListener('fetch', event => {
-    const url = new URL(event.request.url);
-    
-    // Skip non-GET requests (POST, PUT, DELETE)
-    if (event.request.method !== 'GET') return;
-    
-    // Skip Chrome extension requests
-    if (url.protocol === 'chrome-extension:') return;
-    
-    // Handle SheetAPI249 course data and YouTube Data API requests.
-    // ============================================================
-    const isAPIRequest =
-        url.href.includes('sheetapi249.vercel.app/api/v1/diploma-tutor/') ||
-        url.href.includes('googleapis.com/youtube');
-    
-    if (isAPIRequest) {
-        event.respondWith(
-            fetch(event.request)
-                .then(response => {
-                    if (response.ok) {
-                        const responseClone = response.clone();
-                        caches.open(API_CACHE_NAME)
-                            .then(cache => {
-                                cache.put(event.request, responseClone);
-                                console.log('✅ API cached:', url.pathname);
-                            })
-                            .catch(err => console.warn('Cache put failed:', err.message));
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    // Offline — cached API response
-                    return caches.match(event.request)
-                        .then(cachedResponse => {
-                            if (cachedResponse) {
-                                console.log('📦 Serving API from cache:', url.pathname);
-                                return cachedResponse;
-                            }
-                            // JSON offline fallback
-                            return new Response(
-                                JSON.stringify({ 
-                                    error: 'You are offline. Please check your internet connection.',
-                                    offline: true
-                                }),
-                                {
-                                    status: 503,
-                                    headers: { 'Content-Type': 'application/json' }
-                                }
-                            );
-                        });
-                })
-        );
+    const request = event.request;
+    if (request.method !== 'GET') return;
+    const url = new URL(request.url);
+    if (!['http:', 'https:'].includes(url.protocol)) return;
+
+    // Do not cache YouTube playback, thumbnails or embeds.
+    if (/(^|\\.)youtube\\.com$|(^|\\.)youtube-nocookie\\.com$|(^|\\.)ytimg\\.com$/i.test(url.hostname)) return;
+
+    if (url.hostname === 'sheetapi249.vercel.app' &&
+        url.pathname.startsWith('/api/v1/diploma-tutor/')) {
+        event.respondWith(networkFirst(request, API_CACHE_NAME));
         return;
     }
-    
-    // ============================================================
-    // ✅ Handle YouTube iframe & other embeds — network only
-    // ============================================================
-    if (url.href.includes('youtube.com') || 
-        url.href.includes('youtube-nocookie.com') ||
-        url.href.includes('ytimg.com')) {
-        // Don't cache YouTube, always fetch
+    if (url.hostname === 'www.googleapis.com' && url.pathname.startsWith('/youtube/')) {
+        event.respondWith(networkFirst(request, API_CACHE_NAME));
         return;
     }
-    
-    // ============================================================
-    // ✅ Static assets — cache first, network fallback
-    // ============================================================
-    event.respondWith(
-        caches.match(event.request)
-            .then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                
-                return fetch(event.request)
-                    .then(response => {
-                        // Cache successful responses for static assets
-                        if (response.ok && 
-                            (event.request.url.includes('postimg.cc') || 
-                             event.request.url.includes('cloudflare.com') ||
-                             event.request.url.includes('fonts.googleapis.com') ||
-                             event.request.url.includes('fonts.gstatic.com'))) {
-                            const responseClone = response.clone();
-                            caches.open(CACHE_NAME)
-                                .then(cache => {
-                                    cache.put(event.request, responseClone)
-                                        .catch(err => console.warn('Cache put failed:', err.message));
-                                });
-                        }
-                        return response;
-                    })
-                    .catch(error => {
-                        console.error('❌ Fetch failed:', event.request.url, error.message);
-                        
-                        // Return offline fallback for HTML requests
-                        const acceptHeader = event.request.headers.get('accept') || '';
-                        if (acceptHeader.includes('text/html')) {
-                            return caches.match('/') || caches.match('/index.html');
-                        }
-                        
-                        return new Response('Offline', {
-                            status: 503,
-                            statusText: 'Service Unavailable'
-                        });
-                    });
-            })
-    );
+    if (EXTERNAL_STATIC_HOSTS.has(url.hostname)) {
+        event.respondWith(cacheFirst(request, RUNTIME_CACHE_NAME).catch(() =>
+            new Response('', { status: 503, statusText: 'Offline asset unavailable' })
+        ));
+        return;
+    }
+    if (url.origin !== self.location.origin) return;
+
+    if (request.mode === 'navigate') {
+        event.respondWith(networkFirst(request, CACHE_NAME, [
+            url.pathname === '/' ? '/index.html' : '/',
+            '/offline.html'
+        ]));
+        return;
+    }
+    if (request.destination === 'script' || request.destination === 'style' ||
+        request.destination === 'font' || request.destination === 'image' ||
+        request.destination === 'worker' ||
+        /\\.(?:css|js|mjs|json|svg|png|webp|woff2?)$/i.test(url.pathname)) {
+        event.respondWith(networkFirst(request, CACHE_NAME));
+    }
 });
 
-// ============================================================
-// Background sync (progress)
-// ============================================================
 self.addEventListener('sync', event => {
     if (event.tag === 'sync-progress') {
-        console.log('🔄 Background sync triggered');
+        console.info('[SW] Progress sync requested; no server sync endpoint is configured.');
     }
 });
 
-// ============================================================
-// Push notifications — ✅ FIXED SYNTAX
-// ============================================================
 self.addEventListener('push', event => {
-    console.log('🔔 Push received');
-    
     let body = 'নতুন ক্লাস যোগ হয়েছে!';
-    try {
-        if (event.data) {
-            body = event.data.text();
-        }
-    } catch (err) {
-        console.warn('Push data parse error:', err);
-    }
-    
+    try { if (event.data) body = event.data.text(); }
+    catch (error) { console.warn('[SW] Push payload parse error:', error); }
+
     const options = {
-        body: body,
-        icon: 'https://i.postimg.cc/7YKJhGyY/logo.png',
-        badge: 'https://i.postimg.cc/7YKJhGyY/logo.png',
+        body, icon: '/icons/pwa-icon.svg', badge: '/icons/pwa-icon.svg',
         vibrate: [100, 50, 100],
-        data: {
-            dateOfArrival: Date.now(),
-            primaryKey: 1
-        },
-        actions: [
-            { action: 'open', title: 'খুলুন' },
-            { action: 'close', title: 'বন্ধ করুন' }
-        ]
+        data: { dateOfArrival: Date.now(), primaryKey: 1 },
+        actions: [{ action: 'open', title: 'খুলুন' }, { action: 'close', title: 'বন্ধ করুন' }]
     };
-    
-    event.waitUntil(
-        self.registration.showNotification('Civil 4th Semester', options)
-    );
+    event.waitUntil(self.registration.showNotification('Civil 4th Semester', options));
 });
 
-// ============================================================
-// Notification click
-// ============================================================
 self.addEventListener('notificationclick', event => {
     event.notification.close();
-    
-    if (event.action === 'close') {
-        return;
-    }
-    
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then(clientList => {
-                // If a window is already open, focus it
-                for (const client of clientList) {
-                    if (client.url.includes(self.location.origin) && 'focus' in client) {
-                        return client.focus();
-                    }
-                }
-                // Otherwise open new window
-                if (clients.openWindow) {
-                    return clients.openWindow('/');
-                }
-            })
-    );
+    if (event.action === 'close') return;
+    event.waitUntil((async () => {
+        const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const client of windows) {
+            if (client.url.startsWith(self.location.origin) && 'focus' in client) return client.focus();
+        }
+        if (self.clients.openWindow) return self.clients.openWindow('/');
+    })());
 });
 
-// ============================================================
-// Error handling
-// ============================================================
-self.addEventListener('error', event => {
-    console.error('❌ Service Worker error:', event.error);
-});
-
-self.addEventListener('unhandledrejection', event => {
-    console.error('❌ Unhandled rejection:', event.reason);
-});
-
-console.log('✅ Service Worker loaded — Civil 4th Semester');
+self.addEventListener('error', event => console.error('[SW] Runtime error:', event.error));
+self.addEventListener('unhandledrejection', event => console.error('[SW] Unhandled rejection:', event.reason));
