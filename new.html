@@ -605,6 +605,14 @@
         Keyটি শুধু এই browser tab-এর session-এ রাখা হবে; public code-এ hardcode করা হবে না।
       </small>
     </div>
+    <div class="field" style="margin: 0 0 16px;">
+      <label for="pushAdminSecret">Instant Push Notification Secret</label>
+      <input id="pushAdminSecret" type="password" placeholder="Paste the admin notification secret"
+             autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <small style="display:block;margin-top:6px;color:var(--muted,#8b98a8);">
+        নতুন Lecture/PDF submit করলে subscribed users-দের সঙ্গে সঙ্গে notification পাঠাতে এটি প্রয়োজন।
+      </small>
+    </div>
     <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
@@ -714,6 +722,7 @@
      ===================================================== */
   const API_ENDPOINT = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
   const API_KEY_STORAGE = 'sheetapi249_write_key';
+  const PUSH_SECRET_STORAGE = 'civil4th_push_admin_secret';
   const PDF_BASE = 'https://ots.zya.me/pdf/';
 
   const $ = (id) => document.getElementById(id);
@@ -723,6 +732,12 @@
   apiKeyInput.addEventListener('input', () => {
     if (apiKeyInput.value.trim()) localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
     else localStorage.removeItem(API_KEY_STORAGE);
+  });
+  const pushAdminSecretInput = $('pushAdminSecret');
+  pushAdminSecretInput.value = sessionStorage.getItem(PUSH_SECRET_STORAGE) || '';
+  pushAdminSecretInput.addEventListener('input', () => {
+    if (pushAdminSecretInput.value.trim()) sessionStorage.setItem(PUSH_SECRET_STORAGE, pushAdminSecretInput.value.trim());
+    else sessionStorage.removeItem(PUSH_SECRET_STORAGE);
   });
   const submitBtn   = $('submitBtn');
   const listWrap    = $('listWrap');
@@ -1130,6 +1145,24 @@
     }
   }
 
+  async function sendImmediatePush(row) {
+    const secret = pushAdminSecretInput.value.trim();
+    if (!secret) throw new Error('Instant Push Notification Secret দিন।');
+    const response = await fetch('/api/push/notify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Secret': secret
+      },
+      body: JSON.stringify({ data: row })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Notification পাঠানো যায়নি');
+    }
+    return result;
+  }
+
   /* =====================================================
      CREATE / UPDATE — POST / PUT through SheetAPI249
      ===================================================== */
@@ -1149,8 +1182,22 @@
     }};
     try {
       await apiRequest(isEdit ? 'PUT' : 'POST', isEdit ? editingId : null, payload);
+      let pushResult = null;
+      if (!isEdit) {
+        try {
+          pushResult = await sendImmediatePush(payload.data);
+        } catch (pushError) {
+          console.warn('[Push] Resource saved, but immediate notification failed:', pushError);
+        }
+      }
       await loadRows();
-      toast(isEdit ? 'Updated successfully' : 'Added successfully', 'ok');
+      if (isEdit) {
+        toast('Updated successfully', 'ok');
+      } else if (pushResult) {
+        toast(`Added successfully • Notification sent to ${pushResult.sent} device(s)`, 'ok', 4500);
+      } else {
+        toast('Added successfully • Notification was not sent', 'err', 4500);
+      }
       if (!isEdit) setTimeout(() => openShareModal({ ...payload.data, id: 'new' }), 250);
       resetForm();
       window.scrollTo({ top: 0, behavior: 'smooth' });
