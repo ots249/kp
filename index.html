@@ -25,13 +25,14 @@
     <!-- Analytics are loaded after first interaction or a short idle delay -->
     
     <!-- PWA Meta Tags -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     
     <!-- iOS Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Civil 4th">
     <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
     
     <!-- Icons for iOS (নতুন লোগো) -->
     <link rel="apple-touch-icon" href="https://i.postimg.cc/7YKJhGyY/logo.png">
@@ -46,20 +47,7 @@
     <meta name="format-detection" content="telephone=no">
     <meta name="mobile-web-app-capable" content="yes">
     
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch(error => {
-                        console.error('Service Worker registration failed:', error);
-                    });
-            });
-        }
-    </script>
+    <!-- Service Worker lifecycle is managed by script.js. -->
 
 </head>
 <body>
@@ -113,9 +101,10 @@
         <!-- Footer with Install Button -->
         <footer class="footer">
             <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                <button id="install-button" class="install-btn" style="display: none;">
+                <button id="install-button" class="install-btn" style="display: none;" type="button" aria-haspopup="dialog">
                     <i class="fas fa-download"></i> অ্যাপ ইন্সটল করুন
                 </button>
+                <button id="pwa-cache-clear" class="reset-btn pwa-cache-btn" type="button"><i class="fas fa-broom"></i> ক্যাশ পরিষ্কার</button>
                 <button id="reset-progress" class="reset-btn">
                     <i class="fas fa-redo-alt"></i> প্রোগ্রেস রিসেট
                 </button>
@@ -123,7 +112,13 @@
             <p>&copy; ২০২৬ OTS • সর্বস্বত্ব সংরক্ষিত</p>
         </footer>
     </div>
-	<!-- Floating Reload Button - WhatsApp style -->
+	<div id="pwa-network-status" class="pwa-network-status" role="status" aria-live="polite" hidden><i class="fas fa-wifi"></i> আপনি অফলাইনে আছেন</div>
+    <div id="pwa-update-banner" class="pwa-update-banner" role="status" aria-live="polite" hidden>
+        <span><i class="fas fa-cloud-download-alt"></i> নতুন আপডেট প্রস্তুত</span>
+        <button id="pwa-update-apply" type="button">আপডেট করুন</button>
+        <button id="pwa-update-dismiss" type="button" aria-label="বন্ধ করুন">×</button>
+    </div>
+    <!-- Floating Reload Button - WhatsApp style -->
 	<button id="floating-reload-btn" class="floating-reload-btn" aria-label="রিফ্রেশ করুন">
 	<i class="fas fa-sync-alt"></i>
 	</button>
