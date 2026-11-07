@@ -1020,7 +1020,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             <div class="yt-secondary-controls">
                 <button class="yt-control-btn" id="yt-auto-next" type="button" aria-pressed="true" title="Auto Next চালু"><i class="fas fa-forward-step"></i><span>Auto Next</span></button>
                 <button class="yt-control-btn" id="yt-screen-lock" type="button" aria-pressed="false" title="Screen Lock"><i class="fas fa-lock-open"></i><span>Lock</span></button>
-                <button class="yt-control-btn" id="yt-mute-toggle" type="button" aria-pressed="false" title="Mute"><i class="fas fa-volume-up"></i><span>Sound</span></button>
                 <button class="yt-control-btn" id="yt-fullscreen-toggle" type="button" aria-pressed="false" title="Fullscreen" aria-label="Enter fullscreen"><i class="fas fa-expand"></i><span>Fullscreen</span></button>
                 <a class="yt-control-btn" href="${escapeAttr(videoUrl)}" target="_blank" rel="noopener" title="YouTube-এ খুলুন"><i class="fab fa-youtube"></i><span>YouTube</span></a>
             </div>
@@ -1043,7 +1042,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     const autoNextBtn = document.getElementById('yt-auto-next');
     const screenLockBtn = document.getElementById('yt-screen-lock');
     const playToggleBtn = document.getElementById('yt-play-toggle');
-    const muteToggleBtn = document.getElementById('yt-mute-toggle');
     const fullscreenToggleBtn = document.getElementById('yt-fullscreen-toggle');
     const seekInput = document.getElementById('yt-seek');
     const currentTimeLabel = document.getElementById('yt-current-time');
@@ -1107,10 +1105,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             currentTimeLabel.textContent = formatPlayerTime(current);
             if (!isSeeking && duration > 0) seekInput.value = String(Math.round((current / duration) * 1000));
         } catch (_) {}
-        const muted = player.isMuted && player.isMuted();
-        muteToggleBtn.innerHTML = muted ? '<i class="fas fa-volume-mute"></i><span>Muted</span>' : '<i class="fas fa-volume-up"></i><span>Sound</span>';
-        muteToggleBtn.setAttribute('aria-pressed', String(!!muted));
-        muteToggleBtn.classList.toggle('is-active', !!muted);
     }
 
     playToggleBtn.addEventListener('click', () => {
@@ -1119,13 +1113,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) player.pauseVideo();
         else player.playVideo();
         setTimeout(updatePlaybackControls, 100);
-    });
-
-    muteToggleBtn.addEventListener('click', () => {
-        if (!player) return;
-        if (player.isMuted()) player.unMute();
-        else player.mute();
-        updatePlaybackControls();
     });
 
     const fullscreenExitBtn = document.getElementById('yt-fs-exit');
