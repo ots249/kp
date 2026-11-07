@@ -93,7 +93,12 @@ self.addEventListener('fetch', event => {
     if (!['http:', 'https:'].includes(url.protocol)) return;
 
     // Do not cache YouTube playback, thumbnails or embeds.
-    if (/(^|\\.)youtube\\.com$|(^|\\.)youtube-nocookie\\.com$|(^|\\.)ytimg\\.com$/i.test(url.hostname)) return;
+    if (url.hostname === 'youtube.com' ||
+        url.hostname.endsWith('.youtube.com') ||
+        url.hostname === 'youtube-nocookie.com' ||
+        url.hostname.endsWith('.youtube-nocookie.com') ||
+        url.hostname === 'ytimg.com' ||
+        url.hostname.endsWith('.ytimg.com')) return;
 
     if (url.hostname === 'sheetapi249.vercel.app' &&
         url.pathname.startsWith('/api/v1/diploma-tutor/')) {
@@ -121,8 +126,8 @@ self.addEventListener('fetch', event => {
     }
     if (request.destination === 'script' || request.destination === 'style' ||
         request.destination === 'font' || request.destination === 'image' ||
-        request.destination === 'worker' ||
-        /\\.(?:css|js|mjs|json|svg|png|webp|woff2?)$/i.test(url.pathname)) {
+        ['.css', '.js', '.mjs', '.json', '.svg', '.png', '.webp', '.woff', '.woff2']
+            .some(extension => url.pathname.toLowerCase().endsWith(extension))) {
         event.respondWith(networkFirst(request, CACHE_NAME));
     }
 });
