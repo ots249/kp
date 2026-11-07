@@ -826,6 +826,13 @@ window.openPDFViewer = function (pdfUrl, title) {
                 #pdf-overlay-viewer .pdf-btn span { display: none; }
                 #pdf-overlay-viewer .pdf-btn { padding: 0.5rem 0.7rem; }
             }
+            @media (orientation: landscape) and (max-height: 500px) {
+                #yt-overlay-player .yt-toolbar { padding: 0.25rem 0.6rem; }
+                #yt-overlay-player .yt-btn { width: 30px; height: 30px; }
+                #yt-overlay-player .yt-video-wrap { width: min(100%, calc((100dvh - 105px) * 1.7777778)); }
+                #yt-overlay-player .yt-progress-info { padding: 0.25rem 0.7rem; }
+                #yt-overlay-player .yt-hint { display: none; }
+            }
         `;
         document.head.appendChild(styleEl);
     }
@@ -890,7 +897,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         styleEl.textContent = `
             @keyframes ytFadeIn { from { opacity: 0; } to { opacity: 1; } }
             body.yt-overlay-open { overflow: hidden !important; }
-            #yt-overlay-player { position: fixed; inset: 0; background: #000; z-index: 999999; display: flex; flex-direction: column; animation: ytFadeIn 0.25s ease; }
+            #yt-overlay-player { position: fixed; inset: 0; height: 100vh; height: 100dvh; box-sizing: border-box; padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); background: #000; z-index: 999999; display: flex; flex-direction: column; animation: ytFadeIn 0.25s ease; }
             #yt-overlay-player .yt-toolbar { background: #1a1a1a; padding: 0.6rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a2a; flex-shrink: 0; gap: 0.75rem; }
             #yt-overlay-player .yt-title-wrap { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
             #yt-overlay-player .yt-title-wrap i.fa-youtube { color: #ff0000; font-size: 1.4rem; flex-shrink: 0; }
@@ -904,8 +911,11 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             #yt-overlay-player .yt-btn:hover { background: #333; }
             #yt-overlay-player .yt-btn.yt-yt-btn { background: rgba(255,0,0,0.9); border-color: #cc0000; }
             #yt-overlay-player .yt-btn.yt-yt-btn:hover { background: #cc0000; }
-            #yt-overlay-player .yt-video-wrap { flex: 1; position: relative; background: #000; min-height: 0; overflow: hidden; }
-            #yt-overlay-player #yt-player-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+            /* Responsive 16:9 video viewport; avoids a tall letterboxed iframe on phones. */
+            #yt-overlay-player .yt-video-wrap { flex: 0 1 auto; position: relative; width: min(100%, calc((100dvh - 170px) * 1.7777778)); aspect-ratio: 16 / 9; height: auto; align-self: center; margin: auto 0; background: #000; min-height: 0; overflow: hidden; }
+            #yt-overlay-player #yt-player-container { position: absolute; inset: 0; width: 100%; height: 100%; }
+            #yt-overlay-player #yt-player-container iframe { width: 100%; height: 100%; border: 0; }
+            #yt-overlay-player .yt-video-wrap.is-locked::after { pointer-events: none; }
             #yt-overlay-player .yt-progress-info { background: #111; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; border-top: 1px solid #222; }
             #yt-overlay-player .yt-progress-bar-wrap { flex: 1; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
             #yt-overlay-player .yt-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ef4444, #10b981); transition: width 0.3s ease; border-radius: 3px; }
@@ -915,9 +925,10 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             #yt-overlay-player .yt-hint.unlocked { background: linear-gradient(90deg, #065f46, #10b981); color: #fff; }
             @media (max-width: 480px) {
                 #yt-overlay-player .yt-title { font-size: 0.85rem; }
-                #yt-overlay-player .yt-btn { width: 34px; height: 34px; font-size: 0.82rem; }
-                #yt-overlay-player .yt-actions { gap: 0.25rem; }
-                #yt-overlay-player .yt-toolbar { padding: 0.45rem 0.55rem; gap: 0.35rem; }
+                #yt-overlay-player .yt-btn { width: 32px; height: 32px; font-size: 0.78rem; }
+                #yt-overlay-player .yt-actions { gap: 0.2rem; }
+                #yt-overlay-player .yt-toolbar { padding: 0.4rem 0.5rem; gap: 0.3rem; }
+                #yt-overlay-player .yt-title { max-width: 34vw; }
                 #yt-overlay-player .yt-title { max-width: 30vw; }
                 #yt-overlay-player .yt-hint { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
             }
