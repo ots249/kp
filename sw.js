@@ -2,9 +2,9 @@
 // App shell/navigation: network-first with cached/offline fallback.
 // API GET: network-first with cached fallback. YouTube embeds remain network-only.
 const CACHE_PREFIX = 'civil-4th-';
-const CACHE_NAME = 'civil-4th-shell-v5';
-const API_CACHE_NAME = 'civil-4th-api-v5';
-const RUNTIME_CACHE_NAME = 'civil-4th-runtime-v5';
+const CACHE_NAME = 'civil-4th-shell-v6';
+const API_CACHE_NAME = 'civil-4th-api-v6';
+const RUNTIME_CACHE_NAME = 'civil-4th-runtime-v6';
 
 const CORE_ASSETS = [
     '/', '/index.html', '/style.css', '/script.js',
