@@ -22,16 +22,16 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icons/diploma-tutor-logo.svg",
+      "src": "/icons/diploma-tutor-logo.svg?v=3",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/icons/pwa-icon.svg",
+      "src": "/icons/diploma-tutor-logo.svg?v=3",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -42,7 +42,7 @@
       "url": "/?reset=true",
       "icons": [
         {
-          "src": "/icons/diploma-tutor-logo.svg",
+          "src": "/icons/diploma-tutor-logo.svg?v=3",
           "sizes": "any",
           "type": "image/svg+xml"
         }
