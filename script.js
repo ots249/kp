@@ -414,6 +414,7 @@ function transformClassesToSections(classes) {
                 rowId: rowId,
                 createdAt: item.created_at || item.createdAt || '',
                 duration: item.duration || '',
+                youtubePublishedAt: item.youtube_published_at || item.youtubePublishedAt || '',
                 resource: { resourceable: { link: item.link || '#' } }
             };
         });
@@ -499,64 +500,62 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
     videoIds.forEach(id => {
         const row = Array.isArray(dbRows) ? dbRows.find(r => extractYouTubeVideoId(r.link) === id) : null;
         const label = row ? dbValueToLabel(row.duration) : null;
-
         if (label) {
             result[id] = label;
             videoDurationCache[id] = label;
         } else {
-            uncachedIds.push({ id, rowId: row && (row._sheetRow || row.id) != null ? String(row._sheetRow || row.id) : null });
+            result[id] = videoDurationCache[id] || '--:--';
+        }
+        if (!label || !(row && row.youtube_published_at)) {
+            uncachedIds.push({
+                id,
+                rowId: row && (row._sheetRow || row.id) != null ? String(row._sheetRow || row.id) : null,
+                needsDuration: !label,
+                needsPublishedAt: !(row && row.youtube_published_at)
+            });
         }
     });
 
-    if (uncachedIds.length === 0) return result;
-
-    if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-        uncachedIds.forEach(({ id }) => { result[id] = videoDurationCache[id] || '--:--'; });
-        return result;
-    }
+    if (!uncachedIds.length || !YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') return result;
 
     const CHUNK_SIZE = 50;
     for (let i = 0; i < uncachedIds.length; i += CHUNK_SIZE) {
         const chunk = uncachedIds.slice(i, i + CHUNK_SIZE);
-        const idsOnly = chunk.map(c => c.id);
-
         try {
-            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${idsOnly.join(',')}&key=${YOUTUBE_API_KEY}`;
+            const apiUrl = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${chunk.map(c => c.id).join(',')}&key=${YOUTUBE_API_KEY}`;
             const response = await fetch(apiUrl);
             const data = await response.json();
-
             if (!response.ok || data.error) {
                 console.error('YouTube API Error:', data.error);
-                chunk.forEach(({ id }) => { result[id] = videoDurationCache[id] || '--:--'; });
                 continue;
             }
-
             const foundIds = new Set();
             const toSave = [];
-
             (data.items || []).forEach(item => {
-                const seconds = isoToSeconds(item.contentDetails.duration);
-                if (!seconds) return;
-                const label = secondsToLabel(seconds);
-                result[item.id] = label;
-                videoDurationCache[item.id] = label;
-                foundIds.add(item.id);
-
                 const match = chunk.find(c => c.id === item.id);
-                if (match && match.rowId) toSave.push({ rowId: match.rowId, videoId: item.id, seconds });
+                if (!match) return;
+                foundIds.add(item.id);
+                const patch = {};
+                const seconds = isoToSeconds(item.contentDetails && item.contentDetails.duration);
+                if (seconds) {
+                    result[item.id] = secondsToLabel(seconds);
+                    videoDurationCache[item.id] = result[item.id];
+                    if (match.needsDuration) patch.duration = seconds;
+                }
+                const publishedAt = item.snippet && item.snippet.publishedAt;
+                if (publishedAt && match.needsPublishedAt) patch.youtube_published_at = publishedAt;
+                if (match.rowId && Object.keys(patch).length) {
+                    toSave.push({ rowId: match.rowId, videoId: item.id, ...patch });
+                }
             });
-
             chunk.forEach(({ id }) => {
-                if (!foundIds.has(id)) result[id] = videoDurationCache[id] || '--:--';
+                if (!foundIds.has(id)) result[id] = result[id] || videoDurationCache[id] || '--:--';
             });
-
-            if (toSave.length > 0) await saveDurationsToDB(toSave);
+            if (toSave.length) await saveYouTubeMetadataToDB(toSave);
         } catch (error) {
-            console.error('Batch fetch error:', error);
-            chunk.forEach(({ id }) => { result[id] = videoDurationCache[id] || '--:--'; });
+            console.error('YouTube metadata batch fetch error:', error);
         }
     }
-
     saveVideoDurationCache();
     return result;
 }
@@ -591,6 +590,36 @@ async function saveDurationsToDB(items) {
         console.info('[Duration cache] Batch saved:', result.updatedCount, 'skipped:', result.skippedCount);
     } catch (error) {
         console.warn('[Duration cache] Batch save error:', error.message);
+    }
+}
+
+// ============================================================
+// Save YouTube metadata (duration + publication date) in one batch
+// ============================================================
+async function saveYouTubeMetadataToDB(items) {
+    if (!ENABLE_DB_WRITE || !items || !items.length) return;
+    const unique = new Map();
+    items.forEach(item => {
+        const row = Number(item.rowId);
+        if (!Number.isInteger(row) || row < 2 || !item.videoId) return;
+        const data = {};
+        if (Number.isInteger(item.duration) && item.duration > 0) data.duration = item.duration;
+        if (item.youtube_published_at && !Number.isNaN(Date.parse(item.youtube_published_at))) data.youtube_published_at = item.youtube_published_at;
+        if (Object.keys(data).length) unique.set(row, { row, videoId: item.videoId, data });
+    });
+    const batch = [...unique.values()];
+    if (!batch.length) return;
+    try {
+        const response = await fetch('/api/duration/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: batch })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) console.warn('[YouTube metadata] Batch save failed:', result.error || response.status);
+        else console.info('[YouTube metadata] Batch saved:', result.updatedCount, 'skipped:', result.skippedCount);
+    } catch (error) {
+        console.warn('[YouTube metadata] Batch save error:', error.message);
     }
 }
 
@@ -1818,11 +1847,21 @@ function displaySections(sections) {
                 : '';
 
             let durationHTML = '';
+            let publishedHTML = '';
             if (isYouTube) {
                 const label = dbValueToLabel(content.duration);
                 durationHTML = label
                     ? `<span class="video-duration">${escapeHtml(label)}</span>`
                     : '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>';
+                if (content.youtubePublishedAt) {
+                    const publishedDate = new Date(content.youtubePublishedAt);
+                    if (!Number.isNaN(publishedDate.getTime())) {
+                        const formatted = publishedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                        publishedHTML = `<span class="video-published" title="YouTube publication date"><i class="far fa-calendar-alt"></i> ${escapeHtml(formatted)}</span>`;
+                    }
+                } else {
+                    publishedHTML = '<span class="video-published video-published-loading" title="YouTube publication date"><i class="far fa-calendar-alt"></i> ...</span>';
+                }
             }
 
             return `
@@ -1838,6 +1877,7 @@ function displaySections(sections) {
                     <span class="content-title">${escapeHtml(contentTitle)}</span>
                     ${newBadgeHTML}
                     ${durationHTML}
+                    ${publishedHTML}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" title="খুলুন"></i>' : ''}
                 </div>
             `;
