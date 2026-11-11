@@ -1805,7 +1805,12 @@ function displaySections(sections) {
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             const isCompleted = completedItems[itemId] || false;
             const createdAtValue = content.createdAt;
-            const createdAtMs = createdAtValue ? Date.parse(createdAtValue) : NaN;
+            // Google Sheets may return date-time cells as serial numbers with UNFORMATTED_VALUE.
+            const createdAtNumber = Number(createdAtValue);
+            const createdAtMs = typeof createdAtValue === 'number' ||
+                (String(createdAtValue || '').trim() && Number.isFinite(createdAtNumber) && createdAtNumber > 20000 && createdAtNumber < 100000)
+                ? (createdAtNumber - 25569) * 86400000
+                : (createdAtValue ? Date.parse(String(createdAtValue)) : NaN);
             const isNewRow = Number.isFinite(createdAtMs) &&
                 createdAtMs <= Date.now() && (Date.now() - createdAtMs) <= 24 * 60 * 60 * 1000;
             const newBadgeHTML = isNewRow
