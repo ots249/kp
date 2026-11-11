@@ -39,12 +39,15 @@ module.exports = async function handler(req, res) {
     for (const item of incoming) {
       const row = Number(item.row);
       const videoId = String(item.videoId || '').trim();
-      const seconds = Number(item.seconds);
+      const duration = item.duration == null ? null : Number(item.duration);
+      const publishedAt = item.youtube_published_at == null ? '' : String(item.youtube_published_at).trim();
+      const validDuration = duration === null || (Number.isInteger(duration) && duration >= 1 && duration <= 86400);
+      const validPublishedAt = !publishedAt || (!Number.isNaN(Date.parse(publishedAt)) && publishedAt.length <= 40);
       if (!Number.isInteger(row) || row < 2 || !/^[A-Za-z0-9_-]{6,20}$/.test(videoId) ||
-          !Number.isInteger(seconds) || seconds < 1 || seconds > 86400) {
-        return res.status(400).json({ success: false, error: 'Invalid row, videoId or duration in batch' });
+          !validDuration || !validPublishedAt || (duration === null && !publishedAt)) {
+        return res.status(400).json({ success: false, error: 'Invalid row, videoId or YouTube metadata in batch' });
       }
-      if (!unique.has(row)) unique.set(row, { row, videoId, seconds });
+      if (!unique.has(row)) unique.set(row, { row, videoId, duration, publishedAt });
     }
 
     // One sheet read for the entire batch.
@@ -61,12 +64,15 @@ module.exports = async function handler(req, res) {
         skipped.push({ row: item.row, reason: 'row_or_video_mismatch' });
         continue;
       }
-      const existing = String(row.duration == null ? '' : row.duration).trim();
-      if ((/^\d+$/.test(existing) && Number(existing) > 0) || /^\d{1,3}:[0-5]\d$/.test(existing)) {
-        skipped.push({ row: item.row, reason: 'already_cached' });
-        continue;
+      const patch = {};
+      const existingDuration = String(row.duration == null ? '' : row.duration).trim();
+      if (item.duration !== null && !((/^\d+$/.test(existingDuration) && Number(existingDuration) > 0) || /^\d{1,3}:[0-5]\d$/.test(existingDuration))) {
+        patch.duration = item.duration;
       }
-      updates.push({ row: item.row, data: { duration: item.seconds } });
+      const existingPublishedAt = String(row.youtube_published_at == null ? '' : row.youtube_published_at).trim();
+      if (item.publishedAt && !existingPublishedAt) patch.youtube_published_at = item.publishedAt;
+      if (Object.keys(patch).length) updates.push({ row: item.row, data: patch });
+      else skipped.push({ row: item.row, reason: 'already_cached' });
     }
 
     if (!updates.length) return res.status(200).json({ success: true, updatedCount: 0, skippedCount: skipped.length, skipped });
