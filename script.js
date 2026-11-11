@@ -574,9 +574,9 @@ async function saveDurationsToDB(items) {
     for (let i = 0; i < validItems.length; i += DB_SAVE_CONCURRENT) {
         const chunk = validItems.slice(i, i + DB_SAVE_CONCURRENT);
 
-        await Promise.allSettled(chunk.map(async ({ rowId, seconds }) => {
+        await Promise.allSettled(chunk.map(async ({ rowId, videoId, seconds }) => {
             const result = await saveSingleDurationWithFallback(rowId, videoId, seconds);
-            if (!result.success) failedItems.push({ rowId, seconds });
+            if (!result.success) failedItems.push({ rowId, videoId, seconds });
         }));
 
         if (i + DB_SAVE_CONCURRENT < validItems.length) {
@@ -585,7 +585,7 @@ async function saveDurationsToDB(items) {
     }
 
     if (failedItems.length > 0 && failedItems.length <= 30) {
-        for (const { rowId, seconds } of failedItems) {
+        for (const { rowId, videoId, seconds } of failedItems) {
             await saveSingleDurationWithFallback(rowId, videoId, seconds);
             await new Promise(r => setTimeout(r, 500));
         }
