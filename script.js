@@ -976,6 +976,9 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 #yt-overlay-player .yt-hint { display: none; }
             }
 
+            /* Normal/Mini screen uses native YouTube controls only. */
+            #yt-overlay-player:not(.is-fullscreen) .yt-control-panel { display: none !important; }
+
             /* Fullscreen mode hides the app chrome so video gets the full viewport. */
             #yt-overlay-player.is-fullscreen .yt-toolbar,
             #yt-overlay-player.is-fullscreen .yt-control-panel,
@@ -1315,10 +1318,32 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         updateFullscreenButton();
     });
 
-    document.addEventListener('fullscreenchange', () => {
+    async function handleFullscreenChange() {
         updateFullscreenButton();
-        if (!document.fullscreenElement) hideFullscreenTimeline();
-    });
+        const isFullscreen = document.fullscreenElement === overlay;
+        if (!isFullscreen) hideFullscreenTimeline();
+
+        const desiredControls = isFullscreen ? 0 : 1;
+        if (playerControlsMode === desiredControls || switchingPlayerMode || !player) return;
+
+        switchingPlayerMode = true;
+        const currentPlayer = player;
+        let currentTime = 0;
+        let wasPlaying = false;
+        try {
+            currentTime = currentPlayer.getCurrentTime ? currentPlayer.getCurrentTime() : 0;
+            const state = currentPlayer.getPlayerState ? currentPlayer.getPlayerState() : -1;
+            wasPlaying = state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING;
+        } catch (_) {}
+
+        stopProgressTracking();
+        pendingPlayerRestore = { currentTime, wasPlaying };
+        playerControlsMode = desiredControls;
+        try { if (currentPlayer.destroy) currentPlayer.destroy(); } catch (_) {}
+        createYouTubePlayer(desiredControls);
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
 
     let timelineAutoHideTimer = null;
 
@@ -1450,30 +1475,47 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
     const savedProgress = videoWatchProgress[itemId] || 0;
 
-    player = new YT.Player('yt-player-container', {
-        videoId: videoId,
-        width: '100%',
-        height: '100%',
-        playerVars: { autoplay: 0, controls: 0, disablekb: 1, rel: 0, modestbranding: 1, playsinline: 1, fs: 0, iv_load_policy: 3 },
-        events: {
-            onReady: onPlayerReady,
-            onStateChange: onPlayerStateChange,
-            onError: onPlayerError
-        }
-    });
+    let pendingPlayerRestore = null;
+    let playerControlsMode = 1;
+    let switchingPlayerMode = false;
 
-    // Resume position — video er asol duration diye seek
+    function createYouTubePlayer(controls) {
+        player = new YT.Player('yt-player-container', {
+            videoId: videoId,
+            width: '100%',
+            height: '100%',
+            playerVars: { autoplay: 0, controls, disablekb: controls === 0 ? 1 : 0, rel: 0, modestbranding: 1, playsinline: 1, fs: 0, iv_load_policy: 3 },
+            events: {
+                onReady: onPlayerReady,
+                onStateChange: onPlayerStateChange,
+                onError: onPlayerError
+            }
+        });
+    }
+
+    createYouTubePlayer(playerControlsMode);
+
+    // Restore the exact playback position/state whenever controls mode changes.
     function onPlayerReady(event) {
         const d = event.target.getDuration();
-        if (d && savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) {
+        const restore = pendingPlayerRestore;
+        pendingPlayerRestore = null;
+
+        if (restore && Number.isFinite(restore.currentTime) && restore.currentTime > 0) {
+            event.target.seekTo(restore.currentTime, true);
+        } else if (d && savedProgress > 0.02 && savedProgress < COMPLETION_THRESHOLD) {
             event.target.seekTo(savedProgress * d, true);
         }
-        // Already completed? reflect in hint UI
+
         if (itemId && completedItems[itemId]) updateHintUI();
         durationLabel.textContent = formatPlayerTime(event.target.getDuration() || 0);
         applyPlaybackRate(selectedPlaybackRate, false);
         updatePlaybackControls();
-        event.target.playVideo();
+
+        if (!restore || restore.wasPlaying) event.target.playVideo();
+        else event.target.pauseVideo();
+
+        switchingPlayerMode = false;
         startProgressTracking();
     }
 
@@ -1585,7 +1627,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
 
         stopProgressTracking();
         document.removeEventListener('keydown', onKeydown);
-        document.removeEventListener('fullscreenchange', updateFullscreenButton);
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
         if (document.fullscreenElement === overlay && document.exitFullscreen) {
             document.exitFullscreen().catch(() => {});
         }
