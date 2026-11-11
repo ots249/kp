@@ -509,7 +509,8 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
         if (!label || !(row && row.youtube_published_at)) {
             uncachedIds.push({
                 id,
-                rowId: row && (row._sheetRow || row.id) != null ? String(row._sheetRow || row.id) : null,
+                // SheetAPI id is zero-based data-row index; Google Sheet rows start at 2.
+                rowId: row ? String(row._sheetRow != null ? row._sheetRow : (Number(row.id) + 1)) : null,
                 needsDuration: !label,
                 needsPublishedAt: !(row && row.youtube_published_at)
             });
@@ -606,10 +607,12 @@ async function saveYouTubeMetadataToDB(items) {
     items.forEach(item => {
         const row = Number(item.rowId);
         if (!Number.isInteger(row) || row < 2 || !item.videoId) return;
-        const data = {};
-        if (Number.isInteger(item.duration) && item.duration > 0) data.duration = item.duration;
-        if (item.youtube_published_at && !Number.isNaN(Date.parse(item.youtube_published_at))) data.youtube_published_at = item.youtube_published_at;
-        if (Object.keys(data).length) unique.set(row, { row, videoId: item.videoId, data });
+        const payload = { row, videoId: item.videoId };
+        if (Number.isInteger(item.duration) && item.duration > 0) payload.duration = item.duration;
+        if (item.youtube_published_at && !Number.isNaN(Date.parse(item.youtube_published_at))) {
+            payload.youtube_published_at = item.youtube_published_at;
+        }
+        if (payload.duration || payload.youtube_published_at) unique.set(row, payload);
     });
     const batch = [...unique.values()];
     if (!batch.length) return;
@@ -620,8 +623,11 @@ async function saveYouTubeMetadataToDB(items) {
             body: JSON.stringify({ items: batch })
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.success) console.warn('[YouTube metadata] Batch save failed:', result.error || response.status);
-        else console.info('[YouTube metadata] Batch saved:', result.updatedCount, 'skipped:', result.skippedCount);
+        if (!response.ok || !result.success) {
+            console.warn('[YouTube metadata] Batch save failed:', result.error || response.status);
+        } else {
+            console.info('[YouTube metadata] Batch saved:', result.updatedCount, 'skipped:', result.skippedCount);
+        }
     } catch (error) {
         console.warn('[YouTube metadata] Batch save error:', error.message);
     }
