@@ -2065,3 +2065,25 @@ body.dark-mode .pwa-guide-dialog{background:#172033;color:#f8fafc;border-color:#
     letter-spacing: 0.05em;
     line-height: 1.2;
 }
+
+
+/* YouTube publication date */
+.video-published {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1rem;
+    background: var(--primary-tint);
+    border: 1px solid var(--gray-200);
+    color: var(--gray-600);
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.video-published i { color: var(--primary); }
+.video-published-loading { opacity: 0.55; }
+@media (max-width: 480px) {
+    .video-published { font-size: 0.65rem; padding: 0.15rem 0.4rem; }
+}
