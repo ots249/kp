@@ -412,6 +412,7 @@ function transformClassesToSections(classes) {
                 type: type,
                 link: item.link || '#',
                 rowId: rowId,
+                createdAt: item.created_at || item.createdAt || '',
                 duration: item.duration || '',
                 resource: { resourceable: { link: item.link || '#' } }
             };
@@ -1803,6 +1804,13 @@ function displaySections(sections) {
 
             const { iconClass, isPDF, isYouTube } = getIconForContent(content, contentLink, contentTitle);
             const isCompleted = completedItems[itemId] || false;
+            const createdAtValue = content.createdAt;
+            const createdAtMs = createdAtValue ? Date.parse(createdAtValue) : NaN;
+            const isNewRow = Number.isFinite(createdAtMs) &&
+                createdAtMs <= Date.now() && (Date.now() - createdAtMs) <= 24 * 60 * 60 * 1000;
+            const newBadgeHTML = isNewRow
+                ? '<span class="new-row-badge" title="গত ২৪ ঘণ্টায় যোগ করা হয়েছে">NEW</span>'
+                : '';
 
             let durationHTML = '';
             if (isYouTube) {
@@ -1823,6 +1831,7 @@ function displaySections(sections) {
                         title="সম্পন্ন হিসাবে চিহ্নিত করুন">
                     <i class="${iconClass}"></i>
                     <span class="content-title">${escapeHtml(contentTitle)}</span>
+                    ${newBadgeHTML}
                     ${durationHTML}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" title="খুলুন"></i>' : ''}
                 </div>
