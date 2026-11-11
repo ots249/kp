@@ -12,7 +12,7 @@ const API_ENDPOINTS = [
 // Server-side proxy (Apps Script / Vercel function) baniye
 // ENABLE_DB_WRITE = true korle tokhon e chalu koro.
 // ============================================================
-const ENABLE_DB_WRITE = false;
+const ENABLE_DB_WRITE = true;
 const WRITE_API_ENDPOINTS = [{
     name: 'SheetAPI249',
     baseUrl: API_ENDPOINT,
@@ -542,7 +542,7 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
                 foundIds.add(item.id);
 
                 const match = chunk.find(c => c.id === item.id);
-                if (match && match.rowId) toSave.push({ rowId: match.rowId, seconds });
+                if (match && match.rowId) toSave.push({ rowId: match.rowId, videoId: item.id, seconds });
             });
 
             chunk.forEach(({ id }) => {
@@ -566,7 +566,7 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
 async function saveDurationsToDB(items) {
     if (!ENABLE_DB_WRITE || !items || items.length === 0) return;
 
-    const validItems = items.filter(({ rowId, seconds }) => rowId && Number.isInteger(seconds) && seconds > 0);
+    const validItems = items.filter(({ rowId, videoId, seconds }) => rowId && videoId && Number.isInteger(seconds) && seconds > 0);
     if (validItems.length === 0) return;
 
     const failedItems = [];
@@ -575,7 +575,7 @@ async function saveDurationsToDB(items) {
         const chunk = validItems.slice(i, i + DB_SAVE_CONCURRENT);
 
         await Promise.allSettled(chunk.map(async ({ rowId, seconds }) => {
-            const result = await saveSingleDurationWithFallback(rowId, seconds);
+            const result = await saveSingleDurationWithFallback(rowId, videoId, seconds);
             if (!result.success) failedItems.push({ rowId, seconds });
         }));
 
@@ -586,27 +586,29 @@ async function saveDurationsToDB(items) {
 
     if (failedItems.length > 0 && failedItems.length <= 30) {
         for (const { rowId, seconds } of failedItems) {
-            await saveSingleDurationWithFallback(rowId, seconds);
+            await saveSingleDurationWithFallback(rowId, videoId, seconds);
             await new Promise(r => setTimeout(r, 500));
         }
     }
 }
 
-async function saveSingleDurationWithFallback(rowId, seconds) {
-    for (const api of WRITE_API_ENDPOINTS) {
-        try {
-            const response = await fetch(api.buildUrl(api.baseUrl, rowId), {
-                method: api.method,
-                headers: api.headers,
-                body: JSON.stringify(api.buildPayload(rowId, seconds))
-            });
-            if (response.ok) return { success: true, apiName: api.name };
-            console.warn(`${api.name} failed (${response.status})`);
-        } catch (error) {
-            console.warn(`${api.name} error:`, error.message);
+async function saveSingleDurationWithFallback(rowId, videoId, seconds) {
+    try {
+        const response = await fetch('/api/duration/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ row: Number(rowId), videoId, seconds })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+            console.warn('[Duration cache] Server save failed:', result.error || response.status);
+            return { success: false };
         }
+        return { success: true, cached: !!result.cached };
+    } catch (error) {
+        console.warn('[Duration cache] Server save error:', error.message);
+        return { success: false };
     }
-    return { success: false };
 }
 
 // ============================================================
