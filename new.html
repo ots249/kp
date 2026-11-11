@@ -772,6 +772,8 @@
   let visibleRows = [];
   let isFetching  = false;
   let lastSharedRow = null;
+  let editingDuration = '';
+  let editingOriginalLink = '';
 
   /* =====================================================
      UTIL
@@ -841,6 +843,34 @@
 
   form.type.addEventListener('change', handleTypeChange);
 
+  // Fetch YouTube duration once when a lecture is submitted.
+  const ADMIN_YOUTUBE_API_KEY = 'AIzaSyD8JqRloRcTNoZuR0tBy14wF7Bs7BxT3t4';
+  function getAdminYouTubeVideoId(url) {
+    try {
+      const u = new URL(String(url || '').trim());
+      if (u.hostname === 'youtu.be') return u.pathname.split('/').filter(Boolean)[0] || '';
+      if (u.hostname.endsWith('youtube.com')) {
+        if (u.pathname === '/watch') return u.searchParams.get('v') || '';
+        const p = u.pathname.split('/').filter(Boolean);
+        if (['embed','shorts','live'].includes(p[0])) return p[1] || '';
+      }
+    } catch (_) {}
+    return '';
+  }
+  function adminIsoDurationSeconds(value) {
+    const m = String(value || '').match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+    return m ? Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0) : 0;
+  }
+  async function fetchYouTubeDurationForAdmin(url) {
+    const videoId = getAdminYouTubeVideoId(url);
+    if (!videoId) return '';
+    const u = new URL('https://www.googleapis.com/youtube/v3/videos');
+    u.searchParams.set('part','contentDetails'); u.searchParams.set('id',videoId); u.searchParams.set('key',ADMIN_YOUTUBE_API_KEY);
+    const r = await fetch(u.toString()); const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error(j.error && j.error.message ? j.error.message : 'YouTube duration fetch failed');
+    const seconds = adminIsoDurationSeconds(j.items && j.items[0] && j.items[0].contentDetails && j.items[0].contentDetails.duration);
+    return seconds > 0 ? seconds : '';
+  }
   /* =====================================================
      SHARE MODAL
      ===================================================== */
@@ -1178,8 +1208,21 @@
       chapter: form.chapter.value.trim(),
       lecture: form.lecture.value.trim(),
       type: form.type.value,
-      link: form.link.value.trim()
+      link: form.link.value.trim(),
+      duration: ''
     }};
+    try {
+      if (normalizeType(payload.data.type) === 'video') {
+        if (isEdit && payload.data.link === editingOriginalLink && editingDuration) payload.data.duration = editingDuration;
+        else {
+          submitBtn.innerHTML = '<span class="spinner"></span>Fetching video duration…';
+          payload.data.duration = await fetchYouTubeDurationForAdmin(payload.data.link);
+        }
+      }
+    } catch (durationError) {
+      console.warn('[Duration] Could not fetch duration; saving lecture without it:', durationError);
+      payload.data.duration = '';
+    }
     try {
       await apiRequest(isEdit ? 'PUT' : 'POST', isEdit ? editingId : null, payload);
       let pushResult = null;
@@ -1223,6 +1266,8 @@
   function startEdit(row) {
     if (!row) return;
     editingId = row._sheetRow || row.id;
+    editingDuration = row.duration || '';
+    editingOriginalLink = row.link || '';
     form.subject.value = row.subject || '';
     form.chapter.value = row.chapter || '';
     form.lecture.value = row.lecture || '';
@@ -1247,6 +1292,8 @@
 
   function resetForm() {
     editingId = null;
+    editingDuration = '';
+    editingOriginalLink = '';
     form.reset();
     form.link.classList.remove('autofilled');
     linkHint.classList.remove('show');
