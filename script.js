@@ -543,7 +543,11 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
                     if (match.needsDuration) patch.duration = seconds;
                 }
                 const publishedAt = item.snippet && item.snippet.publishedAt;
-                if (publishedAt && match.needsPublishedAt) patch.youtube_published_at = publishedAt;
+                if (publishedAt) {
+                    const dbRow = Array.isArray(dbRows) ? dbRows.find(r => extractYouTubeVideoId(r.link) === item.id) : null;
+                    if (dbRow) dbRow.youtube_published_at = publishedAt;
+                    if (match.needsPublishedAt) patch.youtube_published_at = publishedAt;
+                }
                 if (match.rowId && Object.keys(patch).length) {
                     toSave.push({ rowId: match.rowId, videoId: item.id, ...patch });
                 }
@@ -647,7 +651,14 @@ async function updateAllVideoDurations() {
             durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
 
-        items.push({ videoId, durationSpan });
+        let publishedSpan = contentItem.querySelector('.video-published');
+        if (!publishedSpan) {
+            publishedSpan = document.createElement('span');
+            publishedSpan.className = 'video-published video-published-loading';
+            publishedSpan.innerHTML = '<i class="far fa-calendar-alt"></i> ...';
+            durationSpan.insertAdjacentElement('afterend', publishedSpan);
+        }
+        items.push({ videoId, durationSpan, publishedSpan });
         allIds.push(videoId);
     });
 
@@ -655,8 +666,20 @@ async function updateAllVideoDurations() {
 
     const durations = await getVideoDurationsBatch(allIds, _currentDbRows);
 
-    items.forEach(({ videoId, durationSpan }) => {
+    items.forEach(({ videoId, durationSpan, publishedSpan }) => {
         durationSpan.textContent = durations[videoId] || '--:--';
+        const row = Array.isArray(_currentDbRows)
+            ? _currentDbRows.find(r => extractYouTubeVideoId(r.link) === videoId)
+            : null;
+        const publishedAt = row && row.youtube_published_at;
+        if (publishedAt && publishedSpan) {
+            const date = new Date(publishedAt);
+            if (!Number.isNaN(date.getTime())) {
+                publishedSpan.classList.remove('video-published-loading');
+                publishedSpan.innerHTML = '<i class="far fa-calendar-alt"></i> ' +
+                    escapeHtml(date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
+            }
+        }
     });
 }
 
