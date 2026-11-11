@@ -999,14 +999,19 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
                 position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important;
             }
             #yt-overlay-player .yt-fs-exit {
-                display: none; position: absolute; z-index: 20;
+                display: flex; position: absolute; z-index: 40;
                 right: max(16px, env(safe-area-inset-right));
-                bottom: max(16px, env(safe-area-inset-bottom));
-                top: auto; width: 46px; height: 46px;
-                border: 1px solid #555; border-radius: 50%; background: rgba(20,20,20,.82);
-                color: #fff; font-size: 1.1rem; align-items: center; justify-content: center;
+                bottom: max(18px, calc(env(safe-area-inset-bottom) + 78px));
+                top: auto; width: 50px; height: 50px;
+                border: 1px solid rgba(255,255,255,.28); border-radius: 50%;
+                background: rgba(20,20,20,.92); color: #fff; font-size: 1.2rem;
+                align-items: center; justify-content: center; cursor: pointer;
+                box-shadow: 0 3px 14px rgba(0,0,0,.55);
             }
-            #yt-overlay-player.is-fullscreen .yt-fs-exit { display: flex; }
+            #yt-overlay-player .yt-fs-exit:active { transform: scale(.94); }
+            #yt-overlay-player.is-fullscreen .yt-fs-exit {
+                bottom: max(18px, env(safe-area-inset-bottom));
+            }
             #yt-overlay-player .yt-fs-settings-btn {
                 display: none; position: absolute; z-index: 31; top: max(16px, env(safe-area-inset-top));
                 right: max(16px, env(safe-area-inset-right)); width: 46px; height: 46px;
@@ -1284,18 +1289,34 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
             longPressTimer = null;
             if (player && player.setPlaybackRate) player.setPlaybackRate(selectedPlaybackRate);
         }
-        fullscreenToggleBtn.innerHTML = active
-            ? '<i class="fas fa-compress"></i><span>Exit</span>'
-            : '<i class="fas fa-expand"></i><span>Fullscreen</span>';
+        const fullscreenIcon = active ? 'fa-compress' : 'fa-expand';
+        const fullscreenLabel = active ? 'Mini screen' : 'Full screen';
+        fullscreenToggleBtn.innerHTML = `<i class="fas ${fullscreenIcon}"></i><span>${active ? 'Exit' : 'Fullscreen'}</span>`;
         fullscreenToggleBtn.setAttribute('aria-pressed', String(active));
         fullscreenToggleBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
-        fullscreenToggleBtn.title = active ? 'Exit fullscreen' : 'Fullscreen';
+        fullscreenToggleBtn.title = fullscreenLabel;
+        fullscreenExitBtn.innerHTML = `<i class="fas ${fullscreenIcon}"></i>`;
+        fullscreenExitBtn.setAttribute('aria-label', fullscreenLabel);
+        fullscreenExitBtn.title = fullscreenLabel;
     }
 
-    fullscreenExitBtn.addEventListener('click', () => {
-        if (document.fullscreenElement === overlay && document.exitFullscreen) {
-            document.exitFullscreen().catch(error => console.warn('Exit fullscreen failed:', error));
+    fullscreenExitBtn.addEventListener('click', async () => {
+        try {
+            if (document.fullscreenElement === overlay) {
+                await document.exitFullscreen();
+            } else if (overlay.requestFullscreen) {
+                await overlay.requestFullscreen();
+                if (screen.orientation && screen.orientation.lock) {
+                    try { await screen.orientation.lock('landscape'); } catch (_) {}
+                }
+            } else {
+                showNotification('এই ব্রাউজারে Fullscreen সমর্থিত নয়', 'warning');
+            }
+        } catch (error) {
+            console.warn('Fullscreen toggle failed:', error);
+            showNotification('Fullscreen চালু/বন্ধ করা যায়নি।', 'warning');
         }
+        updateFullscreenButton();
     });
 
     fullscreenToggleBtn.addEventListener('click', async () => {
