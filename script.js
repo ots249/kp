@@ -566,48 +566,30 @@ async function getVideoDurationsBatch(videoIds, dbRows) {
 async function saveDurationsToDB(items) {
     if (!ENABLE_DB_WRITE || !items || items.length === 0) return;
 
-    const validItems = items.filter(({ rowId, videoId, seconds }) => rowId && videoId && Number.isInteger(seconds) && seconds > 0);
-    if (validItems.length === 0) return;
-
-    const failedItems = [];
-
-    for (let i = 0; i < validItems.length; i += DB_SAVE_CONCURRENT) {
-        const chunk = validItems.slice(i, i + DB_SAVE_CONCURRENT);
-
-        await Promise.allSettled(chunk.map(async ({ rowId, videoId, seconds }) => {
-            const result = await saveSingleDurationWithFallback(rowId, videoId, seconds);
-            if (!result.success) failedItems.push({ rowId, videoId, seconds });
-        }));
-
-        if (i + DB_SAVE_CONCURRENT < validItems.length) {
-            await new Promise(r => setTimeout(r, 300));
+    const unique = new Map();
+    items.forEach(({ rowId, videoId, seconds }) => {
+        if (rowId && videoId && Number.isInteger(seconds) && seconds > 0 && !unique.has(Number(rowId))) {
+            unique.set(Number(rowId), { row: Number(rowId), videoId, seconds });
         }
-    }
+    });
+    const batch = [...unique.values()];
+    if (!batch.length) return;
 
-    if (failedItems.length > 0 && failedItems.length <= 30) {
-        for (const { rowId, videoId, seconds } of failedItems) {
-            await saveSingleDurationWithFallback(rowId, videoId, seconds);
-            await new Promise(r => setTimeout(r, 500));
-        }
-    }
-}
-
-async function saveSingleDurationWithFallback(rowId, videoId, seconds) {
     try {
+        // One browser -> Vercel request for the whole missing-duration batch.
         const response = await fetch('/api/duration/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ row: Number(rowId), videoId, seconds })
+            body: JSON.stringify({ items: batch })
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.success) {
-            console.warn('[Duration cache] Server save failed:', result.error || response.status);
-            return { success: false };
+            console.warn('[Duration cache] Batch save failed:', result.error || response.status);
+            return;
         }
-        return { success: true, cached: !!result.cached };
+        console.info('[Duration cache] Batch saved:', result.updatedCount, 'skipped:', result.skippedCount);
     } catch (error) {
-        console.warn('[Duration cache] Server save error:', error.message);
-        return { success: false };
+        console.warn('[Duration cache] Batch save error:', error.message);
     }
 }
 
