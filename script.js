@@ -642,43 +642,34 @@ async function updateAllVideoDurations() {
         if (!durationSpan) {
             durationSpan = document.createElement('span');
             durationSpan.className = 'video-duration';
-            const linkIcon = contentItem.querySelector('.link-icon');
-            if (linkIcon) contentItem.insertBefore(durationSpan, linkIcon);
-            else contentItem.appendChild(durationSpan);
+            contentItem.appendChild(durationSpan);
         }
 
         if (!durationSpan.textContent.trim() || durationSpan.querySelector('.fa-spinner')) {
             durationSpan.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         }
 
-        let publishedSpan = contentItem.querySelector('.video-published');
-        if (!publishedSpan) {
-            publishedSpan = document.createElement('span');
-            publishedSpan.className = 'video-published video-published-loading';
-            publishedSpan.innerHTML = '<i class="far fa-calendar-alt"></i> ...';
-            durationSpan.insertAdjacentElement('afterend', publishedSpan);
-        }
-        items.push({ videoId, durationSpan, publishedSpan });
+        items.push({ videoId, durationSpan, contentItem });
         allIds.push(videoId);
     });
 
-    if (allIds.length === 0) return;
-
+    if (!allIds.length) return;
     const durations = await getVideoDurationsBatch(allIds, _currentDbRows);
 
-    items.forEach(({ videoId, durationSpan, publishedSpan }) => {
+    items.forEach(({ videoId, durationSpan, contentItem }) => {
         durationSpan.textContent = durations[videoId] || '--:--';
         const row = Array.isArray(_currentDbRows)
             ? _currentDbRows.find(r => extractYouTubeVideoId(r.link) === videoId)
             : null;
-        const publishedAt = row && row.youtube_published_at;
-        if (publishedAt && publishedSpan) {
-            const date = new Date(publishedAt);
-            if (!Number.isNaN(date.getTime())) {
-                publishedSpan.classList.remove('video-published-loading');
-                publishedSpan.innerHTML = '<i class="far fa-calendar-alt"></i> ' +
-                    escapeHtml(date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }));
-            }
+        const publishedAtMs = row && row.youtube_published_at ? Date.parse(row.youtube_published_at) : NaN;
+        const isRecentlyPublished = Number.isFinite(publishedAtMs) &&
+            publishedAtMs <= Date.now() && (Date.now() - publishedAtMs) <= 24 * 60 * 60 * 1000;
+        if (isRecentlyPublished && !contentItem.querySelector('.new-row-badge')) {
+            const badge = document.createElement('span');
+            badge.className = 'new-row-badge';
+            badge.title = 'গত ২৪ ঘণ্টায় প্রকাশিত';
+            badge.textContent = 'NEW';
+            durationSpan.insertAdjacentElement('beforebegin', badge);
         }
     });
 }
@@ -1863,28 +1854,22 @@ function displaySections(sections) {
                 (String(createdAtValue || '').trim() && Number.isFinite(createdAtNumber) && createdAtNumber > 20000 && createdAtNumber < 100000)
                 ? (createdAtNumber - 25569) * 86400000
                 : (createdAtValue ? Date.parse(String(createdAtValue)) : NaN);
-            const isNewRow = Number.isFinite(createdAtMs) &&
-                createdAtMs <= Date.now() && (Date.now() - createdAtMs) <= 24 * 60 * 60 * 1000;
+            const publishedAtMs = content.youtubePublishedAt ? Date.parse(content.youtubePublishedAt) : NaN;
+            const isRecentlyPublished = isYouTube && Number.isFinite(publishedAtMs) &&
+                publishedAtMs <= Date.now() && (Date.now() - publishedAtMs) <= 24 * 60 * 60 * 1000;
+            const isNewRow = (Number.isFinite(createdAtMs) &&
+                createdAtMs <= Date.now() && (Date.now() - createdAtMs) <= 24 * 60 * 60 * 1000) ||
+                isRecentlyPublished;
             const newBadgeHTML = isNewRow
-                ? '<span class="new-row-badge" title="গত ২৪ ঘণ্টায় যোগ করা হয়েছে">NEW</span>'
+                ? '<span class="new-row-badge" title="গত ২৪ ঘণ্টায় যোগ বা প্রকাশিত">NEW</span>'
                 : '';
 
             let durationHTML = '';
-            let publishedHTML = '';
             if (isYouTube) {
                 const label = dbValueToLabel(content.duration);
                 durationHTML = label
                     ? `<span class="video-duration">${escapeHtml(label)}</span>`
                     : '<span class="video-duration"><i class="fas fa-spinner fa-spin"></i></span>';
-                if (content.youtubePublishedAt) {
-                    const publishedDate = new Date(content.youtubePublishedAt);
-                    if (!Number.isNaN(publishedDate.getTime())) {
-                        const formatted = publishedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-                        publishedHTML = `<span class="video-published" title="YouTube publication date"><i class="far fa-calendar-alt"></i> ${escapeHtml(formatted)}</span>`;
-                    }
-                } else {
-                    publishedHTML = '<span class="video-published video-published-loading" title="YouTube publication date"><i class="far fa-calendar-alt"></i> ...</span>';
-                }
             }
 
             return `
@@ -1900,7 +1885,6 @@ function displaySections(sections) {
                     <span class="content-title">${escapeHtml(contentTitle)}</span>
                     ${newBadgeHTML}
                     ${durationHTML}
-                    ${publishedHTML}
                     ${!isPDF && !isYouTube ? '<i class="fas fa-external-link-alt link-icon" title="খুলুন"></i>' : ''}
                 </div>
             `;
