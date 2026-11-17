@@ -2063,7 +2063,7 @@ function showPushPermissionPrompt() {
         button.disabled = true;
         button.textContent = 'চালু করা হচ্ছে...';
         try {
-            const permission = await Notification.requestPermission();
+            const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
             if (permission !== 'granted') {
                 overlay.remove();
                 if (permission === 'denied') showNotification('Browser Settings থেকে Notification Allow করুন।', 'info');
@@ -2098,47 +2098,17 @@ function showPushPermissionPrompt() {
 }
 
 async function setupPushNotifications() {
- const button = document.getElementById('push-notification-toggle');
- if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-   if (button) { button.disabled = true; button.textContent = 'এই ব্রাউজারে Notification নেই'; }
-   return;
- }
- const refresh = async () => {
+ if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+ try {
    const reg = await navigator.serviceWorker.ready;
-   const sub = await reg.pushManager.getSubscription();
-   if (button) {
-     button.textContent = sub ? '🔔 ক্লাস Notification চালু আছে' : '🔔 ক্লাস Notification চালু করুন';
-     button.dataset.subscribed = sub ? '1' : '0';
-   }
-   return sub;
- };
- const currentSub = await refresh();
- if (Notification.permission !== 'granted') showPushPermissionPrompt();
-
- if (button) button.addEventListener('click', async () => {
-   button.disabled = true;
-   try {
-     const reg = await navigator.serviceWorker.ready;
-     let sub = await reg.pushManager.getSubscription();
-     if (sub) {
-       const response = await fetch('/api/push/subscribe', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'unsubscribe',subscription:sub})});
-       if (!response.ok) throw new Error('Unsubscribe failed');
-       await sub.unsubscribe();
-       if (typeof showNotification === 'function') showNotification('ক্লাস Notification বন্ধ করা হয়েছে।','success');
-     } else {
-       const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
-       if (permission !== 'granted') throw new Error('Notification permission দেওয়া হয়নি।');
-       sub = await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushBase64ToBytes(PUSH_PUBLIC_KEY)});
-       const response = await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub})});
-       if (!response.ok) throw new Error('Subscription save failed');
-       if (typeof showNotification === 'function') showNotification('নতুন Lecture ও PDF Notification চালু হয়েছে।','success');
-     }
-     await refresh();
-   } catch (error) {
-     console.error('[Push]',error);
-     if (typeof showNotification === 'function') showNotification(error.message || 'Notification সেটআপ করা যায়নি।','error');
-   } finally { button.disabled = false; }
- });
+   const currentSub = await reg.pushManager.getSubscription();
+   // Permission and a saved push subscription are both required.
+   // The popup is the only setup entry point; no second footer button.
+   if (Notification.permission !== 'granted' || !currentSub) showPushPermissionPrompt();
+ } catch (error) {
+   console.error('[Push] Notification setup check failed:', error);
+   showPushPermissionPrompt();
+ }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
