@@ -1,8 +1,14 @@
 {
   "crons": [
-    { "path": "/api/push/check-classes", "schedule": "0 8 * * *" }
+    {
+      "path": "/api/push/check-classes",
+      "schedule": "0 * * * *"
+    }
   ],
   "rewrites": [
-    { "source": "/install", "destination": "/install.html" }
+    {
+      "source": "/install",
+      "destination": "/install.html"
+    }
   ]
 }
