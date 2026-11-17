@@ -19,6 +19,7 @@
 - [PWA ও offline behavior](#pwa-ও-offline-behavior)
 - [Progress ও video tracking](#progress-ও-video-tracking)
 - [Admin page](#admin-page)
+- [Push notifications](#push-notifications)
 - [Configuration](#configuration)
 - [Security notes](#security-notes)
 - [Troubleshooting](#troubleshooting)
@@ -65,6 +66,10 @@ kp/
 ├── sw.js            # Service Worker and cache strategies
 ├── manifest.json    # PWA metadata, icons and shortcut
 ├── new.html         # Course content management page
+├── api/
+│   └── push/        # Push subscribe, notify, reminder and acknowledgement APIs
+├── .github/
+│   └── workflows/  # Hourly class reminder workflow
 └── README.md        # Project documentation
 ```
 
@@ -77,7 +82,7 @@ Main page ও Admin page—দুটিই একই endpoint ব্যবহা
 - Main page: GET
 - Admin page: GET, POST, PUT, DELETE
 - PUT ও DELETE-এর জন্য `?row=<sheet-row-number>` ব্যবহার হয় (প্রথম data row = 2; row 1 header)।
-- Write request-এ `X-API-Key` header বাধ্যতামূলক। Admin page-এ key input দিয়ে দিলে সেটি শুধু browser sessionStorage-এ রাখা হয়; repository code-এ key hardcode করা হয় না।
+- Write request-এ `X-API-Key` header বাধ্যতামূলক। Admin page-এ key input দিলে `localStorage`-এ `sheetapi249_write_key` নামে সংরক্ষিত হয়; repository code-এ key hardcode করা হয় না।
 - Write permission SheetAPI249 project settings-এ enable থাকতে হবে।
 
 Response normalizer সরাসরি array এবং প্রচলিত wrapper key যেমন `data`, `classes`, `rows`, `results`, `result`, `payload`, `sheet1` থেকে row array বের করার চেষ্টা করে। Primary API-এর response shape বদলালে browser DevTools-এর Console-এ `[Course API]` group ও diagnostic table দেখুন।
@@ -119,7 +124,10 @@ cd kp
 - Install button Android/Desktop-এর native prompt থাকলে সেটি ব্যবহার করে; iOS ও অন্যান্য browser-এ manual install guide দেখায়।
 - নতুন Service Worker প্রস্তুত হলে in-app update banner আসে। ব্যবহারকারী Update চাপলে নতুন version activate হয়ে page reload হয়।
 - Network status indicator offline অবস্থা দেখায়। Cache পরিষ্কার button শুধু temporary/API/course cache মুছে; progress ও theme preference অক্ষত রাখে।
-- Push handler আছে, তবে push subscription এবং server-side push sender configure না করলে notification নিজে থেকে পাঠানো হবে না।
+- Web Push notification সমর্থিত: popup থেকেই browser permission ও push subscription—দুটিই চালু হয়; আলাদা footer toggle নেই।
+- নতুন Lecture/PDF যোগ হলে Admin page থেকে Instant Push পাঠানো যায়।
+- ক্লাস না খোলা থাকলে GitHub Actions-এর hourly workflow প্রতি ঘণ্টায় reminder check করে।
+- Push subscription ও reminder state Vercel Blob-এ সংরক্ষিত হয়।
 
 নতুন deploy-এ `CACHE_NAME`, `API_CACHE_NAME` এবং `RUNTIME_CACHE_NAME` version review করুন। Cache version bump করলে পুরোনো app-shell cache activation-এর সময় মুছে যাবে।
 
@@ -135,9 +143,44 @@ cd kp
 
 `new.html` হলো course content manage করার আলাদা page। Main page-এর course title-এ একাধিকবার click করলে page-টি খোলার hidden navigation রয়েছে।
 
-Admin page একই SheetAPI249 endpoint-এ POST, PUT ও DELETE request পাঠায়। Write API Key password field-এ দিতে হয়; key শুধু browser sessionStorage-এ থাকে। SheetAPI249 project settings-এ Write permission enable করে project key ব্যবহার করতে হবে।
+Admin page একই SheetAPI249 endpoint-এ POST, PUT ও DELETE request পাঠায়। Write API Key password field-এ দিতে হয়; key browser-এর `localStorage`-এ `sheetapi249_write_key` নামে থাকে। `Instant Push Notification Secret`-ও `localStorage`-এ `civil4th_push_admin_secret` নামে সংরক্ষিত হয়, তাই Admin page পুনরায় খুললেও input-এ ফিরে আসে। SheetAPI249 project settings-এ Write permission enable করে project key ব্যবহার করতে হবে।
 
 **গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। Write API Key public code-এ hardcode করা হয়নি, তবে Admin page ব্যবহারকারীর browser-এ key প্রবেশ করানো হয়। Public admin access সীমিত রাখতে হবে।
+
+## Push notifications
+
+### User-side setup
+
+- Main page খোলার সময় browser notification permission `granted` না থাকলে অথবা Push subscription না থাকলে setup popup দেখায়।
+- Popup-এর **Notification চালু করুন** button browser permission নেয় (যদি আগে দেওয়া না থাকে), Service Worker-এর Push subscription তৈরি/পুনরুদ্ধার করে এবং `/api/push/subscribe`-এ subscription save করে।
+- Permission এবং subscription—দুটিই ঠিক থাকলে popup আর দেখায় না। Push setup-এর জন্য footer-এর দ্বিতীয় কোনো button নেই।
+- Browser permission আগে থেকে `denied` হলে site থেকে পুনরায় permission prompt দেখানো সম্ভব নয়; browser/site settings থেকে notification allow করতে হবে।
+
+### Immediate push
+
+Admin page (`new.html`) থেকে নতুন Lecture/PDF submit করার সময় `/api/push/notify` endpoint-এ request পাঠানো হয়। Request-এ `X-Admin-Secret` header ব্যবহার হয়। Secretটি browser-এর localStorage-এ থাকে; shared/public device-এ সংরক্ষণ করা নিরাপদ নয়।
+
+### Hourly reminders
+
+- Workflow: `.github/workflows/hourly-class-reminders.yml`
+- Schedule: প্রতি ঘণ্টায় `0 * * * *` (GitHub Actions scheduled workflow; GitHub-এর queue/load অনুযায়ী শুরুতে delay হতে পারে)।
+- Workflow `https://civil4th.vercel.app/api/push/check-classes` endpoint-এ authenticated request পাঠায়।
+- নতুন class শনাক্ত করতে SheetAPI249 rows-এর snapshot Vercel Blob-এ রাখা হয়।
+- কোনো subscriber class না খুললে reminder state অনুযায়ী প্রতি ৬০ মিনিটে reminder পাঠানোর চেষ্টা হয়।
+- Class খোলার acknowledgement `/api/push/acknowledge` endpoint-এ পাঠানো হয়; acknowledgement সফল হলে ঐ class-এর reminder বন্ধ হওয়ার কথা।
+- Push notification tag একই class-এর duplicate notification কমাতে সাহায্য করে; OS/browser delivery behavior পুরোপুরি app-এর নিয়ন্ত্রণে নয়।
+
+### Required Vercel environment variables
+
+| Variable | Purpose |
+|---|---|
+| `CRON_SECRET` | GitHub Actions workflow থেকে hourly endpoint authorize করে |
+| `PUSH_ADMIN_SECRET` | Admin page থেকে immediate push authorize করে |
+| `VAPID_SUBJECT` | Web Push VAPID contact/subject |
+| `VAPID_PUBLIC_KEY` | Browser push subscription এবং server VAPID public key |
+| `VAPID_PRIVATE_KEY` | Server-side Web Push signing key |
+
+`CRON_SECRET` একই value হিসেবে GitHub repository Actions Secrets এবং Vercel environment variables-এ রাখতে হবে। `PUSH_ADMIN_SECRET` ও VAPID keys শুধু Vercel server environment-এ থাকবে; এগুলো source code বা README-তে value হিসেবে commit করবেন না। Push subscription/reminder state রাখার জন্য Vercel Blob store configure থাকতে হবে।
 
 ## Configuration
 
@@ -169,6 +212,11 @@ API key কখনও unrestricted অবস্থায় public repository-তে
 | Video duration দেখা যাচ্ছে না | YouTube video ID, API key restriction/quota এবং Console error |
 | Progress থাকছে না | Browser LocalStorage permission/availability ও site data |
 | PWA install option আসছে না | HTTPS/localhost, manifest, valid icons এবং Service Worker registration |
+| Notification popup আসছে না | Browser permission `granted` এবং Push subscription দুটোই আছে কি না পরীক্ষা করুন |
+| Notification permission দেওয়া যাচ্ছে না | Browser/site settings-এ notification permission `denied` থাকলে সেখান থেকে Allow করুন |
+| Instant push 401 দিচ্ছে | Admin page-এর Instant Push Secret এবং Vercel-এর `PUSH_ADMIN_SECRET` একই কি না দেখুন |
+| Hourly reminder workflow 401 দিচ্ছে | GitHub Actions secret `CRON_SECRET` এবং Vercel environment variable একই কি না দেখুন |
+| Push পাঠানো হচ্ছে না | Vercel Blob, VAPID environment variables, subscription status ও function logs পরীক্ষা করুন |
 | Offline page খুলছে না | আগে online অবস্থায় app open করে assets cache হয়েছে কি না |
 
 ## Development notes
