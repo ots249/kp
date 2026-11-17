@@ -146,7 +146,10 @@ self.addEventListener('push', event => {
     const options = {
         body: payload.body, icon: '/icons/diploma-tutor-logo.svg', badge: '/icons/diploma-tutor-logo.svg',
         vibrate: [100, 50, 100],
-        data: { url: payload.url || '/', dateOfArrival: Date.now(), primaryKey: 1 },
+        tag: payload.tag || (payload.classKey ? 'civil4th-class-' + payload.classKey : 'civil4th-general-notice'),
+        renotify: false,
+        requireInteraction: true,
+        data: { url: payload.url || '/', classKey: payload.classKey || null, dateOfArrival: Date.now(), primaryKey: payload.classKey || Date.now() },
         actions: [{ action: 'open', title: 'খুলুন' }, { action: 'close', title: 'বন্ধ করুন' }]
     };
     event.waitUntil(self.registration.showNotification(payload.title || 'Civil 4th Semester', options));
