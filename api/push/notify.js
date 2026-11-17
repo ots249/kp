@@ -36,11 +36,13 @@ module.exports = async function handler(req, res) {
     const type = String(row.type).toLowerCase();
     const isPdf = type.includes('pdf') || String(row.link).toLowerCase().includes('.pdf');
     const title = [row.subject, 'Chapter ' + row.chapter, row.lecture].filter(Boolean).join(' — ');
+    const classKey = crypto.createHash('sha256').update(String(row.link).trim()).digest('hex');
     const payload = JSON.stringify({
       title: isPdf ? 'নতুন PDF / Note যোগ হয়েছে' : 'নতুন Lecture যোগ হয়েছে',
       body: title,
-      url: '/?notification=class',
-      tag: 'civil4th-new-resource'
+      url: '/?openClass=' + encodeURIComponent(classKey),
+      classKey,
+      tag: 'civil4th-class-' + classKey
     });
 
     const subscriptions = await list({ prefix: 'push/subscriptions/' });
