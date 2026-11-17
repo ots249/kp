@@ -602,7 +602,7 @@
       <input id="apiKey" type="password" placeholder="Paste your SheetAPI249 project key"
              autocomplete="off" autocapitalize="off" spellcheck="false" />
       <small style="display:block;margin-top:6px;color:var(--muted,#8b98a8);">
-        Keyটি শুধু এই browser tab-এর session-এ রাখা হবে; public code-এ hardcode করা হবে না।
+        Keyটি এই browser-এর local storage-এ সংরক্ষিত থাকবে; public code-এ hardcode করা হবে না।
       </small>
     </div>
     <div class="field" style="margin: 0 0 16px;">
@@ -734,10 +734,10 @@
     else localStorage.removeItem(API_KEY_STORAGE);
   });
   const pushAdminSecretInput = $('pushAdminSecret');
-  pushAdminSecretInput.value = sessionStorage.getItem(PUSH_SECRET_STORAGE) || '';
+  pushAdminSecretInput.value = localStorage.getItem(PUSH_SECRET_STORAGE) || '';
   pushAdminSecretInput.addEventListener('input', () => {
-    if (pushAdminSecretInput.value.trim()) sessionStorage.setItem(PUSH_SECRET_STORAGE, pushAdminSecretInput.value.trim());
-    else sessionStorage.removeItem(PUSH_SECRET_STORAGE);
+    if (pushAdminSecretInput.value.trim()) localStorage.setItem(PUSH_SECRET_STORAGE, pushAdminSecretInput.value.trim());
+    else localStorage.removeItem(PUSH_SECRET_STORAGE);
   });
   const submitBtn   = $('submitBtn');
   const listWrap    = $('listWrap');
