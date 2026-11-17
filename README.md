@@ -155,6 +155,14 @@ Admin page একই SheetAPI249 endpoint-এ POST, PUT ও DELETE request প�
 
 **গুরুত্বপূর্ণ:** hidden click sequence কোনো authentication বা access control নয়। Write API Key public code-এ hardcode করা হয়নি, তবে Admin page ব্যবহারকারীর browser-এ key প্রবেশ করানো হয়। Public admin access সীমিত রাখতে হবে।
 
+## সর্বশেষ Notification UI update
+
+- Class Notification setup এখন একটিমাত্র popup থেকে সম্পন্ন হয়: popup-এর button browser permission এবং server-side Push subscription—দুটিই configure করে।
+- Main page-এর নিচের আলাদা Notification toggle সরানো হয়েছে, তাই একই notification চালু করতে দুইবার চাপতে হয় না।
+- Browser permission আগে থেকেই granted হলেও subscription না থাকলে setup popup দেখানো হয়।
+- Admin page-এর SheetAPI249 Write API Key এবং Instant Push Notification Secret—দুটিই browser LocalStorage-এ আলাদাভাবে cache হয়। Page refresh বা পুনরায় খোলার পর input-এ value ফিরে আসে।
+- LocalStorage browser/device-specific; অন্য browser বা device-এ key স্বয়ংক্রিয়ভাবে sync হবে না।
+
 ## Push notifications
 
 ### User-side setup
