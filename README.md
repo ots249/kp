@@ -25,6 +25,14 @@
 - [Troubleshooting](#troubleshooting)
 - [Development notes](#development-notes)
 
+## সাম্প্রতিক আপডেট (১৭ নভেম্বর ২০২৬)
+
+- Class Notification চালু করার সম্পূর্ণ প্রক্রিয়া এখন Main page-এর একটিমাত্র popup থেকে হয়: browser permission এবং Push subscription একই flow-তে সম্পন্ন হয়।
+- Footer-এর অতিরিক্ত Notification button সরানো হয়েছে, যাতে ব্যবহারকারীকে দুই জায়গায় আলাদা করে Notification চালু করতে না হয়।
+- Popup আর না দেখানোর শর্ত: browser permission `granted` এবং Service Worker-এ সক্রিয় Push subscription—দুটিই থাকতে হবে।
+- Admin page-এর **Instant Push Notification Secret** এখন `localStorage`-এ সংরক্ষিত হয়; page refresh বা পুনরায় খোলার পরও একই browser-এ input-এ ফিরে আসে।
+- SheetAPI249 Write API Key-এর মতোই Instant Push Secret browser-local storage-এ থাকে; অন্য browser/device-এ স্বয়ংক্রিয়ভাবে sync হয় না।
+
 ## প্রকল্পের বৈশিষ্ট্য
 
 - API থেকে কোর্সের section ও lecture data লোড করা।
