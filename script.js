@@ -1957,6 +1957,8 @@ function attachEventHandlers() {
             return;
         }
 
+        // Acknowledge the reminder only when the learner actually opens the class.
+        acknowledgeOpenedClass(link).catch(error => console.warn('[Push] Class acknowledgement failed:', error));
         if (type === 'pdf') window.openPDFViewer(link, title);
         else if (type === 'video') window.openYouTubePlayer(link, title, itemId);
         else window.open(link, '_blank', 'noopener');
@@ -2029,20 +2031,91 @@ function pushBase64ToBytes(value) {
  const base64 = (value + padding).replace(/-/g, '+').replace(/_/g, '/');
  return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
+async function acknowledgeOpenedClass(link) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const subscription = await reg.pushManager.getSubscription();
+    if (!subscription) return;
+    await fetch('/api/push/acknowledge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription, link })
+    });
+}
+
+function showPushPermissionPrompt() {
+    if (document.getElementById('push-permission-prompt')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'push-permission-prompt';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:1000000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:22px;';
+    overlay.innerHTML = `
+      <div style="width:min(100%,360px);background:var(--card,#fff);color:var(--text,#222);border-radius:18px;padding:22px;box-shadow:0 16px 48px rgba(0,0,0,.3);text-align:center">
+        <div style="font-size:32px;margin-bottom:8px">🔔</div>
+        <h3 style="margin:0 0 8px;font-size:1.1rem">Class Notification চালু করুন</h3>
+        <p style="margin:0 0 18px;line-height:1.55;color:var(--text-secondary,#777)">নতুন Lecture ও PDF যোগ হলে এবং ক্লাস না খোলা পর্যন্ত প্রতি ১ ঘণ্টায় Reminder পেতে Notification চালু করুন।</p>
+        <button id="enable-class-notifications" style="width:100%;padding:12px;background:#3b7ddd;color:white;border-radius:10px;font-weight:700">Notification চালু করুন</button>
+        <button id="dismiss-class-notifications" style="margin-top:10px;padding:9px 14px;background:transparent;color:inherit">এখন নয়</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#dismiss-class-notifications').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#enable-class-notifications').addEventListener('click', async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = 'চালু করা হচ্ছে...';
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                overlay.remove();
+                if (permission === 'denied') showNotification('Browser Settings থেকে Notification Allow করুন।', 'info');
+                else showNotification('Notification permission দেওয়া হয়নি।', 'info');
+                return;
+            }
+            const reg = await navigator.serviceWorker.ready;
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: pushBase64ToBytes(PUSH_PUBLIC_KEY)
+            });
+            const response = await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscription: sub })
+            });
+            if (!response.ok) throw new Error('Subscription save failed');
+            overlay.remove();
+            const toggle = document.getElementById('push-notification-toggle');
+            if (toggle) {
+                toggle.textContent = '🔔 ক্লাস Notification চালু আছে';
+                toggle.dataset.subscribed = '1';
+            }
+            showNotification('নতুন ক্লাসের Notification চালু হয়েছে।', 'success');
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = 'আবার চেষ্টা করুন';
+            showNotification(error.message || 'Notification চালু করা যায়নি।', 'error');
+        }
+    });
+}
+
 async function setupPushNotifications() {
  const button = document.getElementById('push-notification-toggle');
- if (!button) return;
  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-   button.disabled = true; button.textContent = 'এই ব্রাউজারে Notification নেই'; return;
+   if (button) { button.disabled = true; button.textContent = 'এই ব্রাউজারে Notification নেই'; }
+   return;
  }
  const refresh = async () => {
    const reg = await navigator.serviceWorker.ready;
    const sub = await reg.pushManager.getSubscription();
-   button.textContent = sub ? '🔔 ক্লাস Notification চালু আছে' : '🔔 ক্লাস Notification চালু করুন';
-   button.dataset.subscribed = sub ? '1' : '0';
+   if (button) {
+     button.textContent = sub ? '🔔 ক্লাস Notification চালু আছে' : '🔔 ক্লাস Notification চালু করুন';
+     button.dataset.subscribed = sub ? '1' : '0';
+   }
+   return sub;
  };
- await refresh();
- button.addEventListener('click', async () => {
+ const currentSub = await refresh();
+ if (Notification.permission !== 'granted') showPushPermissionPrompt();
+
+ if (button) button.addEventListener('click', async () => {
    button.disabled = true;
    try {
      const reg = await navigator.serviceWorker.ready;
@@ -2053,7 +2126,7 @@ async function setupPushNotifications() {
        await sub.unsubscribe();
        if (typeof showNotification === 'function') showNotification('ক্লাস Notification বন্ধ করা হয়েছে।','success');
      } else {
-       const permission = await Notification.requestPermission();
+       const permission = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
        if (permission !== 'granted') throw new Error('Notification permission দেওয়া হয়নি।');
        sub = await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushBase64ToBytes(PUSH_PUBLIC_KEY)});
        const response = await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub})});
@@ -2090,9 +2163,25 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => window.resetAllProgress(), 1000);
     }
 
-    if (!navigator.onLine) showNotification('আপনি অফলাইনে আছেন।', 'info');
-    window.addEventListener('online', () => showNotification('আপনি অনলাইনে ফিরে এসেছেন!', 'success'));
-    window.addEventListener('offline', () => showNotification('আপনি অফলাইনে চলে গেছেন।', 'info'));
+    // Suppress duplicate online/offline notices; notify only on real state transitions.
+    let lastNetworkState = navigator.onLine ? 'online' : 'offline';
+    if (lastNetworkState === 'offline' && sessionStorage.getItem('civil4th-offline-notice') !== 'shown') {
+        sessionStorage.setItem('civil4th-offline-notice', 'shown');
+        showNotification('আপনি অফলাইনে আছেন।', 'info');
+    }
+    window.addEventListener('online', () => {
+        if (lastNetworkState === 'online') return;
+        lastNetworkState = 'online';
+        sessionStorage.removeItem('civil4th-offline-notice');
+        showNotification('আপনি অনলাইনে ফিরে এসেছেন!', 'success');
+    });
+    window.addEventListener('offline', () => {
+        if (lastNetworkState === 'offline') return;
+        lastNetworkState = 'offline';
+        if (sessionStorage.getItem('civil4th-offline-notice') === 'shown') return;
+        sessionStorage.setItem('civil4th-offline-notice', 'shown');
+        showNotification('আপনি অফলাইনে চলে গেছেন।', 'info');
+    });
 
     const reloadBtn = document.getElementById('floating-reload-btn');
     if (reloadBtn) {
