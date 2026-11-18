@@ -309,7 +309,7 @@ async function fetchClassesWithFallbackInternal() {
             console.table(apiDiagnostics);
             return classes;
         } catch (error) {
-            clearTimeout(timeoutId);
+
             const reason = error && error.name === 'AbortError'
                 ? `Timeout (${api.timeout}ms)`
                 : (error && error.message) || 'Unknown fetch error';
