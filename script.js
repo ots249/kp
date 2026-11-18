@@ -1184,6 +1184,15 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     document.body.appendChild(overlay);
     document.body.classList.add('yt-overlay-open');
 
+    // Add a same-URL history entry so Android/PWA Back closes the player first.
+    const playerHistoryState = { ...(history.state || {}), __civil4thYouTubeOverlay: true };
+    history.pushState(playerHistoryState, '', window.location.href);
+    let closingFromHistory = false;
+    function handlePlayerPopState() {
+        if (document.getElementById('yt-overlay-player')) closeOverlay(true);
+    }
+    window.addEventListener('popstate', handlePlayerPopState);
+
     const closeBtn = document.getElementById('yt-overlay-close');
     const autoNextBtn = document.getElementById('yt-auto-next');
     const screenLockBtn = document.getElementById('yt-screen-lock');
@@ -1681,7 +1690,13 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         }
     }
 
-    function closeOverlay() {
+    function closeOverlay(fromHistory = false) {
+        if (!document.getElementById('yt-overlay-player')) return;
+        if (!fromHistory && !closingFromHistory && history.state?.__civil4thYouTubeOverlay) {
+            closingFromHistory = true;
+            // Remove the temporary player history entry without navigating away.
+            history.back();
+        }
         try {
             if (player && player.getCurrentTime && player.getDuration) {
                 const duration = player.getDuration();
@@ -1699,6 +1714,7 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
         stopProgressTracking();
         document.removeEventListener('keydown', onKeydown);
         document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        window.removeEventListener('popstate', handlePlayerPopState);
         if (document.fullscreenElement === overlay && document.exitFullscreen) {
             document.exitFullscreen().catch(() => {});
         }
