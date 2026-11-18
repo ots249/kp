@@ -1806,34 +1806,64 @@ async function loadSections() {
     loadVideoProgress();
     loadVideoDurationCache();
 
-    try {
-        const classes = await fetchClassesWithFallback();
-        _currentDbRows = classes;
+    let renderedRows = null;
+    let durationUpdateScheduled = false;
 
+    const renderCourseRows = (classes) => {
+        if (!Array.isArray(classes) || classes.length === 0) return;
+        _currentDbRows = classes;
+        renderedRows = classes;
         document.getElementById('course-title').textContent = 'Civil 4th Semester';
 
         const sections = transformClassesToSections(classes);
         window._currentSections = sections;
-
         displaySections(sections);
-        // Fetch missing YouTube durations only after the initial page has settled.
-        const updateDurationsWhenIdle = () => updateAllVideoDurations();
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(updateDurationsWhenIdle, { timeout: 8000 });
+
+        // Run non-critical YouTube metadata work after the first paint.
+        if (!durationUpdateScheduled) {
+            durationUpdateScheduled = true;
+            const updateDurationsWhenIdle = () => updateAllVideoDurations();
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(updateDurationsWhenIdle, { timeout: 8000 });
+            } else {
+                setTimeout(updateDurationsWhenIdle, 6000);
+            }
+        }
+    };
+
+    // Render the last successful response immediately; refresh it in the background.
+    // This keeps repeat PWA launches responsive on slow or unstable connections.
+    try {
+        const cachedCourse = JSON.parse(localStorage.getItem('civil4th_course_cache_v1') || 'null');
+        if (cachedCourse && Array.isArray(cachedCourse.rows) && cachedCourse.rows.length > 0) {
+            renderCourseRows(cachedCourse.rows);
+        }
+    } catch (cacheError) {
+        console.warn('[Course API] Cached course data could not be read:', cacheError);
+    }
+
+    try {
+        const classes = await fetchClassesWithFallback();
+        // Avoid rebuilding the full course list when the server data is unchanged.
+        if (!renderedRows || JSON.stringify(classes) !== JSON.stringify(renderedRows)) {
+            renderCourseRows(classes);
         } else {
-            setTimeout(updateDurationsWhenIdle, 6000);
+            _currentDbRows = classes;
         }
     } catch (error) {
         console.error('সব API ব্যর্থ:', error);
-        document.getElementById('sections-container').innerHTML = `
-            <div class="empty-message" style="padding: 4rem; text-align: center;">
-                <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
-                <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 0.5rem;">সব API থেকে ডেটা লোড করা যায়নি।</p>
-                <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: #2563eb; color: white; border: none; border-radius: 1rem; cursor: pointer; font-size: 1rem; font-weight: 500;">
-                    <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>আবার চেষ্টা করুন
-                </button>
-            </div>
-        `;
+        // A valid cached list is already visible, so never replace it with an error screen.
+        if (!renderedRows) {
+            document.getElementById('sections-container').innerHTML = `
+                <div class="empty-message" style="padding: 4rem; text-align: center;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #ef4444; margin-bottom: 1rem;"></i>
+                    <p style="color: #64748b; font-size: 1.1rem; margin-bottom: 0.5rem;">সব API থেকে ডেটা লোড করা যায়নি।</p>
+                    <button onclick="location.reload()" style="padding: 0.75rem 2rem; background: #2563eb; color: white; border: none; border-radius: 1rem; cursor: pointer; font-size: 1rem; font-weight: 500;">
+                        <i class="fas fa-redo-alt" style="margin-right: 0.5rem;"></i>আবার চেষ্টা করুন
+                    </button>
+                </div>
+            `;
+        }
     }
 }
 
