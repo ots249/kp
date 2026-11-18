@@ -193,7 +193,21 @@ function normalizeApiResponse(responseData) {
     return null;
 }
 
+let courseFetchPromise = null;
+
 async function fetchClassesWithFallback() {
+    // Share one in-flight request across callers to avoid duplicate SheetAPI reads.
+    if (courseFetchPromise) return courseFetchPromise;
+
+    courseFetchPromise = fetchClassesWithFallbackInternal();
+    try {
+        return await courseFetchPromise;
+    } finally {
+        courseFetchPromise = null;
+    }
+}
+
+async function fetchClassesWithFallbackInternal() {
     let lastError = null;
     const apiDiagnostics = [];
 
@@ -202,13 +216,15 @@ async function fetchClassesWithFallback() {
         const startedAt = Date.now();
         let stage = 'request';
         let response = null;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), api.timeout);
 
         console.groupCollapsed(`[Course API] ${api.name} — চেষ্টা শুরু`);
         console.info('URL:', api.url);
         console.info('Timeout:', `${api.timeout}ms`);
 
         try {
-            response = await fetchWithTimeout(api.url, api.timeout);
+            response = await fetch(api.url, { signal: controller.signal });
 
             console.info('HTTP response:', {
                 status: response.status,
@@ -228,6 +244,7 @@ async function fetchClassesWithFallback() {
 
             stage = 'json';
             const data = await response.json();
+            clearTimeout(timeoutId);
 
             console.info('Response structure:', {
                 rootType: Array.isArray(data) ? 'Array' : typeof data,
@@ -292,6 +309,7 @@ async function fetchClassesWithFallback() {
             console.table(apiDiagnostics);
             return classes;
         } catch (error) {
+            clearTimeout(timeoutId);
             const reason = error && error.name === 'AbortError'
                 ? `Timeout (${api.timeout}ms)`
                 : (error && error.message) || 'Unknown fetch error';
