@@ -48,6 +48,7 @@ let videoWatchProgress = {};
 let videoDurationCache = {};   // videoId -> label ("MM:SS" / "H:MM:SS")
 let cacheSaveTimer = null;
 let _currentDbRows = [];
+let _courseFetchPromise = null;
 
 // ============================================================
 // Theme — page load e system theme respect kore
@@ -195,7 +196,7 @@ function normalizeApiResponse(responseData) {
 
 let courseFetchPromise = null;
 
-async function fetchClassesWithFallback() {
+async function fetchClassesWithFallbackInternal() {
     // Share one in-flight request across callers to avoid duplicate SheetAPI reads.
     if (courseFetchPromise) return courseFetchPromise;
 
@@ -244,7 +245,6 @@ async function fetchClassesWithFallbackInternal() {
 
             stage = 'json';
             const data = await response.json();
-            clearTimeout(timeoutId);
 
             console.info('Response structure:', {
                 rootType: Array.isArray(data) ? 'Array' : typeof data,
@@ -366,6 +366,20 @@ async function fetchClassesWithFallbackInternal() {
     }
 
     throw lastError || new Error('সব API ব্যর্থ হয়েছে');
+}
+
+
+/**
+ * Share one in-flight Course Data request across callers.
+ * Prevents duplicate API traffic when multiple UI actions trigger a refresh.
+ */
+function fetchClassesWithFallback() {
+    if (!_courseFetchPromise) {
+        _courseFetchPromise = fetchClassesWithFallbackInternal().finally(() => {
+            _courseFetchPromise = null;
+        });
+    }
+    return _courseFetchPromise;
 }
 
 // ============================================================
