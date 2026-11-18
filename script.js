@@ -1184,15 +1184,6 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     document.body.appendChild(overlay);
     document.body.classList.add('yt-overlay-open');
 
-    // Add a same-URL history entry so Android/PWA Back closes the player first.
-    const playerHistoryState = { ...(history.state || {}), __civil4thYouTubeOverlay: true };
-    history.pushState(playerHistoryState, '', window.location.href);
-    let closingFromHistory = false;
-    function handlePlayerPopState() {
-        if (document.getElementById('yt-overlay-player')) closeOverlay(true);
-    }
-    window.addEventListener('popstate', handlePlayerPopState);
-
     const closeBtn = document.getElementById('yt-overlay-close');
     const autoNextBtn = document.getElementById('yt-auto-next');
     const screenLockBtn = document.getElementById('yt-screen-lock');
@@ -1548,6 +1539,16 @@ window.openYouTubePlayer = async function (videoUrl, title, itemId) {
     });
 
     await loadYouTubeIframeAPI();
+
+    // Push the overlay history entry only after the YouTube API is ready.
+    // This keeps Android/PWA Back on the app page even when the iframe is created.
+    const playerHistoryState = { ...(history.state || {}), __civil4thYouTubeOverlay: true };
+    history.pushState(playerHistoryState, '', window.location.href);
+    let closingFromHistory = false;
+    function handlePlayerPopState() {
+        if (document.getElementById('yt-overlay-player')) closeOverlay(true);
+    }
+    window.addEventListener('popstate', handlePlayerPopState);
 
     let player = null;
     let progressCheckInterval = null;
