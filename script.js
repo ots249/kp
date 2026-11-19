@@ -49,6 +49,7 @@ let videoDurationCache = {};   // videoId -> label ("MM:SS" / "H:MM:SS")
 let cacheSaveTimer = null;
 let _currentDbRows = [];
 let _courseFetchPromise = null;
+let _notificationDeepLinkHandled = false;
 
 // ============================================================
 // Theme — page load e system theme respect kore
@@ -1850,6 +1851,7 @@ async function loadSections() {
         const sections = transformClassesToSections(classes);
         window._currentSections = sections;
         displaySections(sections);
+        openClassFromNotification(classes);
 
         // Run non-critical YouTube metadata work after the first paint.
         if (!durationUpdateScheduled) {
@@ -1902,6 +1904,51 @@ async function loadSections() {
 // ============================================================
 // Display sections
 // ============================================================
+
+// Open and focus the exact class referenced by a push notification.
+async function openClassFromNotification(classes) {
+    if (_notificationDeepLinkHandled || !window.location.search) return;
+    const classKey = new URLSearchParams(window.location.search).get('openClass');
+    if (!classKey || !Array.isArray(classes) || !window.crypto?.subtle) return;
+
+    try {
+        for (const row of classes) {
+            const link = String(row.link || '').trim();
+            if (!link) continue;
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(link));
+            const key = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+            if (key !== classKey) continue;
+
+            const target = Array.from(document.querySelectorAll('.content-item'))
+                .find(item => String(item.dataset.link || '').trim() === link);
+            if (!target) return;
+
+            _notificationDeepLinkHandled = true;
+            const section = target.closest('.section-card');
+            const header = section?.querySelector('.section-header');
+            const contents = header?.nextElementSibling;
+            if (header && contents?.classList.contains('hidden')) window.toggleSection(header);
+
+            // Remove the one-time deep-link parameter so refresh does not reopen it.
+            window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+            requestAnimationFrame(() => {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                target.style.transition = 'outline-color 0.25s ease, background-color 0.25s ease';
+                target.style.outline = '3px solid #2563eb';
+                target.style.outlineOffset = '3px';
+                target.style.borderRadius = '12px';
+                setTimeout(() => {
+                    target.style.outline = '';
+                    target.style.outlineOffset = '';
+                }, 3500);
+            });
+            return;
+        }
+    } catch (error) {
+        console.warn('[Push] Could not open the notified class:', error);
+    }
+}
+
 function displaySections(sections) {
     const container = document.getElementById('sections-container');
 
