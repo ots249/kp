@@ -68,12 +68,22 @@ module.exports = async function handler(req, res) {
           const row = item.row;
           const type = String(row.type || '').toLowerCase();
           const isPdf = type.includes('pdf') || String(row.link || '').toLowerCase().includes('.pdf');
-          const title = [row.subject, row.chapter, row.lecture].filter(Boolean).join(' — ') || 'নতুন ক্লাস';
+          const subject = String(row.subject || '').trim();
+          const chapter = String(row.chapter || '').trim();
+          const lecture = String(row.lecture || '').trim();
           const payload = JSON.stringify({
-            title: isPdf ? 'নতুন PDF / Note যোগ হয়েছে' : 'নতুন Lecture যোগ হয়েছে',
-            body: title + ' — ক্লাসটি খুলে দেখুন',
+            title: subject || 'Civil 4th Semester',
+            body: [
+              isPdf ? 'নতুন PDF / Note যোগ হয়েছে' : 'নতুন Lecture যোগ হয়েছে',
+              chapter ? 'Chapter ' + chapter : '',
+              lecture ? 'Lecture ' + lecture : ''
+            ].filter(Boolean).join(' • '),
             url: '/?openClass=' + encodeURIComponent(item.key),
             classKey: item.key,
+            subject,
+            chapter,
+            lecture,
+            resourceType: isPdf ? 'pdf' : 'lecture',
             tag: 'civil4th-class-' + item.key
           });
           try {
