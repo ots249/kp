@@ -613,6 +613,16 @@
         নতুন Lecture/PDF submit করলে subscribed users-দের সঙ্গে সঙ্গে notification পাঠাতে এটি প্রয়োজন।
       </small>
     </div>
+        <div class="field" style="margin: 0 0 16px;">
+      <label for="customPushTitle">Custom Notification Title</label>
+      <input id="customPushTitle" maxlength="120" placeholder="📢 Important announcement" />
+      <label for="customPushMessage">Custom Notification Message</label>
+      <textarea id="customPushMessage" maxlength="500" rows="4" style="width:100%;font:inherit;padding:12px 14px;border:1px solid var(--border);border-radius:10px;resize:vertical;" placeholder="Write your message..."></textarea>
+      <label for="customPushUrl">Target URL (optional)</label>
+      <input id="customPushUrl" type="url" placeholder="/ or https://civil4th.vercel.app/..." />
+      <button type="button" id="sendCustomPushBtn" class="submit-btn">📢 Send Custom Notification</button>
+      <small style="display:block;margin-top:8px;color:var(--muted);">Notification সব active subscribed device-এ পাঠানো হবে। Send করার আগে confirmation দেখাবে।</small>
+    </div>
     <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
@@ -1290,6 +1300,40 @@
   filterSubject.addEventListener('change', applyFilters);
   filterType.addEventListener('change', applyFilters);
   clearFilters.addEventListener('click', clearAllFilters);
+
+
+  $('sendCustomPushBtn').addEventListener('click', async () => {
+    const secret = pushAdminSecretInput.value.trim();
+    const title = $('customPushTitle').value.trim();
+    const message = $('customPushMessage').value.trim();
+    const target = $('customPushUrl').value.trim() || '/';
+    if (!secret) return toast('Instant Push Notification Secret দিন।', 'err');
+    if (!title || !message) return toast('Title ও Message দুটোই প্রয়োজন।', 'err');
+    let parsedTarget;
+    try {
+      parsedTarget = new URL(target, location.origin);
+      if (parsedTarget.origin !== location.origin) throw new Error();
+    } catch (_) { return toast('Target URL অবশ্যই এই App-এর URL হতে হবে।', 'err'); }
+    const btn = $('sendCustomPushBtn');
+    if (btn.disabled) return;
+    if (!confirm('সব subscribed user-কে এই notification পাঠাবেন?')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending…';
+    try {
+      const response = await fetch('/api/push/send-custom', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'X-Admin-Secret':secret },
+        body: JSON.stringify({ title, message, url: parsedTarget.pathname + parsedTarget.search + parsedTarget.hash })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || 'Send failed');
+      toast('Notification sent • '+result.sent+' device(s) • Failed: '+result.failed, 'ok', 6000);
+      $('customPushTitle').value = '';
+      $('customPushMessage').value = '';
+      $('customPushUrl').value = '';
+    } catch (err) { toast(err.message || 'Notification পাঠানো যায়নি', 'err', 5000); }
+    finally { btn.disabled = false; btn.textContent = '📢 Send Custom Notification'; }
+  });
 
   loadRows();
 </script>
