@@ -614,6 +614,15 @@
       </small>
     </div>
         <div class="field" style="margin: 0 0 16px;">
+      <label for="customPushTemplate">Saved Templates (SheetAPI249)</label>
+      <div style="display:flex;gap:8px;align-items:stretch;">
+        <select id="customPushTemplate" style="flex:1;min-width:0;">
+          <option value="">Load templates…</option>
+        </select>
+        <button type="button" id="randomCustomPushTemplate" class="refresh" style="white-space:nowrap;">🎲 Random</button>
+        <button type="button" id="refreshCustomPushTemplates" class="refresh" title="Refresh templates">↻</button>
+      </div>
+      <small id="customPushTemplateStatus" style="display:block;margin-top:6px;color:var(--muted);">Saved message templates can be selected or picked randomly.</small>
       <label for="customPushTitle">Custom Notification Title</label>
       <input id="customPushTitle" maxlength="120" placeholder="📢 Important announcement" />
       <label for="customPushMessage">Custom Notification Message</label>
@@ -1301,6 +1310,71 @@
   filterType.addEventListener('change', applyFilters);
   clearFilters.addEventListener('click', clearAllFilters);
 
+
+  /* =====================================================
+     SAVED CUSTOM PUSH TEMPLATES — SheetAPI249
+     ===================================================== */
+  const CUSTOM_PUSH_TEMPLATE_API = 'https://sheetapi249.vercel.app/api/v1/study-notification/Sheet1';
+  let customPushTemplates = [];
+
+  function templateField(row, aliases) {
+    const keys = Object.keys(row || {});
+    const key = keys.find(k => aliases.includes(k.trim().toLowerCase()));
+    return key ? String(row[key] ?? '').trim() : '';
+  }
+
+  function normalizeCustomPushTemplate(row) {
+    const title = templateField(row, ['title','notification title','push title','heading','name']);
+    const message = templateField(row, ['message','notification message','push message','body','text','content','description']);
+    return title || message ? { title, message, raw: row } : null;
+  }
+
+  function applyCustomPushTemplate(template) {
+    if (!template) return;
+    $('customPushTitle').value = template.title;
+    $('customPushMessage').value = template.message;
+  }
+
+  async function loadCustomPushTemplates() {
+    const select = $('customPushTemplate');
+    const status = $('customPushTemplateStatus');
+    const refresh = $('refreshCustomPushTemplates');
+    refresh.disabled = true;
+    status.textContent = 'Loading templates…';
+    try {
+      const response = await fetch(CUSTOM_PUSH_TEMPLATE_API, { cache: 'no-store' });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const json = await response.json();
+      const rows = Array.isArray(json) ? json
+        : Array.isArray(json.data) ? json.data
+        : Array.isArray(json.rows) ? json.rows
+        : Array.isArray(json.records) ? json.records : [];
+      customPushTemplates = rows.map(normalizeCustomPushTemplate).filter(t => t && (t.title || t.message));
+      select.innerHTML = '<option value="">Select a template…</option>' + customPushTemplates.map((t, i) =>
+        '<option value="' + i + '">' + esc((t.title || t.message).slice(0, 90)) + '</option>'
+      ).join('');
+      status.textContent = customPushTemplates.length
+        ? customPushTemplates.length + ' template(s) loaded. Selecting one fills Title and Message.'
+        : 'No usable templates found. API rows should contain Title and Message columns.';
+    } catch (err) {
+      select.innerHTML = '<option value="">Templates unavailable</option>';
+      status.textContent = 'Template load failed: ' + err.message;
+    } finally { refresh.disabled = false; }
+  }
+
+  $('customPushTemplate').addEventListener('change', e => {
+    const index = e.target.value;
+    if (index !== '') applyCustomPushTemplate(customPushTemplates[Number(index)]);
+  });
+  $('randomCustomPushTemplate').addEventListener('click', () => {
+    if (!customPushTemplates.length) return toast('আগে templates load করুন।', 'err');
+    const index = Math.floor(Math.random() * customPushTemplates.length);
+    $('customPushTemplate').value = String(index);
+    applyCustomPushTemplate(customPushTemplates[index]);
+    toast('Random template selected', 'ok');
+  });
+  $('refreshCustomPushTemplates').addEventListener('click', loadCustomPushTemplates);
+  loadCustomPushTemplates();
 
   $('sendCustomPushBtn').addEventListener('click', async () => {
     const secret = pushAdminSecretInput.value.trim();
