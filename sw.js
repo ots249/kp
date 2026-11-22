@@ -149,7 +149,7 @@ self.addEventListener('push', event => {
         tag: payload.tag || (payload.classKey ? 'civil4th-class-' + payload.classKey : 'civil4th-general-notice'),
         renotify: false,
         requireInteraction: true,
-        data: { url: payload.url || '/', classKey: payload.classKey || null, notificationId: payload.notificationId || null, dateOfArrival: Date.now(), primaryKey: payload.classKey || Date.now() },
+        data: { url: payload.url || '/', classKey: payload.classKey || null, dateOfArrival: Date.now(), primaryKey: payload.classKey || Date.now() },
         actions: [{ action: 'open', title: 'খুলুন' }, { action: 'close', title: 'বন্ধ করুন' }]
     };
     event.waitUntil(self.registration.showNotification(payload.title || 'Civil 4th Semester', options));
@@ -159,12 +159,7 @@ self.addEventListener('notificationclick', event => {
     event.notification.close();
     if (event.action === 'close') return;
     event.waitUntil((async () => {
-        const ndata = event.notification.data || {};
-        if (ndata.notificationId) {
-            fetch('/api/push/tracking', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notificationId: ndata.notificationId, event: 'click' }) }).catch(() => {});
-        }
-        const targetUrl = new URL(ndata.url || '/', self.location.origin).href;
+        const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin).href;
         const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         for (const client of windows) {
             if (client.url.startsWith(self.location.origin) && 'focus' in client) {
