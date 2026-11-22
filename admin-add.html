@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#3b7ddd" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/png" href="/icons/diploma-tutor-logo.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Civil 4th" />
+<link rel="apple-touch-icon" href="/icons/diploma-tutor-logo.svg" />
+<title>Admin — Add / Manage</title>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+        .catch(error => console.error('[PWA] Service Worker registration failed:', error));
+    });
+  }
+</script>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --bg-2: #eef2f7;
+    --card: #ffffff;
+    --border: #d3dae3;
+    --border-soft: #edf1f6;
+    --text: #0f1d33;
+    --text-2: #34455c;
+    --muted: #6b7a90;
+
+    --primary: #3b7ddd;
+    --primary-dark: #2f66b8;
+    --primary-tint: #eaf1fd;
+
+    --danger: #d92d20;
+    --danger-dark: #b42318;
+    --danger-tint: #fdecec;
+
+    --ok: #12805c;
+    --ok-tint: #e6f7ed;
+
+    --wa: #25d366;
+    --wa-dark: #128c7e;
+
+    --pdf: #1c5fb8;
+    --pdf-bg: #eaf2fe;
+    --pdf-bd: #c7dbfa;
+    --pdf-row: #f7fbff;
+
+    --video: #c62828;
+    --video-bg: #fdecea;
+    --video-bd: #f8cfcb;
+    --video-row: #fff8f8;
+
+    --radius: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(15,29,51,.05);
+    --shadow: 0 4px 18px rgba(15,29,51,.07);
+    --shadow-lg: 0 12px 32px rgba(15,29,51,.14);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #e6eefc 0%, transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.45;
+    padding: 20px 16px;
+    padding-bottom: calc(36px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(15,29,51,.04);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    width: 100%;
+    max-width: 760px;
+  }
+
+  h1 { font-size: 1.3rem; margin: 0 0 4px; letter-spacing: -0.01em; font-weight: 800; }
+  h2 {
+    font-size: 1.05rem; margin: 0; letter-spacing: -0.005em; font-weight: 700;
+    display: flex; align-items: center; gap: 8px;
+  }
+  p.sub { color: var(--muted); margin: 0 0 20px; font-size: .875rem; }
+
+  label {
+    display: block; font-size: .72rem; font-weight: 700; color: var(--text-2);
+    margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em;
+  }
+  input, select {
+    width: 100%; font-size: 16px; font-family: inherit;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: #fff; color: var(--text);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+    appearance: none; -webkit-appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236b7a90' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 40px;
+  }
+  input:hover, select:hover { border-color: #c2ccd9; }
+  input:focus, select:focus {
+    outline: none; border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59,125,221,.14);
+  }
+  input:disabled, select:disabled {
+    background: #f7f9fc; color: var(--muted); cursor: not-allowed;
+  }
+
+  #link.autofilled {
+    background: #f7fbff;
+    border-color: var(--pdf-bd);
+  }
+  #link.autofilled:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(59,125,221,.14);
+  }
+  .link-hint {
+    font-size: .72rem; color: var(--muted);
+    margin-top: 6px; display: none; align-items: center; gap: 5px;
+  }
+  .link-hint.show { display: flex; }
+  .link-hint .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--pdf); flex-shrink: 0;
+  }
+
+  .form-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; align-items: start;
+  }
+  .form-row .field { min-width: 0; }
+  .form-row .field > label { margin-top: 16px; }
+
+  button {
+    font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
+    font-weight: 600; letter-spacing: .01em;
+    transition: background .15s, transform .1s, box-shadow .15s, opacity .15s, border-color .15s;
+  }
+  button:active:not(:disabled) { transform: scale(.975); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(59,125,221,.28); }
+
+  .submit-btn {
+    position: relative; margin-top: 22px; width: 100%;
+    padding: 14px; font-size: 1rem;
+    background: linear-gradient(180deg, #4a89e6 0%, var(--primary) 100%);
+    color: #fff; min-height: 50px;
+    box-shadow: 0 4px 14px rgba(59,125,221,.35), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .submit-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #3f7cd9 0%, var(--primary-dark) 100%);
+    box-shadow: 0 6px 18px rgba(59,125,221,.42), inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  .submit-btn:disabled { background: #9db6d6; box-shadow: none; cursor: not-allowed; }
+  .submit-btn .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .6s linear infinite;
+    vertical-align: -3px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .editing {
+    background: linear-gradient(180deg, #fffbf0 0%, #fff8e6 100%);
+    border: 1px solid #f0d999; color: #7a5a00;
+    padding: 10px 14px; border-radius: 10px; margin-bottom: 12px;
+    font-size: .875rem; display: none;
+    align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap; animation: slideDown .25s ease;
+  }
+  .editing.active { display: flex; }
+  .editing button {
+    padding: 8px 14px; font-size: .8125rem;
+    background: #7a5a00; color: #fff; min-height: 36px;
+  }
+  .editing button:hover { background: #5c4400; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .toolbar-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .count-pill {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 22px; padding: 0 8px;
+    border-radius: 999px; background: var(--primary-tint); color: var(--primary);
+    font-size: .72rem; font-weight: 700;
+  }
+  .count-pill.filtered { background: #fff1d6; color: #8a5a00; }
+
+  .refresh {
+    padding: 9px 14px; font-size: .8125rem;
+    background: #fff; color: var(--text-2);
+    border: 1px solid var(--border-soft); min-height: 40px;
+    display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .refresh:hover { background: var(--bg-2); border-color: var(--border); }
+  .refresh.spinning svg { animation: spin .7s linear; }
+
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr auto;
+    gap: 10px; margin-bottom: 16px;
+    padding: 12px; background: var(--bg-2);
+    border-radius: 12px; border: 1px solid var(--border-soft);
+    align-items: end;
+  }
+  .filter-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .filter-field label { margin: 0; font-size: .65rem; color: var(--muted); }
+  .filter-field input,
+  .filter-field select {
+    padding: 9px 12px; font-size: 14px; border-radius: 8px;
+    border-color: var(--border-soft); background: #fff;
+  }
+  .filter-field select { padding-right: 34px; }
+
+  .search-wrap { position: relative; }
+  .search-wrap input { padding-left: 34px; }
+  .search-wrap .search-icon {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); pointer-events: none; display: flex;
+  }
+
+  .clear-btn {
+    padding: 9px 12px; font-size: .8125rem;
+    background: #fff; color: var(--text-2);
+    border: 1px solid var(--border-soft); border-radius: 8px;
+    min-height: 38px; display: inline-flex; align-items: center;
+    gap: 6px; white-space: nowrap;
+  }
+  .clear-btn:hover:not(:disabled) { background: #f3f6fa; border-color: var(--border); }
+  .clear-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  .result-info {
+    font-size: .8125rem; color: var(--muted);
+    margin: -4px 0 12px; display: flex; align-items: center;
+    gap: 6px; flex-wrap: wrap;
+  }
+  .result-info .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--primary-tint); color: var(--primary);
+    font-size: .72rem; font-weight: 700;
+  }
+  .result-info .chip button {
+    background: transparent; border: none; color: inherit;
+    padding: 0; margin-left: 2px; font-size: .9rem;
+    line-height: 1; cursor: pointer; opacity: .7;
+  }
+  .result-info .chip button:hover { opacity: 1; }
+
+  #listWrap { transition: opacity .2s; }
+  #listWrap.loading { opacity: .5; }
+
+  .skeleton-row {
+    border: 1px solid var(--border-soft); border-radius: 12px;
+    padding: 16px; margin-bottom: 10px; background: #fbfcfe;
+  }
+  .skeleton-line {
+    height: 12px; border-radius: 6px;
+    background: linear-gradient(90deg, #eef2f7 25%, #e2e8f0 50%, #eef2f7 75%);
+    background-size: 200% 100%; animation: shimmer 1.3s infinite; margin-bottom: 8px;
+  }
+  .skeleton-line.short { width: 40%; }
+  .skeleton-line.mid   { width: 65%; }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .row-cards { display: none; }
+  .row-card {
+    position: relative;
+    border: 1px solid var(--border-soft); border-radius: 14px;
+    padding: 14px 14px 14px 16px; margin-bottom: 12px;
+    background: #fff; box-shadow: var(--shadow-sm);
+    animation: fadeIn .25s ease;
+    transition: transform .18s, box-shadow .18s, opacity .25s, border-color .18s;
+    overflow: hidden;
+  }
+  .row-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--border); transition: background .2s;
+  }
+  .row-card[data-type="pdf"]::before   { background: var(--pdf); }
+  .row-card[data-type="video"]::before { background: var(--video); }
+  .row-card[data-type="pdf"]   { background: linear-gradient(180deg, var(--pdf-row) 0%, #ffffff 100%); }
+  .row-card[data-type="video"] { background: linear-gradient(180deg, var(--video-row) 0%, #ffffff 100%); }
+  .row-card:hover { box-shadow: 0 6px 20px rgba(15,29,51,.08); transform: translateY(-1px); }
+  .row-card.removing { opacity: 0; transform: translateX(24px) scale(.97); }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .row-card .top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; margin-bottom: 12px; padding-left: 4px;
+  }
+  .row-card .subject {
+    font-weight: 700; font-size: 1rem; line-height: 1.25;
+    letter-spacing: -0.005em; color: var(--text);
+  }
+  .row-card .fields {
+    display: grid; grid-template-columns: 72px 1fr; gap: 6px 10px;
+    font-size: .875rem; margin-bottom: 14px; padding-left: 4px;
+  }
+  .row-card .fields .k { color: var(--muted); font-weight: 600; }
+  .row-card .fields .v { color: var(--text-2); word-break: break-word; }
+  .row-card .fields .v a {
+    color: var(--primary); word-break: break-all; text-decoration: none;
+    border-bottom: 1px dashed transparent; transition: border-color .15s;
+  }
+  .row-card .fields .v a:hover { border-bottom-color: var(--primary); }
+  .row-card .actions { gap: 8px; }
+  .row-card .actions button { flex: 1; padding: 10px; font-size: .85rem; min-height: 42px; }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .9rem; }
+  thead th {
+    text-align: left; padding: 10px 12px;
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); font-weight: 700; background: var(--bg-2);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  thead th:first-child { border-top-left-radius: 10px; }
+  thead th:last-child  { border-top-right-radius: 10px; }
+  tbody td {
+    padding: 12px; border-bottom: 1px solid var(--border-soft);
+    vertical-align: top; color: var(--text-2);
+  }
+  tbody tr {
+    animation: fadeIn .25s ease;
+    transition: opacity .25s, transform .25s, background .2s;
+  }
+  tbody tr[data-type="pdf"]   { background: var(--pdf-row); }
+  tbody tr[data-type="video"] { background: var(--video-row); }
+  tbody tr:hover { background: var(--primary-tint); }
+  tbody tr.removing { opacity: 0; transform: translateX(24px); }
+  tbody tr.flash    { background: #fff8e6 !important; transition: background .3s; }
+
+  td a {
+    color: var(--primary); word-break: break-all; text-decoration: none;
+    border-bottom: 1px dashed transparent; transition: border-color .15s;
+  }
+  td a:hover { border-bottom-color: var(--primary); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    border: 1px solid transparent; white-space: nowrap;
+  }
+  .badge::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: .85;
+  }
+  .badge.pdf   { background: var(--pdf-bg);   color: var(--pdf);   border-color: var(--pdf-bd); }
+  .badge.video { background: var(--video-bg); color: var(--video); border-color: var(--video-bd); }
+  .badge.other { background: var(--bg-2); color: var(--muted); border-color: var(--border-soft); }
+
+  .actions { display: flex; gap: 8px; white-space: nowrap; }
+  .actions button {
+    padding: 8px 14px; font-size: .8rem; border-radius: 8px;
+    min-height: 36px; background: #fff;
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .edit-btn { color: var(--primary); border: 1.5px solid var(--primary); }
+  .edit-btn:hover {
+    background: var(--primary-tint);
+    border-color: var(--primary-dark); color: var(--primary-dark);
+  }
+  .del-btn { color: var(--danger); border: 1.5px solid var(--danger); }
+  .del-btn:hover {
+    background: var(--danger-tint);
+    border-color: var(--danger-dark); color: var(--danger-dark);
+  }
+
+  .empty { color: var(--muted); padding: 40px 16px; text-align: center; font-size: .9rem; }
+  .empty .ico { display: block; font-size: 2rem; margin-bottom: 8px; opacity: .5; }
+
+  #toasts {
+    position: fixed; top: calc(16px + env(safe-area-inset-top));
+    right: 16px; left: 16px;
+    display: flex; flex-direction: column; align-items: flex-end;
+    gap: 8px; pointer-events: none; z-index: 9999;
+  }
+  @media (min-width: 640px) { #toasts { left: auto; max-width: 360px; } }
+  .toast {
+    pointer-events: auto; background: #fff; border-radius: 12px;
+    padding: 12px 16px; box-shadow: var(--shadow-lg);
+    font-size: .875rem; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 10px;
+    min-width: 220px; max-width: 100%;
+    border-left: 4px solid var(--primary);
+    animation: toastIn .3s cubic-bezier(.2,.9,.3,1.2);
+    word-break: break-word;
+  }
+  .toast.ok  { border-left-color: var(--ok); }
+  .toast.err { border-left-color: var(--danger); }
+  .toast.out { animation: toastOut .25s forwards; }
+  .toast .ico { font-size: 1.1rem; line-height: 1; }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-12px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes toastOut { to { opacity: 0; transform: translateX(30px) scale(.95); } }
+
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(15,29,51,.45);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; animation: overlayIn .2s ease;
+  }
+  .modal-overlay.active { display: flex; }
+  @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(15,29,51,.28);
+    width: 100%; max-width: 380px; padding: 24px;
+    animation: modalIn .28s cubic-bezier(.2,.9,.3,1.15);
+    text-align: center;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.92) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal .icon {
+    width: 52px; height: 52px; margin: 0 auto 14px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; background: var(--danger-tint); color: var(--danger);
+  }
+  .modal h3 {
+    margin: 0 0 8px; font-size: 1.1rem; font-weight: 700;
+    color: var(--text); letter-spacing: -0.005em;
+  }
+  .modal p { margin: 0 0 22px; font-size: .875rem; color: var(--muted); line-height: 1.5; }
+  .modal p strong { color: var(--text-2); }
+  .modal .modal-actions { display: flex; gap: 10px; }
+  .modal .modal-actions button {
+    flex: 1; padding: 12px; font-size: .9rem; min-height: 46px; border-radius: 10px;
+  }
+  .modal .btn-cancel {
+    background: #fff; color: var(--text-2);
+    border: 1.5px solid var(--border);
+  }
+  .modal .btn-cancel:hover { background: var(--bg-2); border-color: #c2ccd9; }
+  .modal .btn-confirm {
+    background: var(--danger); color: #fff;
+    border: 1.5px solid var(--danger);
+  }
+  .modal .btn-confirm:hover { background: var(--danger-dark); border-color: var(--danger-dark); }
+
+  .success-modal .icon {
+    background: var(--ok-tint);
+    color: var(--ok);
+    font-size: 1.7rem;
+  }
+  .success-modal .modal-preview {
+    background: #f6f8fb;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .8rem;
+    color: var(--text-2);
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0 0 18px;
+    line-height: 1.55;
+    max-height: 200px;
+    overflow: auto;
+  }
+  .success-modal .modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .success-modal .modal-actions button {
+    width: 100%;
+    padding: 13px;
+    font-size: .95rem;
+    min-height: 48px;
+    border-radius: 10px;
+    border: none;
+  }
+  .btn-whatsapp {
+    background: linear-gradient(180deg, #34d97c 0%, var(--wa) 100%);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(37,211,102,.35), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .btn-whatsapp:hover {
+    background: linear-gradient(180deg, #2cc56f 0%, var(--wa-dark) 100%);
+    box-shadow: 0 6px 18px rgba(37,211,102,.42), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .btn-close-modal {
+    background: #fff;
+    color: var(--text-2);
+    border: 1.5px solid var(--border) !important;
+  }
+  .btn-close-modal:hover { background: var(--bg-2); border-color: #c2ccd9; }
+
+  @media (max-width: 640px) {
+    body { padding: 14px 12px; padding-bottom: calc(28px + env(safe-area-inset-bottom)); gap: 14px; }
+    .card { padding: 18px 16px; border-radius: 14px; }
+    h1 { font-size: 1.18rem; }
+    h2 { font-size: 1rem; }
+    table, thead, tbody, th, td, tr { display: none; }
+    .row-cards { display: block; }
+
+    .filter-bar { grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+    .filter-field.search-field { grid-column: 1 / -1; }
+    .clear-btn { grid-column: 1 / -1; justify-content: center; }
+  }
+  @media (max-width: 360px) {
+    .row-card .fields { grid-template-columns: 60px 1fr; font-size: .8125rem; }
+    .filter-bar { grid-template-columns: 1fr; }
+    .filter-field.search-field { grid-column: auto; }
+    .form-row { gap: 8px; }
+    .form-row input { padding: 11px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<nav style="width:100%;max-width:760px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;"><a href="/new.html">Dashboard</a><a href="/admin-add.html">Add / Manage</a><a href="/admin-notification.html">Notifications</a><a href="/admin-track.html">Tracking</a><a href="/admin-monitor.html">Monitor</a></nav>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Delete confirmation modal -->
+  <div class="modal-overlay" id="confirmOverlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="icon">🗑️</div>
+      <h3 id="confirmTitle">Delete this row?</h3>
+      <p id="confirmMessage">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="confirmCancel">Cancel</button>
+        <button type="button" class="btn-confirm" id="confirmOk">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success + Share modal -->
+  <div class="modal-overlay" id="shareOverlay" role="dialog" aria-modal="true">
+    <div class="modal success-modal">
+      <div class="icon">✓</div>
+      <h3>Added successfully!</h3>
+      <p>Want to share this class with your group?</p>
+      <div class="modal-preview" id="sharePreview"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-whatsapp" id="shareWhatsapp">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.52 3.48A11.94 11.94 0 0 0 12.05 0C5.5 0 .18 5.32.18 11.87c0 2.09.55 4.14 1.6 5.94L0 24l6.34-1.66a11.86 11.86 0 0 0 5.71 1.46h.01c6.55 0 11.87-5.32 11.87-11.87 0-3.17-1.23-6.15-3.41-8.45zM12.06 21.8h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.76.99 1-3.66-.23-.38a9.86 9.86 0 0 1-1.51-5.28c0-5.45 4.44-9.88 9.9-9.88 2.64 0 5.12 1.03 6.98 2.9a9.82 9.82 0 0 1 2.9 6.99c0 5.45-4.43 9.9-9.88 9.9zm5.42-7.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.07-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.03 1-1.03 2.44 0 1.44 1.05 2.83 1.2 3.03.15.2 2.07 3.16 5.02 4.43.7.3 1.25.48 1.68.62.7.22 1.35.19 1.86.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.19-.57-.34z"/>
+          </svg>
+          Share on WhatsApp
+        </button>
+        <button type="button" class="btn-close-modal" id="shareClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="card">
+    <h1>Civil 4th Diploma Tutor</h1>
+    <p class="sub" id="formSubtitle">Add a new lecture resource.</p>
+
+    <div class="editing" id="editBanner">
+      <span>✏️ Editing row <strong id="editIdLabel"></strong></span>
+      <button type="button" id="cancelEditBtn">Cancel</button>
+    </div>
+
+    <form id="entryForm" autocomplete="off">
+      <label for="subject">Subject</label>
+      <select id="subject" name="subject" required>
+        <option value="" disabled selected>Select subject…</option>
+        <option>Accounting</option>
+        <option>Estimating &amp; Costing 1</option>
+        <option>Geotechnical Engineering</option>
+        <option>Surveying 2</option>
+      </select>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="chapter">Chapter</label>
+          <input id="chapter" name="chapter" type="text" required placeholder="e.g. 3" />
+        </div>
+        <div class="field">
+          <label for="lecture">Lecture</label>
+          <input id="lecture" name="lecture" type="text" required placeholder="e.g. 5" />
+        </div>
+      </div>
+
+      <label for="type">Type</label>
+      <select id="type" name="type" required>
+        <option value="" disabled selected>Select type…</option>
+        <option value="video">Video</option>
+        <option value="pdf">PDF</option>
+      </select>
+
+      <label for="link">Link</label>
+      <input id="link" name="link" type="url" required placeholder="https://…"
+             inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      <div class="link-hint" id="linkHint">
+        <span class="dot"></span>
+        <span>PDF folder prefilled — just add the filename (e.g. <strong>s2c1l1.pdf</strong>)</span>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Submit</button>
+    </form>
+  </div>
+
+  <!-- LIST -->
+  <div class="card">
+    <div class="toolbar">
+      <div class="toolbar-title">
+        <h2>All Resources</h2>
+        <span class="count-pill" id="countPill">0</span>
+      </div>
+      <button type="button" class="refresh" id="refreshBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="filter-bar">
+      <div class="filter-field search-field">
+        <label for="filterSearch">Search</label>
+        <div class="search-wrap">
+          <span class="search-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </span>
+          <input id="filterSearch" type="search" placeholder="Search chapter, lecture, link…" />
+        </div>
+      </div>
+
+      <div class="filter-field">
+        <label for="filterSubject">Subject</label>
+        <select id="filterSubject">
+          <option value="">All subjects</option>
+          <option>Accounting</option>
+          <option>Estimating &amp; Costing 1</option>
+          <option>Geotechnical Engineering</option>
+          <option>Surveying 2</option>
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="filterType">Type</label>
+        <select id="filterType">
+          <option value="">All types</option>
+          <option value="video">Video</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+
+      <button type="button" class="clear-btn" id="clearFilters" disabled>
+        ✕ Clear
+      </button>
+    </div>
+
+    <div class="result-info" id="resultInfo" style="display:none;"></div>
+
+    <div id="listWrap">
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+    </div>
+  </div>
+
+<script>
+  /* =====================================================
+     CONFIG — single API provider
+     ===================================================== */
+  const API_ENDPOINT = 'https://sheetapi249.vercel.app/api/v1/diploma-tutor/Sheet1';
+  const API_KEY_STORAGE = 'sheetapi249_write_key';
+  const PUSH_SECRET_STORAGE = 'civil4th_push_admin_secret';
+  const PDF_BASE = 'https://ots.zya.me/pdf/';
+
+  const $ = (id) => document.getElementById(id);
+  const form        = $('entryForm');
+  const apiKeyInput = $('apiKey');
+  apiKeyInput.value = localStorage.getItem(API_KEY_STORAGE) || '';
+  apiKeyInput.addEventListener('input', () => {
+    if (apiKeyInput.value.trim()) localStorage.setItem(API_KEY_STORAGE, apiKeyInput.value.trim());
+    else localStorage.removeItem(API_KEY_STORAGE);
+  });
+  const pushAdminSecretInput = $('pushAdminSecret');
+  pushAdminSecretInput.value = localStorage.getItem(PUSH_SECRET_STORAGE) || '';
+  pushAdminSecretInput.addEventListener('input', () => {
+    if (pushAdminSecretInput.value.trim()) localStorage.setItem(PUSH_SECRET_STORAGE, pushAdminSecretInput.value.trim());
+    else localStorage.removeItem(PUSH_SECRET_STORAGE);
+  });
+  const submitBtn   = $('submitBtn');
+  const listWrap    = $('listWrap');
+  const refreshBtn  = $('refreshBtn');
+  const editBanner  = $('editBanner');
+  const editIdLabel = $('editIdLabel');
+  const cancelBtn   = $('cancelEditBtn');
+  const subtitle    = $('formSubtitle');
+  const toasts      = $('toasts');
+  const countPill   = $('countPill');
+  const resultInfo  = $('resultInfo');
+  const linkHint    = $('linkHint');
+
+  const filterSearch  = $('filterSearch');
+  const filterSubject = $('filterSubject');
+  const filterType    = $('filterType');
+  const clearFilters  = $('clearFilters');
+
+  const confirmOverlay = $('confirmOverlay');
+  const confirmTitle   = $('confirmTitle');
+  const confirmMessage = $('confirmMessage');
+  const confirmOk      = $('confirmOk');
+  const confirmCancel  = $('confirmCancel');
+
+  const shareOverlay  = $('shareOverlay');
+  const sharePreview  = $('sharePreview');
+  const shareWhatsapp = $('shareWhatsapp');
+  const shareClose    = $('shareClose');
+
+  let editingId   = null;
+  let cachedRows  = [];
+  let visibleRows = [];
+  let isFetching  = false;
+  let lastSharedRow = null;
+
+  /* =====================================================
+     UTIL
+     ===================================================== */
+  function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => (
+      { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]
+    ));
+  }
+  function normalizeType(t) {
+    const v = String(t ?? '').trim().toLowerCase();
+    if (v === 'pdf')   return 'pdf';
+    if (v === 'video') return 'video';
+    return 'other';
+  }
+  function typeLabel(t) {
+    const v = String(t ?? '').trim();
+    return v ? v.toUpperCase() : '—';
+  }
+  function toast(message, type = 'ok', duration = 3000) {
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = `<span class="ico">${type === 'ok' ? '✅' : '❌'}</span><span>${esc(message)}</span>`;
+    toasts.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      el.addEventListener('animationend', () => el.remove(), { once: true });
+    }, duration);
+  }
+
+  /* =====================================================
+     PDF LINK AUTO-FILL
+     ===================================================== */
+  function handleTypeChange() {
+    const type = normalizeType(form.type.value);
+    const current = form.link.value;
+
+    if (type === 'pdf') {
+      if (!current) {
+        form.link.value = PDF_BASE;
+        form.link.classList.add('autofilled');
+        linkHint.classList.add('show');
+        requestAnimationFrame(() => {
+          form.link.focus();
+          try { form.link.setSelectionRange(form.link.value.length, form.link.value.length); } catch(_) {}
+        });
+      } else {
+        form.link.classList.remove('autofilled');
+        linkHint.classList.remove('show');
+      }
+    } else {
+      if (current === PDF_BASE) form.link.value = '';
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+  }
+
+  form.link.addEventListener('input', () => {
+    if (form.link.value === PDF_BASE) {
+      form.link.classList.add('autofilled');
+      linkHint.classList.add('show');
+    } else {
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+  });
+
+  form.type.addEventListener('change', handleTypeChange);
+
+  /* =====================================================
+     SHARE MODAL
+     ===================================================== */
+  function buildCaption(row) {
+    return [
+      'New class added ✅',
+      '',
+      `${row.subject}`,
+      `Chapter ${row.chapter} - Lecture ${row.lecture}`,
+      `${row.link}`
+    ].join('\n');
+  }
+
+  function openShareModal(row) {
+    lastSharedRow = row;
+    const caption = buildCaption(row);
+    sharePreview.textContent = caption;
+    shareOverlay.classList.add('active');
+
+    function cleanup() {
+      shareOverlay.classList.remove('active');
+      shareWhatsapp.removeEventListener('click', onShare);
+      shareClose.removeEventListener('click', onClose);
+      shareOverlay.removeEventListener('click', onOverlay);
+      document.removeEventListener('keydown', onKey);
+    }
+    function onShare()   { doWhatsAppShare(); cleanup(); }
+    function onClose()   { cleanup(); }
+    function onOverlay(e){ if (e.target === shareOverlay) onClose(); }
+    function onKey(e)    { if (e.key === 'Escape') onClose(); }
+
+    shareWhatsapp.addEventListener('click', onShare);
+    shareClose.addEventListener('click', onClose);
+    shareOverlay.addEventListener('click', onOverlay);
+    document.addEventListener('keydown', onKey);
+    setTimeout(() => shareWhatsapp.focus(), 80);
+  }
+
+  function doWhatsAppShare() {
+    if (!lastSharedRow) return;
+    const text = buildCaption(lastSharedRow);
+    const url  = 'https://wa.me/?text=' + encodeURIComponent(text);
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) window.location.href = url;
+  }
+
+  /* =====================================================
+     FILTER LOGIC
+     ===================================================== */
+  function getFilters() {
+    return {
+      search:  filterSearch.value.trim().toLowerCase(),
+      subject: filterSubject.value,
+      type:    filterType.value
+    };
+  }
+  function hasActiveFilters(f) { return !!(f.search || f.subject || f.type); }
+
+  function applyFilters() {
+    const f = getFilters();
+    visibleRows = cachedRows.filter(row => {
+      if (f.subject && String(row.subject || '') !== f.subject) return false;
+      if (f.type && normalizeType(row.type) !== f.type) return false;
+      if (f.search) {
+        const hay = [row.subject, row.chapter, row.lecture, row.link]
+          .map(v => String(v ?? '').toLowerCase()).join(' ');
+        if (!hay.includes(f.search)) return false;
+      }
+      return true;
+    });
+    renderList(visibleRows);
+    updateFilterUI(f);
+  }
+
+  function updateFilterUI(f) {
+    clearFilters.disabled = !hasActiveFilters(f);
+
+    if (hasActiveFilters(f)) {
+      countPill.textContent = `${visibleRows.length}/${cachedRows.length}`;
+      countPill.classList.add('filtered');
+    } else {
+      countPill.textContent = cachedRows.length;
+      countPill.classList.remove('filtered');
+    }
+
+    const chips = [];
+    if (f.subject) chips.push({ key: 'subject', label: `Subject: ${f.subject}` });
+    if (f.type)    chips.push({ key: 'type',    label: `Type: ${f.type.toUpperCase()}` });
+    if (f.search)  chips.push({ key: 'search',  label: `"${filterSearch.value.trim()}"` });
+
+    if (!chips.length) {
+      resultInfo.style.display = 'none';
+      resultInfo.innerHTML = '';
+      return;
+    }
+    resultInfo.style.display = 'flex';
+    resultInfo.innerHTML = `
+      <span>Showing ${visibleRows.length} of ${cachedRows.length}</span>
+      ${chips.map(c => `
+        <span class="chip">
+          ${esc(c.label)}
+          <button type="button" data-clear-chip="${c.key}" aria-label="Remove filter">✕</button>
+        </span>
+      `).join('')}
+    `;
+    resultInfo.querySelectorAll('[data-clear-chip]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.clearChip;
+        if (k === 'subject') filterSubject.value = '';
+        if (k === 'type')    filterType.value = '';
+        if (k === 'search')  filterSearch.value = '';
+        applyFilters();
+      });
+    });
+  }
+
+  function clearAllFilters() {
+    filterSearch.value = '';
+    filterSubject.value = '';
+    filterType.value = '';
+    applyFilters();
+  }
+
+  /* =====================================================
+     CONFIRM MODAL (delete)
+     ===================================================== */
+  function openConfirm({ title, message, confirmText = 'Delete' }) {
+    return new Promise((resolve) => {
+      confirmTitle.textContent = title;
+      confirmMessage.innerHTML = message;
+      confirmOk.textContent    = confirmText;
+      confirmOverlay.classList.add('active');
+      setTimeout(() => confirmOk.focus(), 60);
+
+      function cleanup() {
+        confirmOverlay.classList.remove('active');
+        confirmOk.removeEventListener('click', onOk);
+        confirmCancel.removeEventListener('click', onCancel);
+        confirmOverlay.removeEventListener('click', onOverlay);
+        document.removeEventListener('keydown', onKey);
+      }
+      function onOk()      { cleanup(); resolve(true); }
+      function onCancel()  { cleanup(); resolve(false); }
+      function onOverlay(e){ if (e.target === confirmOverlay) onCancel(); }
+      function onKey(e)    { if (e.key === 'Escape') onCancel(); }
+
+      confirmOk.addEventListener('click', onOk);
+      confirmCancel.addEventListener('click', onCancel);
+      confirmOverlay.addEventListener('click', onOverlay);
+      document.addEventListener('keydown', onKey);
+    });
+  }
+
+  /* =====================================================
+     RENDER
+     ===================================================== */
+  function renderList(rows) {
+    if (!rows.length) {
+      const f = getFilters();
+      const msg = hasActiveFilters(f)
+        ? 'No resources match your filters.'
+        : 'No resources yet. Add your first one above.';
+      listWrap.innerHTML = `
+        <div class="empty">
+          <span class="ico">${hasActiveFilters(f) ? '🔍' : '📚'}</span>
+          ${esc(msg)}
+        </div>
+      `;
+      return;
+    }
+
+    const tableHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th><th>Chapter</th><th>Lecture</th><th>Type</th><th>Link</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => {
+            const t = normalizeType(r.type);
+            return `
+              <tr data-row-id="${r.id}" data-type="${t}">
+                <td>${esc(r.subject)}</td>
+                <td>${esc(r.chapter)}</td>
+                <td>${esc(r.lecture)}</td>
+                <td><span class="badge ${t}">${esc(typeLabel(r.type))}</span></td>
+                <td><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></td>
+                <td>
+                  <div class="actions">
+                    <button class="edit-btn" data-edit="${r.id}">Edit</button>
+                    <button class="del-btn"  data-del="${r.id}">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    const cardsHTML = `
+      <div class="row-cards">
+        ${rows.map(r => {
+          const t = normalizeType(r.type);
+          return `
+            <div class="row-card" data-row-id="${r.id}" data-type="${t}">
+              <div class="top">
+                <div class="subject">${esc(r.subject)}</div>
+                <span class="badge ${t}">${esc(typeLabel(r.type))}</span>
+              </div>
+              <div class="fields">
+                <div class="k">Chapter</div><div class="v">${esc(r.chapter)}</div>
+                <div class="k">Lecture</div><div class="v">${esc(r.lecture)}</div>
+                <div class="k">Link</div>
+                <div class="v"><a href="${esc(r.link)}" target="_blank" rel="noopener">${esc(r.link)}</a></div>
+              </div>
+              <div class="actions">
+                <button class="edit-btn" data-edit="${r.id}">Edit</button>
+                <button class="del-btn"  data-del="${r.id}">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    listWrap.innerHTML = tableHTML + cardsHTML;
+
+    if (!listWrap.dataset.bound) {
+      listWrap.addEventListener('click', handleListClick);
+      listWrap.dataset.bound = '1';
+    }
+  }
+
+  function handleListClick(e) {
+    const editBtn = e.target.closest('[data-edit]');
+    const delBtn  = e.target.closest('[data-del]');
+    if (editBtn) {
+      const row = cachedRows.find(r => String(r.id) === editBtn.dataset.edit);
+      startEdit(row);
+    }
+    if (delBtn) deleteRow(delBtn.dataset.del);
+  }
+
+  function showSkeleton() {
+    listWrap.innerHTML = `
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+      <div class="skeleton-row"><div class="skeleton-line mid"></div><div class="skeleton-line short"></div></div>
+    `;
+  }
+
+  /* =====================================================
+     SheetAPI249 — single provider for all CRUD operations
+     ===================================================== */
+  function apiHeaders(includeKey = false) {
+    if (!includeKey) return {};
+    const headers = { 'Content-Type': 'application/json' };
+    const key = apiKeyInput.value.trim();
+    if (key) headers['X-API-Key'] = key;
+    return headers;
+  }
+
+  async function apiRequest(method = 'GET', row = null, payload = null) {
+    const url = new URL(API_ENDPOINT);
+    if (row !== null) url.searchParams.set('row', String(row));
+    const write = method !== 'GET';
+    if (write && !apiKeyInput.value.trim()) throw new Error('POST/PUT/DELETE করার আগে SheetAPI249 Write API Key দিন।');
+    const response = await fetch(url.toString(), {
+      method,
+      headers: apiHeaders(write),
+      ...(payload ? { body: JSON.stringify(payload) } : {})
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok || json.success === false) throw new Error(json.error || json.message || `HTTP ${response.status}`);
+    return json;
+  }
+
+  /* =====================================================
+     READ
+     ===================================================== */
+  async function loadRows({ showSpinner = false } = {}) {
+    if (isFetching) return;
+    isFetching = true;
+    if (showSpinner) refreshBtn.classList.add('spinning');
+    else showSkeleton();
+    try {
+      const json = await apiRequest('GET');
+      const rows = Array.isArray(json) ? json
+        : Array.isArray(json.data) ? json.data
+        : Array.isArray(json.rows) ? json.rows
+        : Array.isArray(json.records) ? json.records : [];
+      cachedRows = rows.map((row, index) => ({ ...row, _sheetRow: index + 2, id: index + 2 }));
+      applyFilters();
+    } catch (err) {
+      listWrap.innerHTML = `<div class="empty">❌ Failed to load: ${esc(err.message)}</div>`;
+      toast('Failed to load resources', 'err');
+    } finally {
+      isFetching = false;
+      setTimeout(() => refreshBtn.classList.remove('spinning'), 700);
+    }
+  }
+
+  async function sendImmediatePush(row) {
+    const secret = pushAdminSecretInput.value.trim();
+    if (!secret) throw new Error('Instant Push Notification Secret দিন।');
+    const response = await fetch('/api/push/notify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Secret': secret
+      },
+      body: JSON.stringify({ data: row })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Notification পাঠানো যায়নি');
+    }
+    return result;
+  }
+
+  /* =====================================================
+     CREATE / UPDATE — POST / PUT through SheetAPI249
+     ===================================================== */
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (submitBtn.disabled) return;
+    const isEdit = editingId !== null;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<span class="spinner"></span>${isEdit ? 'Updating…' : 'Submitting…'}`;
+    setFormDisabled(true);
+    const payload = { data: {
+      subject: form.subject.value,
+      chapter: form.chapter.value.trim(),
+      lecture: form.lecture.value.trim(),
+      type: form.type.value,
+      link: form.link.value.trim()
+    }};
+    try {
+      await apiRequest(isEdit ? 'PUT' : 'POST', isEdit ? editingId : null, payload);
+      let pushResult = null;
+      if (!isEdit) {
+        try {
+          pushResult = await sendImmediatePush(payload.data);
+        } catch (pushError) {
+          console.warn('[Push] Resource saved, but immediate notification failed:', pushError);
+        }
+      }
+      await loadRows();
+      if (isEdit) {
+        toast('Updated successfully', 'ok');
+      } else if (pushResult) {
+        toast(`Added successfully • Notification sent to ${pushResult.sent} device(s)`, 'ok', 4500);
+      } else {
+        toast('Added successfully • Notification was not sent', 'err', 4500);
+      }
+      if (!isEdit) setTimeout(() => openShareModal({ ...payload.data, id: 'new' }), 250);
+      resetForm();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error(err);
+      toast(err.message, 'err', 4500);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = isEdit ? 'Update' : 'Submit';
+      setFormDisabled(false);
+    }
+  });
+
+  function setFormDisabled(disabled) {
+    ['subject','chapter','lecture','type','link'].forEach(id => {
+      form[id].disabled = disabled;
+    });
+  }
+
+  /* =====================================================
+     EDIT
+     ===================================================== */
+  function startEdit(row) {
+    if (!row) return;
+    editingId = row._sheetRow || row.id;
+    form.subject.value = row.subject || '';
+    form.chapter.value = row.chapter || '';
+    form.lecture.value = row.lecture || '';
+    form.type.value    = normalizeType(row.type) === 'other' ? '' : row.type;
+    form.link.value    = row.link || '';
+
+    if (normalizeType(row.type) === 'pdf' && form.link.value === PDF_BASE) {
+      form.link.classList.add('autofilled');
+      linkHint.classList.add('show');
+    } else {
+      form.link.classList.remove('autofilled');
+      linkHint.classList.remove('show');
+    }
+
+    editIdLabel.textContent = '#' + row.id;
+    editBanner.classList.add('active');
+    submitBtn.textContent = 'Update';
+    subtitle.textContent  = 'Editing an existing resource.';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => form.subject.focus(), 300);
+  }
+
+  function resetForm() {
+    editingId = null;
+    form.reset();
+    form.link.classList.remove('autofilled');
+    linkHint.classList.remove('show');
+    editBanner.classList.remove('active');
+    submitBtn.textContent = 'Submit';
+    subtitle.textContent  = 'Add a new lecture resource.';
+  }
+
+  cancelBtn.addEventListener('click', resetForm);
+
+  /* =====================================================
+     DELETE — SheetAPI249
+     ===================================================== */
+  async function deleteRow(id) {
+    const row = cachedRows.find(r => String(r.id) === String(id));
+    const rowNumber = row ? (row._sheetRow || row.id) : id;
+    const label = row ? `"${row.subject} — ${row.lecture}"` : `#${id}`;
+    const ok = await openConfirm({
+      title: 'Delete this row?',
+      message: `You're about to delete <strong>${esc(label)}</strong>. This action cannot be undone.`,
+      confirmText: 'Delete'
+    });
+    if (!ok) return;
+    try {
+      await apiRequest('DELETE', rowNumber);
+      if (String(rowNumber) === String(editingId)) resetForm();
+      await loadRows();
+      toast('Deleted successfully', 'ok');
+    } catch (err) {
+      console.error(err);
+      toast('Delete failed: ' + err.message, 'err', 4500);
+    }
+  }
+
+  /* =====================================================
+     INIT
+     ===================================================== */
+  refreshBtn.addEventListener('click', () => loadRows({ showSpinner: true }));
+
+  filterSearch.addEventListener('input', applyFilters);
+  filterSubject.addEventListener('change', applyFilters);
+  filterType.addEventListener('change', applyFilters);
+  clearFilters.addEventListener('click', clearAllFilters);
+
+
+  $('sendCustomPushBtn').addEventListener('click', async () => {
+    const secret = pushAdminSecretInput.value.trim();
+    const title = $('customPushTitle').value.trim();
+    const message = $('customPushMessage').value.trim();
+    const target = $('customPushUrl').value.trim() || '/';
+    if (!secret) return toast('Instant Push Notification Secret দিন।', 'err');
+    if (!title || !message) return toast('Title ও Message দুটোই প্রয়োজন।', 'err');
+    let parsedTarget;
+    try {
+      parsedTarget = new URL(target, location.origin);
+      if (parsedTarget.origin !== location.origin) throw new Error();
+    } catch (_) { return toast('Target URL অবশ্যই এই App-এর URL হতে হবে।', 'err'); }
+    const btn = $('sendCustomPushBtn');
+    if (btn.disabled) return;
+    if (!confirm('সব subscribed user-কে এই notification পাঠাবেন?')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Sending…';
+    try {
+      const response = await fetch('/api/push/send-custom', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'X-Admin-Secret':secret },
+        body: JSON.stringify({ title, message, url: parsedTarget.pathname + parsedTarget.search + parsedTarget.hash })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || 'Send failed');
+      toast('Notification sent • '+result.sent+' device(s) • Failed: '+result.failed, 'ok', 6000);
+      $('customPushTitle').value = '';
+      $('customPushMessage').value = '';
+      $('customPushUrl').value = '';
+    } catch (err) { toast(err.message || 'Notification পাঠানো যায়নি', 'err', 5000); }
+    finally { btn.disabled = false; btn.textContent = '📢 Send Custom Notification'; }
+  });
+
+
+  $('refreshPushTracking').addEventListener('click', async () => {
+    const wrap=$('pushTrackingResults'), secret=pushAdminSecretInput.value.trim(), btn=$('refreshPushTracking');
+    if(!secret){toast('Push Secret দিন।','err');return;}
+    btn.disabled=true;wrap.innerHTML='<div class="empty">Loading tracking…</div>';
+    try{
+      const r=await fetch('/api/push/tracking',{headers:{'X-Admin-Secret':secret}});
+      const data=await r.json();if(!r.ok||!data.success)throw new Error(data.error||'Tracking load failed');
+      if(!data.notifications.length){wrap.innerHTML='<div class="empty">এখনও tracking record নেই।</div>';return;}
+      wrap.innerHTML=data.notifications.map(x=>'<div style="padding:12px;margin:10px 0;border:1px solid var(--border);border-radius:12px;"><strong>'+esc(x.title)+'</strong><div style="margin-top:5px;">'+esc(x.message)+'</div><small style="display:block;margin-top:8px;color:var(--muted);">'+new Date(x.sentAt).toLocaleString()+'</small><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;"><span>📨 Sent: '+Number(x.sent||0)+'</span><span>❌ Failed: '+Number(x.failed||0)+'</span><span>🖱️ Clicks: '+Number(x.clicks||0)+'</span><span>🧹 Removed: '+Number(x.removed||0)+'</span></div></div>').join('');
+    }catch(e){wrap.innerHTML='<div class="empty">❌ '+esc(e.message)+'</div>';}
+    finally{btn.disabled=false;}
+  });
+\n  loadRows();
+</script>
+</body>
+</html</body></html>
