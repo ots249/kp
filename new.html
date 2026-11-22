@@ -623,6 +623,12 @@
       <button type="button" id="sendCustomPushBtn" class="submit-btn">📢 Send Custom Notification</button>
       <small style="display:block;margin-top:8px;color:var(--muted);">Notification সব active subscribed device-এ পাঠানো হবে। Send করার আগে confirmation দেখাবে।</small>
     </div>
+    <section class="card" style="margin-top:20px;">
+      <h2>📊 Notification Tracking</h2>
+      <p class="sub">Sent, failed delivery counts and notification clicks.</p>
+      <button type="button" id="refreshPushTracking" class="clear-btn">↻ Refresh tracking</button>
+      <div id="pushTrackingResults" style="margin-top:12px;"><div class="empty">Tracking data load করতে Refresh চাপুন।</div></div>
+    </section>
     <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
@@ -1335,7 +1341,20 @@
     finally { btn.disabled = false; btn.textContent = '📢 Send Custom Notification'; }
   });
 
-  loadRows();
+
+  $('refreshPushTracking').addEventListener('click', async () => {
+    const wrap=$('pushTrackingResults'), secret=pushAdminSecretInput.value.trim(), btn=$('refreshPushTracking');
+    if(!secret){toast('Push Secret দিন।','err');return;}
+    btn.disabled=true;wrap.innerHTML='<div class="empty">Loading tracking…</div>';
+    try{
+      const r=await fetch('/api/push/tracking',{headers:{'X-Admin-Secret':secret}});
+      const data=await r.json();if(!r.ok||!data.success)throw new Error(data.error||'Tracking load failed');
+      if(!data.notifications.length){wrap.innerHTML='<div class="empty">এখনও tracking record নেই।</div>';return;}
+      wrap.innerHTML=data.notifications.map(x=>'<div style="padding:12px;margin:10px 0;border:1px solid var(--border);border-radius:12px;"><strong>'+esc(x.title)+'</strong><div style="margin-top:5px;">'+esc(x.message)+'</div><small style="display:block;margin-top:8px;color:var(--muted);">'+new Date(x.sentAt).toLocaleString()+'</small><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;"><span>📨 Sent: '+Number(x.sent||0)+'</span><span>❌ Failed: '+Number(x.failed||0)+'</span><span>🖱️ Clicks: '+Number(x.clicks||0)+'</span><span>🧹 Removed: '+Number(x.removed||0)+'</span></div></div>').join('');
+    }catch(e){wrap.innerHTML='<div class="empty">❌ '+esc(e.message)+'</div>';}
+    finally{btn.disabled=false;}
+  });
+\n  loadRows();
 </script>
 </body>
 </html>
