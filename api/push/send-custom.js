@@ -1,4 +1,4 @@
-const { list, get, del } = require('@vercel/blob');
+const { list, get, del, put } = require('@vercel/blob');
 const webpush = require('web-push');
 const crypto = require('crypto');
 
@@ -32,13 +32,13 @@ module.exports = async function handler(req, res) {
 
     webpush.setVapidDetails(process.env.VAPID_SUBJECT, process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
     const subscriptions = await list({ prefix: 'push/subscriptions/' });
-    let sent = 0, removed = 0, failed = 0;
+    const notificationId = crypto.randomBytes(16).toString('hex');\n    let sent = 0, removed = 0, failed = 0;
     for (const blob of subscriptions.blobs) {
       try {
         const savedBlob = await get(blob.url, { access: 'private' });
         if (!savedBlob || savedBlob.statusCode !== 200) { failed++; continue; }
         const saved = await new Response(savedBlob.stream).json();
-        await webpush.sendNotification(saved.subscription, JSON.stringify({ title: cleanTitle, body: cleanMessage, url: targetUrl, tag: 'civil4th-custom-' + crypto.randomBytes(12).toString('hex') }));
+        await webpush.sendNotification(saved.subscription, JSON.stringify({ title: cleanTitle, body: cleanMessage, url: targetUrl, tag: 'civil4th-custom-' + notificationId, notificationId }));
         sent++;
       } catch (error) {
         if (error.statusCode === 404 || error.statusCode === 410) {
@@ -46,7 +46,13 @@ module.exports = async function handler(req, res) {
         } else { failed++; console.error('[Custom Push] delivery failed:', error.message); }
       }
     }
-    return res.status(200).json({ success: true, sent, failed, removed, subscribers: subscriptions.blobs.length });
+    try {
+      await put('push/tracking/sends/' + notificationId + '.json', JSON.stringify({
+        notificationId, title: cleanTitle, message: cleanMessage, url: targetUrl,
+        sent, failed, removed, subscribers: subscriptions.blobs.length, sentAt: new Date().toISOString()
+      }), { access: 'private', addRandomSuffix: false });
+    } catch (logError) { console.error('[Custom Push] tracking log failed:', logError.message); }
+    return res.status(200).json({ success: true, notificationId, sent, failed, removed, subscribers: subscriptions.blobs.length });
   } catch (error) {
     console.error('[Custom Push] error:', error);
     return res.status(500).json({ error: 'Notification delivery failed' });
