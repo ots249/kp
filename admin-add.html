@@ -598,6 +598,23 @@
       <button type="button" id="cancelEditBtn">Cancel</button>
     </div>
 
+    <div class="field" style="margin: 0 0 16px;">
+      <label for="apiKey">SheetAPI249 Write API Key</label>
+      <input id="apiKey" type="password" placeholder="Paste your SheetAPI249 project key"
+             autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <small style="display:block;margin-top:6px;color:var(--muted,#8b98a8);">
+        Keyটি এই browser-এর local storage-এ সংরক্ষিত থাকবে; public code-এ hardcode করা হবে না।
+      </small>
+    </div>
+    <div class="field" style="margin: 0 0 16px;">
+      <label for="pushAdminSecret">Instant Push Notification Secret</label>
+      <input id="pushAdminSecret" type="password" placeholder="Paste the admin notification secret"
+             autocomplete="off" autocapitalize="off" spellcheck="false" />
+      <small style="display:block;margin-top:6px;color:var(--muted,#8b98a8);">
+        নতুন Lecture/PDF submit করলে subscribed users-দের সঙ্গে সঙ্গে notification পাঠাতে এটি প্রয়োজন।
+      </small>
+    </div>
+
     <form id="entryForm" autocomplete="off">
       <label for="subject">Subject</label>
       <select id="subject" name="subject" required>
@@ -1326,5 +1343,8 @@
 \n  loadRows();
 </script>
 </body>
-</html</body>
+</html<script>
+
+</script>
+</body>
 </html>
